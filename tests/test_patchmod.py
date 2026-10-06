@@ -1,0 +1,549 @@
+from pathlib import Path
+
+import pytest
+
+from stellaris_patcher.coldsteel import files as cold_steel
+from stellaris_patcher.coldsteel.records import Playset, PlaysetEntry, PlaysetFile
+from stellaris_patcher.paradox.descriptor import Descriptor, decode_descriptor
+from stellaris_patcher.paradox.game import DEFAULT_STEAM_DIRS, Game, GameNotFound, find_game
+from stellaris_patcher.paradox.script import scan, value_of
+from stellaris_patcher.patchmod import cold_steel_mix
+from stellaris_patcher.patchmod.cold_steel_mix import (
+    FixError,
+    mirror_scale,
+    repoint_slots,
+    section_slots,
+)
+from stellaris_patcher.patchmod.layers import GAME, Layers, numbers
+from stellaris_patcher.patchmod.write import (
+    BOM,
+    WriteError,
+    check_files,
+    supported_version,
+    thumbnail,
+    winning_name,
+    with_mod_last,
+    write_mod,
+)
+
+
+def _game(root: Path) -> Game:
+    return Game(
+        install_dir=root / "steam/steamapps/common/Stellaris",
+        library_dir=root / "steam",
+        version="v4.5.1",
+        version_name="Cygnus v4.5.1",
+        data_dir=root / "paradox",
+    )
+
+
+def _put(root: Path, files: dict[str, str]) -> None:
+    for path, text in files.items():
+        (root / path).parent.mkdir(parents=True, exist_ok=True)
+        (root / path).write_text(text, "utf-8")
+
+
+@pytest.fixture
+def game(tmp_path: Path) -> Game:
+    return _game(tmp_path)
+
+
+def _layers(game: Game, mods: dict[str, dict[str, str]]) -> Layers:
+    _put(game.install_dir, mods.pop(GAME, {}))
+    for key, files in mods.items():
+        _put(game.workshop_dir / key.removeprefix("workshop:"), files)
+    entries = tuple(PlaysetEntry(k) for k in mods)
+    return Layers.for_playset(Playset("p1", "Mix", entries), game)
+
+
+# Layers
+
+
+def test_a_later_mod_replaces_a_file_at_the_same_path_ignoring_case(game: Game) -> None:
+    layers = _layers(
+        game,
+        {
+            GAME: {"common/defines/00_defines.txt": "NCamera = { A = 1 }"},
+            "workshop:1": {"common/defines/00_Defines.txt": "NCamera = { A = 2 }"},
+        },
+    )
+    assert layers.winner("common/defines/00_defines.txt") == "workshop:1"
+    assert list(layers.files("common/defines").values()) == [
+        ("workshop:1", "common/defines/00_Defines.txt")
+    ]
+
+
+def test_the_define_in_the_file_sorting_last_wins(game: Game) -> None:
+    layers = _layers(
+        game,
+        {
+            GAME: {"common/defines/00_defines.txt": "NCamera = { A = { 1 2 } }"},
+            "workshop:1": {"common/defines/zz_cc.txt": "NCamera = { A = { 3 4 5 } }"},
+            "workshop:2": {"common/defines/aa.txt": "NCamera = { A = { 6 } }"},
+        },
+    )
+    found = layers.define("NCamera", "A")
+    assert found is not None
+    assert found[0] == "workshop:1"
+    assert numbers(found[1]) == [3, 4, 5]
+
+
+def test_defined_gives_the_file_sorting_first(game: Game) -> None:
+    layers = _layers(
+        game,
+        {
+            GAME: {"common/scripted_triggers/b.txt": "t = { }"},
+            "workshop:1": {"common/scripted_triggers/a.txt": "t = { }\nu = { }"},
+        },
+    )
+    assert layers.defined("common/scripted_triggers") == {
+        "t": ("workshop:1", "common/scripted_triggers/a.txt"),
+        "u": ("workshop:1", "common/scripted_triggers/a.txt"),
+    }
+
+
+# Fix 1: mirror_scale
+
+
+GAME_ASSET = b"""@size = 35
+entity = { name = "storm_entity" scale = 20 }
+entity = { name = "core_entity" }
+entity = { name = "humanoid_01_stage_entity" pdxmesh = "m" }
+entity = { name = "humanoid_01_phase_entity" scale = 1.0 }
+entity = { name = "starlit_entity" scale = 4 attach = { "core" = "starlit_core_entity" } }
+entity = { name = "starlit_core_entity" scale = 7 }
+entity = { name = "toxoid_01_stage_entity" pdxmesh = "m" }
+entity = { name = "toxoid_01_phase_entity" scale = 1.0 }
+"""
+MOD_ASSET = b"""@big = 120
+entity = { name = "storm_entity" scale = @big }
+entity = { name = "core_entity" }
+entity = { name = "humanoid_01_stage_entity" scale = 6 }
+entity = { name = "humanoid_01_phase_entity" scale = 1.0 }
+"""
+
+
+def _scales(data: bytes) -> dict[str, str | None]:
+    found: dict[str, str | None] = {}
+    for entry in scan(data):
+        if entry.key == b"entity":
+            name = value_of(data, entry, b"name")
+            scale = value_of(data, entry, b"scale")
+            assert name is not None
+            found[name.decode()] = None if scale is None else scale.decode()
+    return found
+
+
+def test_mirror_scale_keeps_every_game_entity_at_the_mods_size() -> None:
+    out, factor = mirror_scale(GAME_ASSET, MOD_ASSET)
+    assert factor == 6
+    assert out.startswith(b"@big = 120\n@size = 35\n")
+    assert _scales(out) == {
+        "storm_entity": "@big",  # the mod's own scale
+        "core_entity": None,  # the mod left it alone
+        "humanoid_01_stage_entity": "6",
+        "humanoid_01_phase_entity": "1.0",
+        "starlit_entity": "24",  # new: scaled by the same factor
+        "starlit_core_entity": "7",  # new, but attached: left alone
+        "toxoid_01_stage_entity": "6",  # follows humanoid_01's stage
+        "toxoid_01_phase_entity": "1.0",  # follows humanoid_01's phase
+    }
+
+
+def test_mirror_scale_changes_a_variable_the_mod_changed() -> None:
+    game = b'@s = 35\nentity = { name = "a" scale = @s }\nentity = { name = "b" scale = @s }\n'
+    mod = b'@s = 140\nentity = { name = "a" scale = @s }\n'
+    out, factor = mirror_scale(game, mod)
+    assert factor == 4
+    assert out == game.replace(b"@s = 35", b"@s = 140")
+
+
+def test_mirror_scale_refuses_a_mod_that_scales_by_two_factors() -> None:
+    game = b'entity = { name = "a" scale = 1 }\nentity = { name = "b" scale = 1 }\n'
+    mod = b'entity = { name = "a" scale = 2 }\nentity = { name = "b" scale = 3 }\n'
+    with pytest.raises(FixError, match="one factor"):
+        mirror_scale(game, mod)
+
+
+# Fix 2: repoint_slots
+
+
+DESIGN = b"""ship_design = {
+\tname = "NAME_Starlit"
+\tsection = {
+\t\ttemplate = "CITADEL"
+\t\tcomponent = { slot = "MEDIUM_GUN_09" template = "G" }
+\t\tcomponent = { slot = "MEDIUM_GUN_010" template = "G" }
+\t\tcomponent = { slot = "MEDIUM_GUN_011" template = "G" }
+\t\tcomponent = { slot = "LARGE_UTILITY_2" template = "A" }
+\t}
+}
+"""
+
+
+def test_slots_count_utility_slots_too(game: Game) -> None:
+    section = (
+        'ship_section_template = { key = "CITADEL"\n'
+        '  component_slot = { name = "MEDIUM_GUN_10" }\n'
+        "  large_utility_slots = 2 }"
+    )
+    layers = _layers(game, {"workshop:1": {"common/section_templates/!!!_x.txt": section}})
+    assert section_slots(layers, "CITADEL") == {
+        "MEDIUM_GUN_10",
+        "LARGE_UTILITY_1",
+        "LARGE_UTILITY_2",
+    }
+
+
+def test_repoint_slots_moves_leading_zero_slots_and_drops_the_rest() -> None:
+    slots = {"MEDIUM_GUN_09", "MEDIUM_GUN_10", "LARGE_UTILITY_2"}
+    out, _ = repoint_slots(DESIGN, "NAME_Starlit", "CITADEL", slots)
+    assert b'slot = "MEDIUM_GUN_10"' in out
+    assert b"MEDIUM_GUN_01" + b"0" not in out
+    assert b"MEDIUM_GUN_011" not in out
+    assert out.count(b"component") == 3
+
+
+def test_repoint_slots_refuses_an_unknown_slot() -> None:
+    with pytest.raises(FixError, match="LARGE_UTILITY_2"):
+        repoint_slots(DESIGN, "NAME_Starlit", "CITADEL", {"MEDIUM_GUN_09", "MEDIUM_GUN_10"})
+
+
+def test_repoint_slots_says_when_theres_nothing_to_fix() -> None:
+    slots = {"MEDIUM_GUN_09", "MEDIUM_GUN_010", "MEDIUM_GUN_011", "LARGE_UTILITY_2"}
+    with pytest.raises(FixError, match="Nothing to fix"):
+        repoint_slots(DESIGN, "NAME_Starlit", "CITADEL", slots)
+
+
+# Fix 4: zoom steps and planet scales
+
+
+def _zoom_clash(game: Game, monkeypatch: pytest.MonkeyPatch, cc_extra: str = "") -> Layers:
+    """System Scale's 3 zoom steps and planet scales, and Cinematic Camera's 5
+    steps. Cinematic Camera enters systems at its last step, 4. Only fix 4
+    runs: the others need files this doesn't have."""
+    only_4 = tuple(f for f in cold_steel_mix.FIXES if f[0] == 4)
+    monkeypatch.setattr(cold_steel_mix, "FIXES", only_4)
+    return _layers(
+        game,
+        {
+            cold_steel_mix.SYSTEM_SCALE: {
+                "common/defines/systemscale_defines.txt": (
+                    "NCamera = { ZOOM_STEPS_SYSTEM_PERCENTAGES = { 0.01 0.1 1.0 }\n"
+                    "ENTER_SYSTEM_ZOOM_STEP = 2 }\n"
+                    "NGraphics = { PLANET_SCALE_SYSTEM = { 1 2 4 } }\n"
+                )
+            },
+            cold_steel_mix.CINEMATIC_CAMERA: {
+                "common/defines/zzzzz_cc_defines.txt": (
+                    "NCamera = { ZOOM_STEPS_SYSTEM_PERCENTAGES = { 0.01 0.03 0.1 0.3 1.0 }\n"
+                    f"ENTER_SYSTEM_ZOOM_STEP = 4 {cc_extra} }}"
+                )
+            },
+        },
+    )
+
+
+def test_fix_4_ships_system_scales_own_steps_and_scales(
+    game: Game, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (outcome,) = cold_steel_mix.plan(_zoom_clash(game, monkeypatch))
+    assert list(outcome.files) == ["common/defines/zzzzzz_stellaris_patcher_cold_steel_mix.txt"]
+    (data,) = outcome.files.values()
+    assert [e.key for e in scan(data)] == [b"NCamera", b"NGraphics"]
+    assert b"ZOOM_STEPS_SYSTEM_PERCENTAGES = { 0.01 0.1 1 }" in data
+    assert b"PLANET_SCALE_SYSTEM = { 1 2 4 }" in data
+
+
+def test_fix_4_enters_systems_at_system_scales_step(
+    game: Game, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (outcome,) = cold_steel_mix.plan(_zoom_clash(game, monkeypatch))
+    (data,) = outcome.files.values()
+    assert b"\tENTER_SYSTEM_ZOOM_STEP = 2\n" in data
+    assert b"= 4" not in data
+
+
+def test_fix_4_refuses_a_step_past_the_end(game: Game, monkeypatch: pytest.MonkeyPatch) -> None:
+    layers = _zoom_clash(game, monkeypatch, cc_extra="ZOOM_STEPS_SHOW_FLEET_HEALTH_BARS = { 1 3 }")
+    (outcome,) = cold_steel_mix.plan(layers)
+    assert not outcome.files
+    assert "ZOOM_STEPS_SHOW_FLEET_HEALTH_BARS names step { 1 3 }" in outcome.left_out
+
+
+# Writing
+
+
+def test_winning_name_sorts_after_every_rival() -> None:
+    assert winning_name(["zzzzz_cc_defines.txt", "00_defines.txt"], "x.txt", first=False) == (
+        "zzzzzz_x.txt"
+    )
+    assert winning_name(["!!a.txt"], "x.txt", first=True) == "!!!_x.txt"
+
+
+def test_the_thumbnail_is_a_512_pixel_png() -> None:
+    data = thumbnail()
+    assert data.startswith(b"\x89PNG\r\n\x1a\n")
+    assert int.from_bytes(data[16:20]) == int.from_bytes(data[20:24]) == 512
+
+
+def test_supported_version_is_major_and_minor() -> None:
+    assert supported_version("v4.5.1") == "v4.5.*"
+
+
+def test_check_files_finds_broken_files() -> None:
+    problems = check_files(
+        {
+            "common/a.txt": b"a = { b = ",
+            "common/ok.txt": b"a = { b = c }",
+            "localisation/english/x_l_english.yml": b'l_english:\n k:0 "t"\n',
+        }
+    )
+    assert len(problems) == 2
+    assert problems[0].startswith("common/a.txt")
+    assert "byte-order mark" in problems[1]
+
+
+def test_write_mod_links_it_into_the_mod_folder(
+    game: Game, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
+    descriptor = Descriptor(name="Patch", version="1", supported_version="v4.5.*")
+    folder = write_mod({"common/a.txt": b"a = b\n"}, "patch", "sp_patch", descriptor, game)
+    assert folder == tmp_path / "data/stellaris-patcher/mods/patch"
+    assert (folder / "common/a.txt").read_bytes() == b"a = b\n"
+    link = game.mod_dir / "sp_patch"
+    assert link.is_symlink() and link.readlink() == folder
+    outer = decode_descriptor((game.mod_dir / "sp_patch.mod").read_bytes())
+    assert outer.path == str(link)
+    # A rebuild replaces the files whole.
+    write_mod({"common/b.txt": b"b = c\n"}, "patch", "sp_patch", descriptor, game)
+    assert not (folder / "common/a.txt").exists()
+    assert (folder / "common/b.txt").exists()
+
+
+def test_write_mod_keeps_the_workshop_id_after_an_upload(
+    game: Game, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
+    descriptor = Descriptor(name="Patch", version="1")
+    folder = write_mod({}, "patch", "sp_patch", descriptor, game)
+    outer = game.mod_dir / "sp_patch.mod"
+    # The launcher writes the id into the .mod file after the first upload.
+    outer.write_text(outer.read_text("utf-8") + 'remote_file_id="123"\n', "utf-8")
+    write_mod({}, "patch", "sp_patch", descriptor, game)
+    assert decode_descriptor(outer.read_bytes()).remote_file_id == "123"
+    assert decode_descriptor((folder / "descriptor.mod").read_bytes()).remote_file_id == "123"
+
+
+def test_write_mod_refuses_a_folder_that_isnt_ours(
+    game: Game, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
+    (game.mod_dir / "sp_patch").mkdir(parents=True)
+    with pytest.raises(WriteError, match="in the way"):
+        write_mod({}, "patch", "sp_patch", Descriptor(name="Patch"), game)
+    assert not (tmp_path / "data").exists()
+
+
+def test_with_mod_last_goes_before_cold_steels_patch() -> None:
+    patch = PlaysetEntry(f"local:{cold_steel.PATCH_PREFIX}p1")
+    book = PlaysetFile(
+        playsets=[
+            Playset("p1", "Mix", (PlaysetEntry("local:ours", False), PlaysetEntry("w:1"), patch)),
+            Playset("p2", "Other", (PlaysetEntry("w:1"),)),
+        ]
+    )
+    new = with_mod_last(book, "p1", "local:ours", "Ours")
+    assert new.playsets[0].entries == (
+        PlaysetEntry("w:1"),
+        PlaysetEntry("local:ours", True, "Ours"),
+        patch,
+    )
+    assert new.playsets[1] == book.playsets[1]
+    assert with_mod_last(new, "p1", "local:ours", "Ours") == new
+
+
+def test_the_workshop_description_lists_needed_mods_once_and_written_fixes() -> None:
+    outcomes = [
+        cold_steel_mix.Outcome(1, "Fix one", mods=("w:1", "w:2")),
+        cold_steel_mix.Outcome(2, "Fix two", mods=("w:2",)),
+        cold_steel_mix.Outcome(3, "Fix three", left_out="gone", mods=("w:3",)),
+    ]
+    # In load order, not the order the fixes name them.
+    assert cold_steel_mix.patched_mods(outcomes, ["w:3", "w:2", "w:1"]) == ["w:2", "w:1"]
+    text = cold_steel_mix.workshop_description(outcomes, {"w:2": "Two", "w:1": "One"}, "v4.5.1")
+    assert "[*]Two\n[*]One\n" in text
+    assert "[*]Fix one\n[*]Fix two\n" in text
+    assert "Fix three" not in text
+
+
+def test_fix_10_ships_the_games_text_and_mends_the_tooltips(game: Game) -> None:
+    pd = cold_steel_mix.PLANETARY_DIVERSITY
+    game_text = 'l_english:\n mod_planet_bureaucrats_unity_produces_mult: "$a$ $b$"\n'
+    game_text += ' bureaucrat_type_plural_with_icon: "[GetBureaucratSwapPluralWithIcon]"\n'
+    old = "[GetAdministratorPluralWithIcon]"
+    mod_text = f'l_english:\n mod_planet_bureaucrats_unity_produces_mult:1 "from {old}"\n'
+    mod_text += f' pd_necro_planet_tooltip: "from {old}: +0.5" # a comment\n'
+    layers = _layers(
+        game,
+        {
+            GAME: {"localisation/english/economic_l_english.yml": game_text},
+            pd: {"localisation/english/pd_l_english.yml": mod_text},
+        },
+    )
+    files, _ = cold_steel_mix.fix_pd_bureaucrats(layers)
+    assert files == {
+        "localisation/replace/stellaris_patcher_cold_steel_mix_l_english.yml": BOM
+        + b"l_english:\n"
+        + b' mod_planet_bureaucrats_unity_produces_mult:0 "$a$ $b$"\n'
+        + b' pd_necro_planet_tooltip:0 "from $bureaucrat_type_plural_with_icon$: +0.5"\n'
+    }
+    assert check_files(files) == []
+
+
+def test_fix_10_is_left_out_when_nothing_calls_the_old_function(game: Game) -> None:
+    text = 'l_english:\n bureaucrat_type_plural_with_icon: "x"\n pd_necro_planet_tooltip: "y"\n'
+    layers = _layers(game, {GAME: {"localisation/english/a_l_english.yml": text}})
+    with pytest.raises(FixError, match="No text calls"):
+        cold_steel_mix.fix_pd_bureaucrats(layers)
+
+
+# Fixes 11 and 12: More Events Mod's events
+
+ZIASKEHORN = """namespace = mem_scfe_ziaskehorn\r
+ship_event = {\r
+\tid = mem_scfe_ziaskehorn.1\r
+\timmediate = {\r
+\t\trandom_list = {\r
+\t\t\t10 = {\r
+\t\t\t\tship_event = {\r
+\t\t\t\t\tid = mem_scfe_ziaskehorn.2\r
+\t\t\t\t}\r
+\t\t\t\tset_global_flag = discovered_ziaskehorn\r
+\t\t\t\tfrom = {\r
+\t\t\t\t\tsave_event_target_as = mem_ziaskehorn_planet\r
+\t\t\t\t}\r
+\t\t\t}\r
+\t\t}\r
+\t}\r
+}\r
+ship_event = {\r
+\tid = mem_scfe_ziaskehorn.2\r
+\tlocation = event_target:mem_ziaskehorn_planet\r
+}\r
+"""
+
+
+def test_fix_11_saves_the_planet_before_firing_the_discovery(game: Game) -> None:
+    mem = cold_steel_mix.MORE_EVENTS
+    layers = _layers(game, {mem: {"events/mem_asp_scfe_events.txt": ZIASKEHORN}})
+    files, notes = cold_steel_mix.fix_ziaskehorn(layers)
+    (path,) = files
+    assert path == "events/!!_stellaris_patcher_cold_steel_mix_ziaskehorn.txt"
+    data = files[path]
+    assert data.startswith(b"namespace = mem_scfe_ziaskehorn\n\nship_event = {\n")
+    assert b"\r" not in data
+    saved = data.index(b"save_event_target_as")
+    assert saved < data.index(b"id = mem_scfe_ziaskehorn.2") < data.index(b"set_global_flag")
+    assert b"mem_scfe_ziaskehorn.2" in data and data.count(b"ship_event = {\n\tid") == 1
+    assert notes == [
+        "mem_scfe_ziaskehorn.1: saves mem_ziaskehorn_planet before firing mem_scfe_ziaskehorn.2"
+    ]
+    assert check_files(files) == []
+
+
+def test_fix_11_is_left_out_once_the_mod_saves_first(game: Game) -> None:
+    fixed, _ = cold_steel_mix.fix_ziaskehorn(
+        _layers(game, {cold_steel_mix.MORE_EVENTS: {"events/a.txt": ZIASKEHORN}})
+    )
+    (data,) = fixed.values()
+    again = data.decode() + "ship_event = { id = mem_scfe_ziaskehorn.2 }\n"
+    layers = _layers(game, {"workshop:2": {"events/b.txt": again}})
+    with pytest.raises(FixError, match="comes from workshop:2"):
+        cold_steel_mix.fix_ziaskehorn(layers)
+    layers = _layers(game, {cold_steel_mix.MORE_EVENTS: {"events/a.txt": again}})
+    with pytest.raises(FixError, match="saves its targets before firing"):
+        cold_steel_mix.fix_ziaskehorn(layers)
+
+
+TRAITS = """leader_trait_iron_fist = {\n\tleader_class = { commander } # 4.5\n}
+leader_trait_maniacal = {\n\tleader_class = { scientist }\n}
+"""
+GLACIER = """namespace = mem_stuck_in_glacier
+ship_event = {
+\tid = mem_stuck_in_glacier.22
+\toption = {
+\t\tcreate_leader = { class = scientist traits = { trait = leader_trait_maniacal } }
+\t\tcreate_leader = {
+\t\t\tCLASS = official
+\t\t\ttraits = { trait = leader_trait_iron_fist }
+\t\t}
+\t}
+}
+"""
+
+
+def test_fix_12_gives_the_leader_the_class_its_trait_needs(game: Game) -> None:
+    layers = _layers(
+        game,
+        {
+            GAME: {"common/traits/00_governor_traits.txt": TRAITS},
+            cold_steel_mix.MORE_EVENTS: {"events/mem_stuck_in_glacier.txt": GLACIER},
+        },
+    )
+    files, notes = cold_steel_mix.fix_glacier_leader(layers)
+    (data,) = files.values()
+    assert b"CLASS = commander\n" in data and b"official" not in data
+    assert b"class = scientist" in data
+    assert notes == [
+        "mem_stuck_in_glacier.22: the official with leader_trait_iron_fist is a commander now"
+    ]
+    assert check_files(files) == []
+
+
+def test_fix_12_is_left_out_when_every_leader_can_have_its_traits(game: Game) -> None:
+    traits = TRAITS.replace("{ commander }", "{ commander official }")
+    layers = _layers(
+        game,
+        {
+            GAME: {"common/traits/00_governor_traits.txt": traits},
+            cold_steel_mix.MORE_EVENTS: {"events/mem_stuck_in_glacier.txt": GLACIER},
+        },
+    )
+    with pytest.raises(FixError, match="can have its traits now"):
+        cold_steel_mix.fix_glacier_leader(layers)
+
+
+def test_own_keys_include_the_workshop_copy_once_uploaded(
+    game: Game, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
+    assert cold_steel_mix.own_keys(game) == [cold_steel_mix.KEY]
+    descriptor = Descriptor(name="Patch", remote_file_id="123")
+    write_mod({}, cold_steel_mix.FOLDER, cold_steel_mix.LINK, descriptor, game)
+    assert cold_steel_mix.own_keys(game) == [cold_steel_mix.KEY, "workshop:123"]
+
+
+# The real playset
+
+
+@pytest.mark.real_install
+def test_every_fix_applies_to_the_real_cold_steel_mix() -> None:
+    try:
+        game = find_game(DEFAULT_STEAM_DIRS)
+    except GameNotFound:
+        pytest.skip("Stellaris isn't installed here.")
+    book = cold_steel.load_playsets()
+    found = [p for p in book.playsets if p.name == cold_steel_mix.PLAYSET] if book else []
+    if len(found) != 1:
+        pytest.skip("Cold Steel has no Cold Steel Mix playset here.")
+    layers = Layers.for_playset(found[0], game, skip=cold_steel_mix.own_keys(game))
+    outcomes = cold_steel_mix.plan(layers)
+    assert [o.left_out for o in outcomes] == [""] * len(cold_steel_mix.FIXES)
+    files = {p: d for o in outcomes for p, d in o.files.items()}
+    assert check_files(files) == []
+    order = [layer.key for layer in layers.layers]
+    names = [layers.name(k) for k in cold_steel_mix.patched_mods(outcomes, order)]
+    assert "Real Space - System Scale" in names
+    assert all(d.startswith(BOM) for p, d in files.items() if p.endswith(".yml"))

@@ -1,0 +1,110 @@
+{
+	"name": "Stellaris Patcher (playset patch mods)",
+	"build": {
+		"dockerfile": "Dockerfile",
+		"args": {
+			"USERNAME": "${localEnv:USER}"
+		}
+	},
+
+	// Mount the workspace at its HOST path, not /workspaces/... -- Claude Code
+	// keys session history and memory by absolute path, so this lets a session
+	// started on the host continue in here and vice versa. It also keeps any
+	// path written into Paradox's files valid for the host-side launcher.
+	"workspaceMount": "source=${localWorkspaceFolder},target=${localWorkspaceFolder},type=bind",
+	"workspaceFolder": "${localWorkspaceFolder}",
+
+	"mounts": [
+		// Whole Steam install, read-only, at its host path. Holds the game's
+		// vanilla files (common/) and every subscribed Workshop mod
+		// (workshop/content/<appid>/) -- the inputs a patch is built from.
+		// libraryfolders.vdf lists host paths, so the location must match.
+		"source=${localEnv:HOME}/.local/share/Steam,target=${localEnv:HOME}/.local/share/Steam,type=bind,readonly",
+
+		// Paradox user data, READ-WRITE: one folder per game holding mod/
+		// (.mod descriptors and local mods), launcher-v2.sqlite (mod registry
+		// AND playsets), dlc_load.json and logs/. Built patch mods are linked
+		// into mod/ with a .mod file. post-create.sh snapshots each
+		// launcher-v2.sqlite once before anything can touch it.
+		"source=${localEnv:HOME}/.local/share/Paradox Interactive,target=${localEnv:HOME}/.local/share/Paradox Interactive,type=bind",
+
+		// Cold Steel's data, READ-WRITE: playsets.json, resolutions/ (each
+		// playset's conflict choices), patches/, builds/ and snapshots/. We read
+		// playsets from here and write results back (decision 11). Cold Steel's
+		// source code is not mounted: we only share its data. Every write is
+		// backed up first; post-create.sh also keeps one copy from before we
+		// ever touched it.
+		"source=${localEnv:HOME}/.local/share/cold-steel,target=${localEnv:HOME}/.local/share/cold-steel,type=bind",
+
+		// Cold Steel's settings, read-only: a hand-set Steam or game data folder.
+		"source=${localEnv:HOME}/.config/cold-steel,target=${localEnv:HOME}/.config/cold-steel,type=bind,readonly",
+
+		// Our own data: backups of what we write, and our patch work. On the host,
+		// so links into the game's mod/ folder work there, and survive rebuilds.
+		"source=${localEnv:HOME}/.local/share/stellaris-patcher,target=${localEnv:HOME}/.local/share/stellaris-patcher,type=bind",
+
+		// Persistent Claude Code state (credentials, transcripts, memory),
+		// shared with the host so sessions survive rebuilds.
+		"source=${localEnv:HOME}/.claude,target=${localEnv:HOME}/.claude,type=bind",
+
+		// Persistent GitHub CLI auth -- log in once, survives every rebuild.
+		"source=${localEnv:HOME}/.config/gh,target=${localEnv:HOME}/.config/gh,type=bind",
+
+		// The host's git identity (user.name, user.email), read-only, beside the
+		// container's own ~/.gitconfig, which post-create.sh points at it.
+		// Not mounted AS ~/.gitconfig: `gh auth setup-git` must write there.
+		// And not left to VS Code's copy: it skips the copy when ~/.gitconfig
+		// already exists. The host file must exist, or the container won't start.
+		"source=${localEnv:HOME}/.gitconfig,target=${localEnv:HOME}/.gitconfig-host,type=bind,readonly"
+	],
+
+	"containerEnv": {
+		"CLAUDE_CONFIG_DIR": "${localEnv:HOME}/.claude",
+		"STEAM_DIR": "${localEnv:HOME}/.local/share/Steam",
+		"PARADOX_DATA_DIR": "${localEnv:HOME}/.local/share/Paradox Interactive"
+	},
+
+	"runArgs": [
+		"--name=stellaris-patcher-dev"
+	],
+
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"anthropic.claude-code",
+				"editorconfig.editorconfig",
+				"redhat.vscode-yaml",
+				"ms-python.python",
+				"ms-python.vscode-pylance",
+				"charliermarsh.ruff",
+				"ms-python.mypy-type-checker",
+				"qwtel.sqlite-viewer",
+				"vscode-icons-team.vscode-icons"
+			],
+			"settings": {
+				// Game installs and Workshop content are reference data, not
+				// project files -- keep them out of the watcher and search.
+				"files.watcherExclude": {
+					"**/.local/share/Steam/**": true,
+					"**/.local/share/Paradox Interactive/**": true
+				},
+				"files.eol": "\n",
+				"workbench.iconTheme": "vscode-icons",
+				// Pylance for completion/navigation only; mypy is the one type
+				// checker, so errors are not reported twice in two dialects.
+				"python.languageServer": "Pylance",
+				"python.analysis.typeCheckingMode": "off",
+				"terminal.integrated.defaultProfile.linux": "fish"
+			}
+		}
+	},
+
+	// Runs on the HOST before the container starts. A bind mount fails if its
+	// source is missing, and Cold Steel only makes its folders when first run.
+	"initializeCommand": "mkdir -p \"$HOME/.local/share/cold-steel\" \"$HOME/.config/cold-steel\" \"$HOME/.local/share/stellaris-patcher\"",
+
+	"postCreateCommand": "bash .devcontainer/post-create.sh",
+	"waitFor": "postCreateCommand",
+	"remoteUser": "${localEnv:USER}",
+	"updateRemoteUserUID": true
+}

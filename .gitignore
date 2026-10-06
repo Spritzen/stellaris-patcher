@@ -1,0 +1,9 @@
+# Python and tool caches
+__pycache__/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.benchmarks/
+
+# Claude Code's per-machine settings (project skills in .claude/skills/ are kept)
+.claude/settings.local.json
