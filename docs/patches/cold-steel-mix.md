@@ -40,6 +40,23 @@ the files on disk, not from a saved copy ([decision 14](../decisions.md)). If
 an update changes a fix's cause, that fix is left out and the reason printed.
 The other fixes are still written.
 
+## Add a fix
+
+**Only once the user has agreed to it** ([decision 25](../decisions.md)).
+
+1. Write a `fix_…(layers) -> Made` function in
+   [cold_steel_mix.py](../../src/stellaris_patcher/patchmod/cold_steel_mix.py),
+   under a `# N. …` comment, and add it to `FIXES` with its number, title and
+   the mods it patches. It raises `FixError` when its cause is gone
+   ([decision 14](../decisions.md)).
+2. Test it in [test_patchmod.py](../../tests/test_patchmod.py): one test that
+   it fixes the problem, one that it's left out once the cause is gone.
+3. Add a row to [What each fix does](#what-each-fix-does), and to the
+   [Whose work](#uploading-it-to-the-workshop) table if it ships another
+   author's file. Mark the fix **Done** in the report it came from.
+4. Add a row to [decisions.md](../decisions.md) for any choice the fix makes.
+5. `make check`, then [build it](#build-it).
+
 ## Uploading it to the Workshop
 
 It's uploaded as `workshop:3812655652`. Each build keeps it ready for the

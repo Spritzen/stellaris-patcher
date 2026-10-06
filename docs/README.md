@@ -10,6 +10,7 @@
 | [reports/](#reports) | Write-ups of real game runs: what went wrong and why |
 | [patches/cold-steel-mix.md](patches/cold-steel-mix.md) | The Cold Steel Mix patch: how to build it, and what each fix does |
 | [update-check.md](update-check.md) | What to do after a game or mod update: the check, the report, and what it can't tell |
+| [game-report.md](game-report.md) | What to do after a game run: reading the error log, tracing entries to mods, and the report |
 
 Don't create a folder until it has something in it.
 
@@ -31,13 +32,8 @@ it, and what to do. Name them `YYYY-MM-DD-<playset>-<what>.md`.
 The two reports marked "From Cold Steel" were copied from it: "Decision N" in
 them means Cold Steel's decisions, not ours.
 
-A new error-log report follows the method in "How this was worked out", with
-our own tools: [error_log.py](../src/stellaris_patcher/paradox/error_log.py)
-reads the log, and Cold Steel's build record
-([cold-steel-data.md](reference/cold-steel-data.md#the-files)) says which mod
-each file came from. Earlier reports ran Cold Steel's own error reader from
-its source, which is no longer mounted. An update report follows
-[update-check.md](update-check.md).
+A game report follows [game-report.md](game-report.md). An update report
+follows [update-check.md](update-check.md).
 
 ## How we write docs
 

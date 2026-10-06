@@ -16,12 +16,18 @@ We share its data files only, never its code
 | check whether something is already decided | [docs/decisions.md](docs/decisions.md) |
 | read or write Cold Steel's playsets and choices | [docs/reference/cold-steel-data.md](docs/reference/cold-steel-data.md) |
 | check the playset after Stellaris or a mod updates | [docs/update-check.md](docs/update-check.md) |
+| report on a game run's error log | [docs/game-report.md](docs/game-report.md) |
 | know how a patch mod has to be built to win | [docs/reference/patch-rules.md](docs/reference/patch-rules.md) |
 | run, test or lint the code | [docs/development.md](docs/development.md) |
 | build or change the Cold Steel Mix patch | [docs/patches/cold-steel-mix.md](docs/patches/cold-steel-mix.md) |
 | find where Stellaris keeps its files | [docs/reference/stellaris-files.md](docs/reference/stellaris-files.md) |
 | read past error-log investigations | [docs/reports/](docs/README.md#reports) |
 | see everything else | [docs/README.md](docs/README.md) |
+
+Each repeated task also has a skill in [.claude/skills/](.claude/skills/):
+`update-check`, `game-report`, `build-patch` and `add-fix`. A skill only
+points at its doc and repeats the rules that are easy to miss. The steps stay
+in the doc ([decision 28](docs/decisions.md)).
 
 ## Rules that always apply
 

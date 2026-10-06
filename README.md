@@ -13,6 +13,26 @@ PYTHONPATH=src python3 -m stellaris_patcher cold-steel-mix  # show what the patc
 PYTHONPATH=src python3 -m stellaris_patcher check-update --notes  # after a game or mod update
 ```
 
+## Working with Claude Code
+
+**Start a session with one of these skills. Each knows its steps and rules,
+so it needs no more context.** Type it as a slash command, or just describe
+the task and Claude picks the skill.
+
+| Command | When |
+|---|---|
+| `/update-check` | Stellaris or a playset mod has updated. Checks what changed, writes a report and proposes fixes |
+| `/game-report` | You've played the playset. Reads the error log, traces each entry to its mod and writes a report. Say how long you played and anything that looked wrong |
+| `/add-fix` | You've agreed to a fix from a report. Adds it to the patch, with tests and docs |
+| `/build-patch` | Builds the patch mod and links it into the game. Then rebuild Cold Steel Mix in Cold Steel |
+
+A report proposes fixes but adds none until you agree. Claude asks you to
+close the game, the launcher and Cold Steel before anything is written. The
+skills are in [.claude/skills/](.claude/skills/) and point at the docs that
+hold the steps.
+
+## Setup
+
 It runs in an Arch Linux dev container ([.devcontainer/](.devcontainer/)), with
 every package from pacman. Start with [docs/development.md](docs/development.md),
 and see [docs/README.md](docs/README.md) for the rest.
