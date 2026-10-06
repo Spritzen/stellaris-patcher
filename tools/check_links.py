@@ -44,7 +44,8 @@ def main() -> int:
     files = [
         p
         for p in ROOT.rglob("*.md")
-        if not any(part.startswith(".") for part in p.relative_to(ROOT).parts)
+        # .claude/ holds Claude's skills, which link into the docs.
+        if not any(part.startswith(".") and part != ".claude" for part in p.relative_to(ROOT).parts)
     ]
     errors = [e for md in sorted(files) for e in check(md)]
     for error in errors:
