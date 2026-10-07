@@ -14,7 +14,7 @@ from pathlib import Path
 
 from stellaris_patcher.coldsteel import files as cold_steel
 from stellaris_patcher.coldsteel.records import Playset, PlaysetFile
-from stellaris_patcher.paradox import processes
+from stellaris_patcher.paradox import processes, workshop
 from stellaris_patcher.paradox.descriptor import Descriptor
 from stellaris_patcher.paradox.game import DEFAULT_STEAM_DIRS, Game, find_game
 from stellaris_patcher.patchmod import cold_steel_mix
@@ -79,22 +79,26 @@ def _check_update(fetch_notes: bool, accept: bool, out: Path | None) -> int:
         return 1
     game, _, playset = found
     layers = Layers.for_playset(playset, game, skip=cold_steel_mix.own_keys(game))
-    if accept:
-        reviewed = [u.ident for u in check.undefined_variables(layers)]
-        saved = snapshot.accept(layers, game, playset.name, reviewed)
-        print(f"Baseline saved: {len(saved.layers)} layers, game {saved.game_version}.")
-        print(f"In {shown(snapshot.snapshots_dir())}. The next check compares with it.")
-        return 0
     base = snapshot.load_baseline()
     if base is not None and base.playset != playset.name:
         print(f"The baseline is for {base.playset}, not {playset.name}. Ignoring it.")
         base = None
+    if fetch_notes:
+        _archive_notes()
     record = cold_steel.build_record(playset.id)
-    report = check.check(layers, game, base, cold_steel_mix.plan(layers), record)
+    updated = workshop.update_times(game)
+    kept = notes.load_archive()
+    report = check.check(layers, game, base, cold_steel_mix.plan(layers), record, updated, kept)
+    if accept:
+        # Every finding there now counts as reviewed: the next check shows it
+        # again only once one of its copies changes.
+        saved = snapshot.accept(layers, game, playset.name, check.reviewed(report))
+        print(f"Baseline saved: {len(saved.layers)} layers, game {saved.game_version}.")
+        print(f"{len(saved.known)} findings marked as reviewed.")
+        print(f"In {shown(snapshot.snapshots_dir())}. The next check compares with it.")
+        return 0
     folder = out or cache_dir() / "checks" / datetime.now().strftime("%Y-%m-%d_%H%M")
     written = check.write(report, folder)
-    if fetch_notes:
-        _save_notes(folder, base)
     print(check.render(report).split("\n## ", 1)[0].rstrip())
     print(f"\nThe whole check: {shown(written)}")
     if base is None:
@@ -102,22 +106,17 @@ def _check_update(fetch_notes: bool, accept: bool, out: Path | None) -> int:
     return 0
 
 
-def _save_notes(folder: Path, base: snapshot.Baseline | None) -> None:
+def _archive_notes() -> None:
+    """Fetches Steam's announcements and keeps the new ones. Steam lists only
+    the newest, so the archive is what keeps a release's notes for mods that
+    haven't caught up with it."""
     try:
-        found = notes.fetch()
+        found = notes.fetch(count=40)
     except notes.NotesError as why:
         print(why)
         return
-    since = datetime.fromisoformat(base.taken) if base else None
-    recent = [n for n in found if n.date > since] if since else found[:3]
-    (folder / "notes").mkdir(parents=True, exist_ok=True)
-    for note in recent:
-        (folder / "notes" / note.file_name).write_text(
-            f"{note.title}\n{note.url}\n\n{note.text}", "utf-8"
-        )
-    print(f"Patch notes: {len(recent)} announcements in {shown(folder / 'notes')}")
-    for note in recent:
-        print(f"  {note.date:%Y-%m-%d} {note.title}")
+    new = notes.archive(found)
+    print(f"Patch notes: {new} new of {len(found)} fetched, kept in {shown(notes.notes_dir())}")
 
 
 def _cold_steel_mix(write: bool, add: bool, closed: bool) -> int:

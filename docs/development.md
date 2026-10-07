@@ -54,7 +54,8 @@ src/stellaris_patcher/
 │   ├── localisation.py  .yml localisation keys, and the game's language
 │   ├── processes.py is the launcher, the game or Steam running?
 │   ├── script.py    the Paradox script parser, and the fast scanner
-│   └── vdf.py       Steam's .vdf files
+│   ├── vdf.py       Steam's .vdf files
+│   └── workshop.py  when Steam last updated each Workshop mod
 ├── patchmod/        making a patch mod
 │   ├── cold_steel_mix.py  the Cold Steel Mix patch's fixes
 │   ├── layers.py    a playset as the game sees it: which file wins, what's defined
@@ -64,7 +65,8 @@ src/stellaris_patcher/
 │   └── paths.py     where our data lives (XDG folders)
 └── update/          the check after a game or mod update
     ├── check.py     what changed, and what it may break; check.md and diffs
-    ├── notes.py     Stellaris's announcements from Steam's news API
+    ├── notes.py     Stellaris's announcements from Steam's news API, and our archive of them
+    ├── older.py     mod copies older than the game files they replace; names the notes removed
     └── snapshot.py  baselines: the game's and mods' text files at the last check
 tests/               pytest; fixtures/ is a small fake install
 tools/               check_links.py
