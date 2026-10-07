@@ -1129,6 +1129,10 @@ LEFT_TO_AUTHORS = (
         "orbital ring sections, sounds and animations are missing, and its orbital ring "
         "hangar bay costs bio-ship empires energy, not food"
     ),
+    (
+        "More Events Mod: the Lost Emperor story sometimes can't place its system at game "
+        "start. The story then never begins in that galaxy"
+    ),
     "shrimpAI: a Nomadic empire can't build a Hyper Relay at its own waystation",
     (
         "Planetary Diversity: the AI doesn't yet value the Aquatic trait for species that "
