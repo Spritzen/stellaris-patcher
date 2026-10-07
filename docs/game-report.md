@@ -49,5 +49,10 @@ its mod, write a report and propose fixes. Add no fix until the user agrees**
 8. **Propose the fixes and wait for the user.** Once agreed, add them as in
    [cold-steel-mix.md](patches/cold-steel-mix.md#add-a-fix).
 
+   If the report read the update check's findings, as the
+   [first 4.5.2 run](reports/2026-10-07-cold-steel-mix-4.5.2-first-run.md)
+   did, run `check-update --accept` afterwards. The next check then skips
+   what was read ([decision 30](decisions.md)).
+
 Reports before 6 October ran Cold Steel's own error reader. Its source is no
 longer mounted ([decision 27](decisions.md)), so use ours.

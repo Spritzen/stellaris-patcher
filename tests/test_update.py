@@ -1,14 +1,16 @@
 import os
 import zipfile
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 
 from stellaris_patcher.coldsteel.records import Playset, PlaysetEntry
 from stellaris_patcher.paradox.game import Game
+from stellaris_patcher.paradox.workshop import manifest_path, update_times
 from stellaris_patcher.patchmod.layers import GAME, Layers
-from stellaris_patcher.update import check, snapshot
-from stellaris_patcher.update.notes import plain
+from stellaris_patcher.update import check, notes, older, snapshot
+from stellaris_patcher.update.notes import Note, plain
 
 
 @pytest.fixture
@@ -168,3 +170,154 @@ def test_the_build_status_names_what_changed_after_the_build(game: Game, tmp_pat
 def test_plain_turns_steams_bbcode_into_text() -> None:
     bbcode = "[h3]4.5.2 Notes[/h3][p][b]Modding[/b][/p][list][*][p]Added `x`[/p][/*][/list]"
     assert plain(bbcode) == "## 4.5.2 Notes\n\nModding\n\n- Added `x`\n"
+
+
+MOD_UPDATED = 1_000_000.0  # the mods' last update; the game's files change after it
+
+
+def _older_playset(game: Game, mods: dict[str, dict[str, str]]) -> Layers:
+    """A game whose files all changed after MOD_UPDATED."""
+    layers = _layers(game, mods)
+    for path in game.install_dir.rglob("*"):
+        if path.is_file():
+            os.utime(path, (MOD_UPDATED + 10,) * 2)
+    return layers
+
+
+def _now(layers: Layers, game: Game) -> dict[str, snapshot.Manifest]:
+    return {layer.key: snapshot.manifest(layer, game) for layer in layers.layers}
+
+
+def test_an_older_mod_copy_of_a_changed_game_object_is_found(game: Game) -> None:
+    layers = _older_playset(
+        game,
+        {
+            GAME: {
+                "common/buildings/00_buildings.txt": "building_a = {\n\tcost = 1\n\tupkeep = 2\n}\n"
+                "building_b = { cost = 3 }\n",
+                "common/component_templates/weapons.csv": "key;range\nGUN;100\n",
+            },
+            "workshop:1": {
+                # Sorts after the game's file, so its building_a wins. building_b is the same.
+                "common/buildings/zz_mod.txt": "building_a = {\n\tcost = 1\n}\n"
+                "building_b = { cost = 3 }\n",
+                "common/component_templates/weapons.csv": "key;range\nGUN;2\n",
+            },
+        },
+    )
+    diffs: dict[str, str] = {}
+    found = older.older_copies(layers, _now(layers, game), {"workshop:1": MOD_UPDATED}, diffs)
+    assert [(c.kind, c.object) for c in found] == [
+        ("common/buildings", "building_a"),
+        ("file", "common/component_templates/weapons.csv"),
+    ]
+    assert "-\tupkeep = 2" in diffs[found[0].diff]
+    assert "+GUN;2" in diffs[found[1].diff]
+
+    # Updated after the game's files: nothing to report.
+    later = {"workshop:1": MOD_UPDATED + 20}
+    assert older.older_copies(layers, _now(layers, game), later, {}) == []
+
+
+def test_an_older_copy_is_compared_with_the_copy_it_replaces(game: Game) -> None:
+    layers = _older_playset(
+        game,
+        {
+            GAME: {"interface/view.gui": "containerWindowType = { name = view a = 1 }\n"},
+            # workshop:1 updated for the release and added b; workshop:2 sorts last and wins.
+            "workshop:1": {"interface/view.gui": "containerWindowType = { name = view b = 1 }\n"},
+            "workshop:2": {"interface/zz_view.gui": "containerWindowType = { name = view }\n"},
+        },
+    )
+    updated = {"workshop:1": MOD_UPDATED + 20, "workshop:2": MOD_UPDATED}
+    diffs: dict[str, str] = {}
+    (copy,) = older.older_copies(layers, _now(layers, game), updated, diffs)
+    assert (copy.key, copy.against) == ("workshop:2", "workshop:1")
+    assert "b = 1" in diffs[copy.diff]
+
+
+def test_a_name_the_notes_removed_is_found_in_a_mod_older_than_the_notes(game: Game) -> None:
+    layers = _layers(
+        game,
+        {
+            GAME: {"common/scripted_triggers/00.txt": "new_trigger = { always = yes }\n"},
+            "workshop:1": {"events/a.txt": "e = { trigger = { old_trigger = yes } }\n"},
+        },
+    )
+    text = (
+        "Bugfix\n\n- Fixed old_trigger in an event\n\nModding\n\n"
+        "- Scripted trigger `old_trigger` is now `new_trigger`\n\nThanks for playing!\n"
+    )
+    note = Note(datetime.fromtimestamp(MOD_UPDATED + 10, UTC), "4.5.2 released", text, "")
+    assert notes.modding_names(text) == {"old_trigger", "new_trigger"}
+    now = _now(layers, game)
+    (use,) = older.note_uses(layers, now, {"workshop:1": MOD_UPDATED}, [note])
+    assert (use.name, use.path, use.note) == ("old_trigger", "events/a.txt", "4.5.2 released")
+    # A mod updated after the note is left alone.
+    assert older.note_uses(layers, now, {"workshop:1": MOD_UPDATED + 20}, [note]) == []
+
+
+def test_kept_notes_are_read_back_newest_first(game: Game) -> None:
+    first = Note(datetime(2026, 9, 22, tzinfo=UTC), "4.5 released", "Text\n\nmore\n", "u1")
+    second = Note(datetime(2026, 10, 6, tzinfo=UTC), "4.5.2 released", "Fixes\n", "u2")
+    assert notes.archive([first, second]) == 2
+    assert notes.archive([second]) == 0
+    assert notes.load_archive() == [second, first]
+
+
+def test_workshop_update_times_come_from_steams_manifest(game: Game) -> None:
+    manifest_path(game).parent.mkdir(parents=True)
+    manifest_path(game).write_text(
+        '"AppWorkshop" { "WorkshopItemsInstalled" { "123" { "timeupdated" "1758000000" } } }',
+        "utf-8",
+    )
+    assert update_times(game) == {"workshop:123": 1758000000.0}
+
+
+def test_a_reviewed_older_copy_is_not_analysed_again_until_a_copy_changes(game: Game) -> None:
+    mods = {
+        GAME: {"common/buildings/00_buildings.txt": "building_a = { cost = 1 upkeep = 2 }\n"},
+        "workshop:1": {"common/buildings/zz_mod.txt": "building_a = { cost = 1 }\n"},
+    }
+    layers = _older_playset(game, mods)
+    updated = {"workshop:1": MOD_UPDATED}
+    (first,) = older.older_copies(layers, _now(layers, game), updated, {})
+    assert first.new
+
+    diffs: dict[str, str] = {}
+    (again,) = older.older_copies(layers, _now(layers, game), updated, diffs, [first.ident])
+    assert not again.new and again.diff == "" and diffs == {}
+
+    # The mod changes its copy (without a Steam update): it's read again.
+    _put(game.workshop_dir / "1", {"common/buildings/zz_mod.txt": "building_a = { cost = 5 }\n"})
+    (changed,) = older.older_copies(layers, _now(layers, game), updated, diffs, [first.ident])
+    assert changed.new and changed.diff in diffs
+
+
+def test_accepting_a_check_marks_its_findings_as_reviewed(game: Game) -> None:
+    layers = _older_playset(
+        game,
+        {
+            GAME: {"common/buildings/00_buildings.txt": "building_a = { cost = 1 upkeep = 2 }\n"},
+            "workshop:1": {
+                "common/buildings/zz_mod.txt": "building_a = { cost = 1 }\n",
+                "events/a.txt": "e = { trigger = { old_trigger = yes } }\n",
+            },
+        },
+    )
+    text = "Modding\n\n- Removed `old_trigger`\n"
+    note = Note(datetime.fromtimestamp(MOD_UPDATED + 10, UTC), "4.5.2 released", text, "")
+    updated = {"workshop:1": MOD_UPDATED}
+
+    report = check.check(layers, game, None, [], None, updated, [note])
+    assert [c.new for c in report.older] == [True]
+    assert [u.new for u in report.note_uses] == [True]
+    assert report.notes == [note]
+
+    snapshot.accept(layers, game, "Mix", check.reviewed(report))
+    report = check.check(layers, game, snapshot.load_baseline(), [], None, updated, [note])
+    assert [c.new for c in report.older] == [False]
+    assert [u.new for u in report.note_uses] == [False]
+    assert not any(name.startswith("older__") for name in report.diffs)
+    assert report.notes == []  # read already, with the copies they were matched to
+    assert "0 new, 1 reviewed" in check.render(report)

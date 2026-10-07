@@ -1,13 +1,12 @@
 """What a game or mod update changed, and what it may break in a playset.
 The steps around it are in docs/update-check.md.
 
-    report = check(layers, game, base, fixes)
-    folder = write(report, out)                # check.md, and diffs/ to read
+    report = check(layers, game, base, fixes, record, updated, kept_notes)
+    folder = write(report, out)                # check.md, diffs/ and notes/ to read
 
 Every finding is a lead to read, not a verdict. It never writes a fix.
 """
 
-import difflib
 import os
 import re
 from collections.abc import Iterable
@@ -21,12 +20,16 @@ from stellaris_patcher.paradox.script import scan
 from stellaris_patcher.patchmod.cold_steel_mix import Outcome
 from stellaris_patcher.patchmod.layers import GAME, Layers
 from stellaris_patcher.update import snapshot
+from stellaris_patcher.update.notes import Note
+from stellaris_patcher.update.older import NoteUse, OlderCopy, diff_text, note_uses, older_copies
 from stellaris_patcher.update.snapshot import Baseline, Manifest
 
 _COMMENT = re.compile(rb"#[^\n]*")
 # A variable use: not part of a word or a $parameter$, and not a name built from one.
 _VARIABLE_USE = re.compile(rb"(?<![\w$])@([A-Za-z_]\w*)(?![\w$])")
 _VARIABLE_DEF = re.compile(rb"^\s*(@\w+)\s*=", re.MULTILINE)
+# A release's announcement names its version: "Stellaris 4.5.2 released", "4.5 'Cygnus' ...".
+_RELEASE = re.compile(r"\b\d+\.\d+")
 UPDATE_WINDOW = 3600.0  # seconds: game files this close to the program's time came with it
 
 
@@ -77,6 +80,9 @@ class Report:
     undefined: list[Use]
     build: str
     diffs: dict[str, str] = field(default_factory=dict)  # file name -> unified diff
+    older: list[OlderCopy] = field(default_factory=list)
+    note_uses: list[NoteUse] = field(default_factory=list)
+    notes: list[Note] = field(default_factory=list)  # the notes to read, newest first
 
 
 def check(
@@ -85,7 +91,11 @@ def check(
     base: Baseline | None,
     fixes: list[Outcome],
     build_record: Path | None = None,
+    updated: dict[str, float] | None = None,
+    kept_notes: list[Note] | None = None,
 ) -> Report:
+    """`updated` is each Workshop mod's last update (workshop.update_times),
+    and `kept_notes` the archived patch notes (notes.load_archive)."""
     now = {layer.key: snapshot.manifest(layer, game) for layer in layers.layers}
     then = _old_manifests(base)
     if base is not None and GAME in then:
@@ -99,6 +109,11 @@ def check(
     undefined = [
         Use(u.name, u.key, u.path, u.ident not in known) for u in undefined_variables(layers)
     ]
+    updated = updated or {}
+    kept_notes = [n for n in kept_notes or [] if _RELEASE.search(n.title)]
+    older = older_copies(layers, now, updated, diffs, known)
+    since = notes_since(older, base)
+    to_read = [n for n in kept_notes if since is None or n.date.timestamp() > since]
     return Report(
         game_now=game.version,
         base=base,
@@ -111,7 +126,20 @@ def check(
         undefined=undefined,
         build=_build_status(build_record, now),
         diffs=diffs,
+        older=older,
+        note_uses=note_uses(layers, now, updated, kept_notes, known),
+        notes=to_read,
     )
+
+
+def notes_since(older: list[OlderCopy], base: Baseline | None) -> float | None:
+    """The notes worth reading start at the baseline, or earlier at the last
+    update of the oldest mod with a new older copy. Reviewed copies were read
+    against their notes then. None: every kept note."""
+    starts = [c.updated for c in older if c.new]
+    if base is not None:
+        starts.append(datetime.fromisoformat(base.taken).timestamp())
+    return min(starts) if starts else None
 
 
 def _old_manifests(base: Baseline | None) -> dict[str, Manifest]:
@@ -201,10 +229,10 @@ def old_copies(
             found.append(OldCopy(path, key, now[key].name, key == shipping[-1], verdict, since))
             stem = path.replace("/", "__")
             if folded in game_old:
-                diffs[f"{stem}__game.diff"] = _diff(
+                diffs[f"{stem}__game.diff"] = diff_text(
                     game_old[folded], game_new[folded], "old", "new"
                 )
-            diffs[f"{stem}__{key.replace(':', '_')}.diff"] = _diff(
+            diffs[f"{stem}__{key.replace(':', '_')}.diff"] = diff_text(
                 game_new[folded], copy, "game", key
             )
     return found
@@ -230,12 +258,6 @@ def _verdict(old: bytes | None, new: bytes, copy: bytes) -> str:
     if not missing:
         return f"has all {len(added)} lines the update added"
     return f"misses {len(missing)} of the {len(added)} lines the update added"
-
-
-def _diff(a: bytes, b: bytes, name_a: str, name_b: str) -> str:
-    left = a.decode("utf-8-sig", "replace").splitlines()
-    right = b.decode("utf-8-sig", "replace").splitlines()
-    return "\n".join(difflib.unified_diff(left, right, name_a, name_b, lineterm="", n=2)) + "\n"
 
 
 def _defined(layers: Layers, keys: Iterable[str]) -> set[str]:
@@ -333,6 +355,17 @@ def render(report: Report) -> str:
         f"- **Removed names still used by mods:** {len(report.removed)}"
         + ("" if base else " (needs a baseline)"),
         f"- **Undefined variables:** {len(report.undefined)}, {len(new_undefined)} not reviewed",
+        f"- **Older mod copies of game files changed since the mod's last update:** "
+        f"{len(report.older)}, in {len({c.key for c in report.older})} mods, "
+        f"{sum(c.new for c in report.older)} not reviewed",
+        f"- **Names the patch notes removed that older mods still use:** "
+        f"{len(report.note_uses)}, {sum(u.new for u in report.note_uses)} not reviewed",
+        f"- **Patch notes to read:** {len(report.notes)}"
+        + (
+            ""
+            if report.notes
+            else " (none since the last accept, or none kept: `--notes` fetches them)"
+        ),
         f"- **Cold Steel build:** {report.build}",
         "",
         "## Game and mods",
@@ -372,6 +405,17 @@ def render(report: Report) -> str:
     lines += _uses(report.removed) if base else ["Needs a baseline: run with `--accept` first."]
     lines += ["", "## Variables nothing defines", ""]
     lines += _uses(report.undefined, mark=True)
+    lines += ["", "## Older mod copies", ""]
+    lines += _older(report.older)
+    lines += ["", "## Names the patch notes removed that older mods still use", ""]
+    lines += [
+        f"- `{u.name}` in {u.key} `{u.path}`, from {u.note}" + (" **(new)**" if u.new else "")
+        for u in report.note_uses
+    ] or ["None."]
+    lines += ["", "## Patch notes to read", ""]
+    lines += [f"- {n.date:%Y-%m-%d} {n.title}: `notes/{n.file_name}`" for n in report.notes] or [
+        "None since the last accept, or none kept. `--notes` fetches them."
+    ]
     lines += ["", "## Game files changed", ""]
     lines += _folders(report.game_changed)
     return "\n".join(lines) + "\n"
@@ -383,6 +427,47 @@ def _uses(uses: list[Use], mark: bool = False) -> list[str]:
     return [
         f"- `{u.name}` in {u.key} `{u.path}`" + (" **(new)**" if mark and u.new else "")
         for u in uses
+    ]
+
+
+def _older(copies: list[OlderCopy]) -> list[str]:
+    """One table per mod: each copy the game uses, older than the game's file."""
+    if not copies:
+        return ["None."]
+    lines = [
+        "Each object or whole file below is the copy the game uses, and the game's file",
+        "changed after the mod's last update. Its diff in `diffs/` compares it with the",
+        "copy it replaces. Match each to the notes: a mod's own change and a missing",
+        "game change look the same. Copies reviewed at the last accept, and unchanged",
+        "since, are only counted.",
+    ]
+    for key in dict.fromkeys(c.key for c in copies):
+        everything = [c for c in copies if c.key == key]
+        mine = [c for c in everything if c.new]
+        seen = len(everything) - len(mine)
+        heading = f"### {everything[0].name} (`{key}`), updated {_time(everything[0].updated)}"
+        lines += ["", f"{heading}: {len(mine)} new, {seen} reviewed"]
+        if not mine:
+            continue
+        lines += [
+            "",
+            "| Kind | Object | Its file | Game file changed | Replaces | Diff |",
+            "|---|---|---|---|---|---|",
+        ]
+        lines += [
+            f"| {c.kind} | `{c.object}` | `{c.path}` | {_time(c.game_changed)} | {c.against} | "
+            f"{f'`{c.diff}`' if c.diff else ''} |"
+            for c in mine
+        ]
+    return lines
+
+
+def reviewed(report: Report) -> list[str]:
+    """Every finding to mark as reviewed when this check is accepted."""
+    return [
+        *(u.ident for u in report.undefined),
+        *(c.ident for c in report.older),
+        *(u.ident for u in report.note_uses),
     ]
 
 
@@ -399,6 +484,10 @@ def write(report: Report, out: Path) -> Path:
     (out / "diffs").mkdir(parents=True, exist_ok=True)
     for name, text in report.diffs.items():
         (out / "diffs" / name).write_text(text, "utf-8")
+    if report.notes:
+        (out / "notes").mkdir(exist_ok=True)
+    for note in report.notes:
+        (out / "notes" / note.file_name).write_text(note.as_file(), "utf-8")
     (out / "game-files-changed.txt").write_text(
         "".join(p + os.linesep for p in report.game_changed), "utf-8"
     )
