@@ -18,11 +18,14 @@ fixes still build.
 
 ## What to do next
 
-1. **Say whether the empty Cold Steel state was on purpose.** If it wasn't,
+1. **Done.** It was on purpose. The patch was relinked at 17:18 and the
+   playset rebuilt at 17:20, before the
+   [first run on 4.5.2](2026-10-07-cold-steel-mix-4.5.2-first-run.md).
+   Was: **Say whether the empty Cold Steel state was on purpose.** If it wasn't,
    close the game, the launcher and Cold Steel, then run
    `cold-steel-mix --write --add-to-playset --cold-steel-closed` and rebuild
    the playset in Cold Steel.
-2. **Accept the check** with `check-update --accept`, so the next check
+2. **Done** at 16:18. Was: **Accept the check** with `check-update --accept`, so the next check
    compares with UI Overhaul Dynamic's new file.
 
 No fixes are proposed.

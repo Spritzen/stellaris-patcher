@@ -376,6 +376,8 @@ def test_the_workshop_description_lists_needed_mods_once_and_written_fixes() -> 
     assert "[*]Two\n[*]One\n" in text
     assert "[*]Fix one\n[*]Fix two\n" in text
     assert "Fix three" not in text
+    waiting = text.partition("[h2]Known issues, waiting for the mod authors[/h2]")[2]
+    assert all(f"[*]{problem}\n" in waiting for problem in cold_steel_mix.LEFT_TO_AUTHORS)
 
 
 def test_fix_10_ships_the_games_text_and_mends_the_tooltips(game: Game) -> None:
@@ -513,6 +515,181 @@ def test_fix_12_is_left_out_when_every_leader_can_have_its_traits(game: Game) ->
     )
     with pytest.raises(FixError, match="can have its traits now"):
         cold_steel_mix.fix_glacier_leader(layers)
+
+
+# Fix 15: More Events Mod's old shield upkeep names
+
+SHIELDS = "common/component_templates/mem_lex_utilities.txt"
+SHIELD = "mem_SHIELD = { upkeep = { energy = @shield_l_t7_upkeep_energy } }\n# @shield_x_upkeep_y\n"
+UPKEEP = "@defense_l_t7_upkeep_energy = 1.52\n"
+
+
+def test_fix_15_defines_the_old_names_with_the_games_values(game: Game) -> None:
+    layers = _layers(
+        game,
+        {
+            GAME: {"common/scripted_variables/02_cost.txt": UPKEEP},
+            cold_steel_mix.MORE_EVENTS: {SHIELDS: SHIELD},
+        },
+    )
+    files, notes = cold_steel_mix.fix_shield_upkeep(layers)
+    (data,) = files.values()
+    assert data.endswith(b"@shield_l_t7_upkeep_energy = 1.52\n")
+    assert b"shield_x" not in data
+    assert notes == ["1 names: @shield_l_t7_upkeep_energy"]
+    assert check_files(files) == []
+
+
+def test_fix_15_is_left_out_once_the_old_names_are_defined(game: Game) -> None:
+    old = "@shield_l_t7_upkeep_energy = 1\n"
+    layers = _layers(
+        game,
+        {
+            GAME: {"common/scripted_variables/02_cost.txt": UPKEEP + old},
+            cold_steel_mix.MORE_EVENTS: {SHIELDS: SHIELD},
+        },
+    )
+    with pytest.raises(FixError, match="No component uses"):
+        cold_steel_mix.fix_shield_upkeep(layers)
+
+
+# Fix 16: Ships in Scaling's mutation weapon ranges
+
+CSV_HEAD = "# a comment;;\r\nkey;cost;range;end\r\n"
+GAME_CSV = CSV_HEAD + "MEGA_L;44;100;\r\nGIGA_L;57;100;\r\nGIGA_XL;99;100;\r\nMEGA_S;11;60;\r\n"
+
+
+def test_fix_16_sets_a_missed_range_as_the_mod_scales_the_rest(game: Game) -> None:
+    scaled = CSV_HEAD + "MEGA_L;44;2;\r\nGIGA_L;57;17;\r\nGIGA_XL;99;17;\r\nMEGA_S;11;10;\r\n"
+    path = cold_steel_mix.MUTATION_WEAPONS
+    layers = _layers(
+        game, {GAME: {path: GAME_CSV}, cold_steel_mix.SHIPS_IN_SCALING: {path: scaled}}
+    )
+    files, notes = cold_steel_mix.fix_mutation_ranges(layers)
+    assert files == {path: scaled.replace("MEGA_L;44;2;", "MEGA_L;44;17;").encode()}
+    assert notes == ["MEGA_L: range 2 → 17, as for the game's 100"]
+
+
+def test_fix_16_is_left_out_once_every_range_follows_the_mods_scaling(game: Game) -> None:
+    scaled = CSV_HEAD + "MEGA_L;44;17;\r\nGIGA_L;57;17;\r\nGIGA_XL;99;17;\r\nMEGA_S;11;10;\r\n"
+    path = cold_steel_mix.MUTATION_WEAPONS
+    layers = _layers(
+        game, {GAME: {path: GAME_CSV}, cold_steel_mix.SHIPS_IN_SCALING: {path: scaled}}
+    )
+    with pytest.raises(FixError, match="follows its own scaling"):
+        cold_steel_mix.fix_mutation_ranges(layers)
+
+
+# Fix 17: Real Space's sealed Surveillance Supercomputer system
+
+SPECIAL = "common/solar_system_initializers/special_system_initializers.txt"
+SUPERCOMPUTER = """other_system = { }
+surveillance_supercomputer_system = {
+\tflags = { surveillance_supercomputer_system hostile_system FLAGS ancient_wonders_system }
+\tplanet = { orbit_distance = @base_moon_distance }
+}
+"""
+
+
+def test_fix_17_copies_the_system_without_the_seal_into_a_file_sorting_first(game: Game) -> None:
+    layers = _layers(
+        game,
+        {
+            GAME: {
+                SPECIAL: SUPERCOMPUTER.replace("FLAGS", "crisis_spawn_exclude"),
+                "common/scripted_variables/00_scripted_variables.txt": "@base_moon_distance = 10",
+            },
+            cold_steel_mix.REAL_SPACE: {
+                SPECIAL: SUPERCOMPUTER.replace("FLAGS", "crisis_spawn_exclude sealed_system")
+            },
+        },
+    )
+    files, _ = cold_steel_mix.fix_supercomputer_seal(layers)
+    (path,) = files
+    assert path == (
+        "common/solar_system_initializers/!!_stellaris_patcher_cold_steel_mix_supercomputer.txt"
+    )
+    data = files[path]
+    assert b"sealed_system" not in data.partition(b"\n")[2]
+    assert b"crisis_spawn_exclude ancient_wonders_system }" in data
+    assert b"other_system" not in data
+    assert check_files(files) == []
+
+
+def test_fix_17_is_left_out_once_real_space_drops_the_seal(game: Game) -> None:
+    unsealed = SUPERCOMPUTER.replace("FLAGS", "crisis_spawn_exclude")
+    layers = _layers(
+        game, {GAME: {SPECIAL: unsealed}, cold_steel_mix.REAL_SPACE: {SPECIAL: unsealed}}
+    )
+    with pytest.raises(FixError, match="isn't sealed now"):
+        cold_steel_mix.fix_supercomputer_seal(layers)
+
+
+# Fix 19: Ascension Worlds' trait and terraforming rule
+
+SPECIES_TRAITS = "common/traits/04_species_traits.txt"
+BUDDING = """trait_lithoid_budding = {\r
+\ttriggered_planet_pop_group_modifier_for_species = {\r
+\t\tpotential = { NOT = { has_deposit = d_lithoid_crater } }\r
+\t\tDIVIDE\r
+\t\tbonus_pop_growth = @budding_rate\r
+\t}\r
+\ttriggered_planet_pop_group_modifier_for_species = {\r
+\t\tpotential = { has_deposit = d_lithoid_crater }\r
+\t\tDIVIDE\r
+\t\tbonus_pop_growth = 0.03\r
+\t}\r
+}\r
+"""
+RULES = "common/game_rules/00_rules.txt"
+TERRAFORM = """can_terraform_planet = {
+\tcustom_tooltip = { fail_text = terraform_fail_consecrated NOT = { has_modifier = c } }
+LEGENDARY\tcustom_tooltip = { fail_text = "legendary_leader_planet_no_terraform" always = no }
+\tcustom_tooltip = { fail_text = metal NOT = { owner? = { is_ai = no } } }
+}
+"""
+
+
+def _ascension_worlds(game: Game, budding: str, rule: str) -> Layers:
+    return _layers(
+        game,
+        {
+            GAME: {
+                SPECIES_TRAITS: BUDDING.replace("DIVIDE", "divide_over_pop_groups = no"),
+                RULES: TERRAFORM.replace("LEGENDARY", ""),
+                "common/scripted_variables/00_vars.txt": "@budding_rate = 0.02\n",
+            },
+            cold_steel_mix.ASCENSION_WORLDS: {
+                SPECIES_TRAITS: budding,
+                "common/game_rules/pd_terraformrulesreplace.txt": rule,
+            },
+        },
+    )
+
+
+def test_fix_19_adds_the_games_lines_but_keeps_the_mods_own_choice(game: Game) -> None:
+    budding = BUDDING.replace("DIVIDE", "divide_over_pop_groups = no", 1).replace("DIVIDE", "")
+    lines = TERRAFORM.replace("LEGENDARY\tcustom", "\t# custom").splitlines(keepends=True)
+    rule = "".join(line for line in lines if "consecrated" not in line)
+    files, notes = cold_steel_mix.fix_ascension_worlds(_ascension_worlds(game, budding, rule))
+    trait = files["common/traits/!!_stellaris_patcher_cold_steel_mix_ascension_worlds.txt"]
+    assert trait.count(b"divide_over_pop_groups = no") == 2 and b"\r" not in trait
+    terraform = files["common/game_rules/zz_stellaris_patcher_cold_steel_mix_terraform.txt"]
+    assert b"fail_text = terraform_fail_consecrated NOT = { has_modifier = c }" in terraform
+    assert b"\t# custom_tooltip" in terraform  # still commented out
+    assert notes == [
+        "trait_lithoid_budding: 1 pop modifier gets the game's divide_over_pop_groups",
+        "can_terraform_planet: adds terraform_fail_consecrated; keeps out "
+        "legendary_leader_planet_no_terraform, as Ascension Worlds chose",
+    ]
+    assert check_files(files) == []
+
+
+def test_fix_19_is_left_out_once_the_mods_copies_have_the_games_lines(game: Game) -> None:
+    budding = BUDDING.replace("DIVIDE", "divide_over_pop_groups = no")
+    rule = TERRAFORM.replace("LEGENDARY\tcustom", "\t# custom")
+    with pytest.raises(FixError, match="match the game's now"):
+        cold_steel_mix.fix_ascension_worlds(_ascension_worlds(game, budding, rule))
 
 
 def test_own_keys_include_the_workshop_copy_once_uploaded(

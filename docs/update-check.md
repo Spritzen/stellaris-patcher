@@ -52,6 +52,10 @@ PYTHONPATH=src python3 -m stellaris_patcher check-update --accept  # 8. once rev
    different? Is it the mod's own to fix, and is that mod likely to update
    soon? Would a fix ship other authors' work? A Workshop copy needs their
    permission for that ([cold-steel-mix.md](patches/cold-steel-mix.md#uploading-it-to-the-workshop)).
+   A large copy of a mod its author will likely fix is left to the author
+   ([decision 33](decisions.md)). If a mod that changed has a line in the
+   patch's [Left to the authors](patches/cold-steel-mix.md#left-to-the-authors)
+   list, check whether the update fixed it, and propose dropping the line.
 
 5. **Write a report** in `docs/reports/`, named
    `YYYY-MM-DD-<playset>-<version>-update.md`, and add it to
