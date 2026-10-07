@@ -25,6 +25,7 @@ the task and Claude picks the skill.
 | `/game-report` | You've played the playset. Reads the error log, traces each entry to its mod and writes a report. Say how long you played and anything that looked wrong |
 | `/add-fix` | You've agreed to a fix from a report. Adds it to the patch, with tests and docs |
 | `/build-patch` | Builds the patch mod and links it into the game. Then rebuild Cold Steel Mix in Cold Steel |
+| `/commit` | Commits the changes on a branch, opens and merges a PR, goes back to `main`, and deletes the branches merged into `main`, locally and on GitHub |
 
 A report proposes fixes but adds none until you agree. Claude asks you to
 close the game, the launcher and Cold Steel before anything is written. The

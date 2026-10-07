@@ -3,7 +3,7 @@
 | File | What it answers |
 |---|---|
 | [decisions.md](decisions.md) | Every settled decision, one row each, result first |
-| [development.md](development.md) | How to run, test and lint, and how the code is laid out |
+| [development.md](development.md) | How to run, test and lint, commit and merge, and how the code is laid out |
 | [reference/stellaris-files.md](reference/stellaris-files.md) | Where Stellaris, Steam and the launcher keep things, and what's inside |
 | [reference/patch-rules.md](reference/patch-rules.md) | How a patch file wins over other mods' files, and lessons from the reports |
 | [reference/cold-steel-data.md](reference/cold-steel-data.md) | Cold Steel's data files: which we read and write, and how writes are guarded |
