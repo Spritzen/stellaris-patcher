@@ -15,6 +15,52 @@ done.
 To build a patch mod, see [patches/cold-steel-mix.md](patches/cold-steel-mix.md). After
 a game or mod update, see [update-check.md](update-check.md).
 
+## Commit and merge
+
+**Each change reaches `main` through a pull request, merged with a merge
+commit. Every branch merged into `main` is then deleted, locally and on
+GitHub** ([decision 34](decisions.md)). The `commit` skill does this when
+the user asks.
+
+1. **Check.** `make check` must pass.
+2. **Commit on a branch named for the work**, in kebab-case, from `main`:
+   `cold-steel-mix-4.5.2-fixes`. Read `git status` and the diff, and stage
+   files by name, never with `git add -A`. Write the message like the
+   history's: a title, a short paragraph, one line per area changed, and
+   Claude Code's attribution line.
+3. **Push and open a PR into `main`.** Write the body like a doc: the result
+   first, then "Changes", then the `make check` result, and Claude Code's
+   attribution line.
+
+   ```sh
+   git push -u origin <branch>
+   gh pr create --base main --head <branch> --title "…" --body-file -
+   ```
+
+4. **Merge it with a merge commit.** Squash or rebase would leave the branch
+   unmerged as far as git can tell, and step 6 would skip it.
+
+   ```sh
+   gh pr merge <number> --merge
+   ```
+
+5. **Go back to `main`** and bring it up to date:
+
+   ```sh
+   git switch main && git pull --ff-only && git fetch --prune
+   ```
+
+6. **Delete every branch merged into `main`**, locally and on GitHub. List
+   them first, and never delete `main`:
+
+   ```sh
+   git branch --merged main | grep -vE '^\*|^\s*main$'                  # local
+   git branch -r --merged origin/main | grep -vE 'origin/(main|HEAD)'    # GitHub
+   git branch -d <branch>...              # -d refuses a branch that isn't merged
+   git push origin --delete <branch>...
+   git fetch --prune && git branch -a     # only main and origin/main left, bar open work
+   ```
+
 ## Setup
 
 Open the folder in the dev container ([.devcontainer/](../.devcontainer/)). It
