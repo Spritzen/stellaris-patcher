@@ -48,7 +48,7 @@ _TOKEN = re.compile(
     | (?P<string>"(?:[^"\\]|\\.)*")
     | (?P<op>[<>!=?]=|[<>=])
     | (?P<brace>[{}])
-    | (?P<word>[^\s{}=<>!?"\#]+)
+    | (?P<word>[^\s{}=<>!?"\#]+(?:\?(?!=))?)  # owner? = { } scopes only if owner exists
     """,
     re.VERBOSE,
 )
@@ -127,7 +127,7 @@ def _block(tokens: list[_Token], i: int, *, top: bool) -> tuple[tuple[Node, ...]
 # Whitespace and comments. Possessive (`++`, `*+`) so a line of "#####" can't
 # make the regex try every way of splitting it.
 _GAP = re.compile(rb"(?:\s++|#[^\n]*+)*+")
-_WORD = re.compile(rb'"[^"\n]*+"?|[^\s{}=<>!?"#]++')
+_WORD = re.compile(rb'"[^"\n]*+"?|[^\s{}=<>!?"#]++(?:\?(?!=))?')
 _OP = re.compile(rb"[<>!?=]=|[<>=]")
 # Inside a block only braces matter, and strings or comments can hide them.
 _INNER = re.compile(rb'[{}"#]')

@@ -25,6 +25,13 @@ def test_script_reads_values_blocks_and_comments() -> None:
     assert nodes[3].value == (Node("size", ">=", "2", 6),)
 
 
+def test_script_reads_a_scope_that_may_not_exist_and_the_default_operator() -> None:
+    nodes = parse("owner? = { is_ai = no }\nflag ?= yes")
+    assert nodes[0].key == "owner?"
+    assert nodes[1] == Node("flag", "?=", "yes", 2)
+    assert [e.key for e in scan(b"owner? = { }\nflag ?= yes")] == [b"owner?", b"flag"]
+
+
 @pytest.mark.parametrize(
     ("text", "message"),
     [

@@ -1,12 +1,16 @@
 # Cold Steel Mix patch
 
-**A mod named "Cold Steel Mix patch" that fixes ten problems in the Cold
+**A mod named "Cold Steel Mix patch" that fixes 14 problems in the Cold
 Steel Mix playset.** They're fixes 1–7 from the
 [third run's report](../reports/2026-10-03-cold-steel-mix-errors-run-3.md#what-a-patch-mod-could-fix),
 fix 10 from the
 [long-session report](../reports/2026-10-04-cold-steel-mix-long-session.md#what-to-do-next),
-and fixes 11 and 12 from the
-[new-galaxy report](../reports/2026-10-05-cold-steel-mix-new-galaxy.md#what-to-do-next).
+fixes 11 and 12 from the
+[new-galaxy report](../reports/2026-10-05-cold-steel-mix-new-galaxy.md#what-to-do-next),
+and fixes 15–17 and 19 from the
+[4.5.2 first-run report](../reports/2026-10-07-cold-steel-mix-4.5.2-first-run.md#what-to-do-next).
+Problems it leaves to the mods' authors are listed on its Workshop page
+([Left to the authors](#left-to-the-authors)).
 The code is [cold_steel_mix.py](../../src/stellaris_patcher/patchmod/cold_steel_mix.py).
 
 ## Build it
@@ -75,6 +79,23 @@ next upload
 - On the Workshop page, add the same mods as **Required items**. Steam doesn't
   read `dependencies`.
 
+### Left to the authors
+
+**The description ends with the playset's known problems that the patch
+doesn't fix**, under "Known issues, waiting for the mod authors"
+([decision 33](../decisions.md)). They're in `LEFT_TO_AUTHORS` in
+[cold_steel_mix.py](../../src/stellaris_patcher/patchmod/cold_steel_mix.py),
+written by hand, one line per problem.
+
+- Add a line when a report leaves a problem to a mod's author.
+- Drop it once the mod fixes it. The [update check](../update-check.md) shows
+  when one of these mods changes.
+
+Today's lines come from the
+[4.5.2 first-run report](../reports/2026-10-07-cold-steel-mix-4.5.2-first-run.md):
+item 18 and row F, the open items 8 and 9 from run 3, and the smaller
+findings for shrimpAI, Planetary Diversity's Aquatic trait and Dark UI.
+
 **Ask the other authors first.** The patch ships work that isn't ours:
 
 | File | Whose work |
@@ -84,9 +105,13 @@ next upload
 | The three `.asset` files | The game's files, with Real Space - System Scale's sizes |
 | `events/!!_stellaris_patcher_cold_steel_mix_ziaskehorn.txt` | One of More Events Mod's events, with two lines moved |
 | `events/!!_stellaris_patcher_cold_steel_mix_stuck_in_glacier.txt` | One of More Events Mod's events, with one word changed |
+| `common/component_templates/mutation_weapon_components.csv` | Real Space - Ships in Scaling's whole file, with one range changed |
+| `common/solar_system_initializers/!!_stellaris_patcher_cold_steel_mix_supercomputer.txt` | One of Real Space 4.0's systems, with one flag removed |
+| `common/traits/!!_stellaris_patcher_cold_steel_mix_ascension_worlds.txt` | Planetary Diversity - Ascension Worlds' Lithoid Budding, with one line added |
+| `common/game_rules/zz_stellaris_patcher_cold_steel_mix_terraform.txt` | Ascension Worlds' terraforming rule, with two of the game's checks added |
 
 The game's own files are fine to ship in a mod. The others need their
-authors' permission, or fixes 3, 5, 11 and 12 left out.
+authors' permission, or fixes 3, 5, 11, 12, 16, 17 and 19 left out.
 
 ## What each fix does
 
@@ -102,6 +127,10 @@ authors' permission, or fixes 3, 5, 11 and 12 left out.
 | 10 | Planetary Diversity's text calls `[GetAdministratorPluralWithIcon]`, which the game no longer has | A `localisation/replace/` file. The bureaucrats' unity modifier gets the game's own text. The three necro world tooltips keep Planetary Diversity's text, calling the game's `$bureaucrat_type_plural_with_icon$` instead ([decision 22](../decisions.md)) |
 | 11 | More Events Mod's `mem_scfe_ziaskehorn.1` fires the discovery before saving the planet it's about, so the Ziaskehorn dig site is never made | A copy of that one event, with the `save_event_target_as` block moved above the `ship_event` call. It's in an `events/` file whose name starts `!!_`, so it sorts first and wins ([decision 23](../decisions.md)) |
 | 12 | More Events Mod's `mem_stuck_in_glacier.22` makes an official with Iron Fist, a commander-only trait since 4.0, so the leader gets no trait | A copy of that one event, the same way as fix 11. That leader is a commander, the one class the game's Iron Fist allows ([decision 24](../decisions.md)) |
+| 15 | More Events Mod's three Progenitor shields use `@shield_*_t7_upkeep_*`, which 4.5.2 renamed to `@defense_*_t7_upkeep_*`, so they have no upkeep | A `common/scripted_variables/` file that defines each old name a component still uses, with the game's value for its new name |
+| 16 | Ships in Scaling's copy of `mutation_weapon_components.csv` predates 4.5.2, so the Large Mega Bombard keeps a range of 2 | Ships in Scaling's whole file, with each range it missed set to the one it gives every other weapon with the same game range: 100 → 17. A range is only changed when at least two other rows agree ([decision 31](../decisions.md)) |
+| 17 | Real Space 4.0's copy of the Surveillance Supercomputer system keeps the `sealed_system` flag 4.5.2 removed, so jump drive fleets can't enter | A copy of that one system without the flag, in a file whose name starts `!!_`. Initializers go to the first file by name |
+| 19 | Ascension Worlds' Lithoid Budding lacks 4.5.2's `divide_over_pop_groups = no` on the Massive Crater bonus. Its terraforming rule lacks the game's checks for a consecrated world and a Knights detox in progress | A copy of the trait, with the game's line added, in a `!!_` file. A copy of the rule, with the two checks added, in a `zz_` file: game rules go to the last file by name. The legendary leader check Ascension Worlds comments out on purpose stays out ([decision 32](../decisions.md)) |
 
 ### Notes
 
@@ -120,6 +149,12 @@ authors' permission, or fixes 3, 5, 11 and 12 left out.
   copy must be the one the game uses.
 - **Fixes 11 and 12 copy the whole event**, and the game then has two events
   with one id. More Events Mod's copy is still loaded, but never used.
+  Fixes 17 and 19 do the same for one system, one trait and one rule.
+- **Fix 15 doesn't name More Events Mod.** It defines every old shield upkeep
+  name any component uses and nothing defines.
+- **Fix 18 isn't in the patch.** The trait copies from Planetary Diversity,
+  Ascension Worlds and More Events Mod would be 18 traits from three mods, for
+  a one-word change each. It's [left to their authors](#left-to-the-authors).
 
 ## Check in game
 
@@ -135,9 +170,23 @@ These weren't seen in game yet:
 - Planets look right at every system zoom step (fix 4).
 - A Dyson sphere, quantum catapult, Starlit system and Voidspawn storm in a
   newer style look the right size next to the older styles (fix 1).
-- The game uses the patch's copy of each event, not More Events Mod's, and
-  the log has no new entry about the duplicate ids (fixes 11 and 12). Both
-  are rare: the Ziaskehorn roll is 1 in 10 on a molten or volcanic survey
-  after year 20, and the Iron Fist leader 1 in 4 when the robot is brought
+- The game uses the patch's copy of each event, not More Events Mod's
+  (fixes 11 and 12). The log has one notice for each, `an event with id
+  [mem_scfe_ziaskehorn.1] already exists!` and the same for
+  `mem_stuck_in_glacier.22`, naming More Events Mod's file. That's the check
+  that the patch's copy won: the
+  [4.5.2 first run](../reports/2026-10-07-cold-steel-mix-4.5.2-first-run.md#the-patchs-fixes)
+  had both. Both events are rare: the Ziaskehorn roll is 1 in 10 on a
+  molten or volcanic survey after year 20, and the Iron Fist leader 1 in 4 when the robot is brought
   online. A new save with the `discovered_ziaskehorn` flag should have the
   dig site too.
+- A researched Progenitor shield shows an upkeep of energy and alloys in the
+  ship designer (fix 15).
+- A Large Mega Bombard on space fauna fires in combat (fix 16).
+- A jump drive fleet can jump into the Surveillance Supercomputer system
+  (fix 17). That initializers go to the first file by name comes from Irony's
+  rules, and hasn't been checked. The log may name Real Space's copy as a
+  duplicate, as it does for fixes 11 and 12.
+- A lithoid species with Lithoid Budding on a Massive Crater gets the full
+  bonus, and a consecrated world can't be terraformed (fix 19). That traits
+  go to the first file by name hasn't been checked either.

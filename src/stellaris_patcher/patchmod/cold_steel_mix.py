@@ -93,6 +93,7 @@ def workshop_description(outcomes: list[Outcome], names: dict[str, str], version
     written = [o for o in outcomes if not o.left_out]
     required = "".join(f"[*]{name}\n" for name in names.values())
     fixes = "".join(f"[*]{o.title}\n" for o in written)
+    waiting = "".join(f"[*]{problem}\n" for problem in LEFT_TO_AUTHORS)
     return (
         f"[h1]{NAME}[/h1]\n"
         f"Fixes clashes and breakages between the mods of the {PLAYSET} playset, "
@@ -100,7 +101,11 @@ def workshop_description(outcomes: list[Outcome], names: dict[str, str], version
         "[h2]Load order[/h2]\n"
         "Load it last, after every mod below.\n\n"
         f"[h2]Required mods[/h2]\n[list]\n{required}[/list]\n\n"
-        f"[h2]What it fixes[/h2]\n[list]\n{fixes}[/list]\n"
+        f"[h2]What it fixes[/h2]\n[list]\n{fixes}[/list]\n\n"
+        "[h2]Known issues, waiting for the mod authors[/h2]\n"
+        "These come from the mods themselves. The patch leaves them to their authors, "
+        "whose next updates should fix them.\n"
+        f"[list]\n{waiting}[/list]\n"
     )
 
 
@@ -402,7 +407,7 @@ def fix_planet_scales(layers: Layers) -> Made:
         f"{category} = {{\n" + "".join(f"\t{line}\n" for line in block) + "}\n"
         for category, block in lines.items()
     )
-    return {_defines_file(layers): text.encode()}, notes
+    return {_last_file(layers, "common/defines"): text.encode()}, notes
 
 
 # Settings that name a system zoom step by number, counting from 0.
@@ -467,12 +472,13 @@ def _zoom_mismatch(layers: Layers) -> tuple[str, list[float], list[float], list[
     return steps[0], zoom, planet, numbers(own)
 
 
-def _defines_file(layers: Layers) -> str:
-    rivals = [p.rpartition("/")[2] for _, p in layers.ordered("common/defines")]
-    name = winning_name(rivals, f"{TAIL}.txt", first=False)
+def _last_file(layers: Layers, folder: str, what: str = "") -> str:
+    """A path in `folder` whose file name sorts after every other there."""
+    rivals = [p.rpartition("/")[2] for _, p in layers.ordered(folder)]
+    name = winning_name(rivals, f"{TAIL}_{what}.txt" if what else f"{TAIL}.txt", first=False)
     if name is None:
-        raise FixError("No file name sorts after the other defines files.")
-    return f"common/defines/{name}"
+        raise FixError(f"No file name sorts after the other {folder} files.")
+    return f"{folder}/{name}"
 
 
 # 5. The game's Sol neighbours, by Real Space's names
@@ -701,7 +707,7 @@ def fix_ziaskehorn(layers: Layers) -> Made:
             break
     if not moved:
         raise FixError(f"{ZIASKEHORN} saves its targets before firing the next event now.")
-    return {_event_file(layers, ZIASKEHORN, "ziaskehorn"): event}, moved
+    return {_first_file(layers, "events", "ziaskehorn"): event}, moved
 
 
 def fix_glacier_leader(layers: Layers) -> Made:
@@ -740,7 +746,7 @@ def fix_glacier_leader(layers: Layers) -> Made:
     out = bytearray(event)
     for start, end, new_value in sorted(edits, reverse=True):
         out[start:end] = new_value
-    return {_event_file(layers, GLACIER, "stuck_in_glacier"): bytes(out)}, notes
+    return {_first_file(layers, "events", "stuck_in_glacier"): bytes(out)}, notes
 
 
 def _event(layers: Layers, event_id: str) -> bytes:
@@ -762,12 +768,13 @@ def _event(layers: Layers, event_id: str) -> bytes:
     raise FixError(f"No event is called {event_id} any more.")
 
 
-def _event_file(layers: Layers, event_id: str, what: str) -> str:
-    rivals = [p.rpartition("/")[2] for _, p in layers.ordered("events")]
+def _first_file(layers: Layers, folder: str, what: str) -> str:
+    """A path in `folder` whose file name sorts before every other there."""
+    rivals = [p.rpartition("/")[2] for _, p in layers.ordered(folder)]
     name = winning_name(rivals, f"{TAIL}_{what}.txt", first=True)
     if name is None:
-        raise FixError(f"No file name sorts before the other events files, for {event_id}.")
-    return f"events/{name}"
+        raise FixError(f"No file name sorts before the other {folder} files.")
+    return f"{folder}/{name}"
 
 
 def _blocks(data: bytes, entry: Entry) -> list[Entry]:
@@ -817,6 +824,318 @@ def _leader_classes(layers: Layers, traits: dict[str, tuple[str, str]], trait: s
         raise FixError(f"{trait} doesn't say which leaders can have it.")
     start, end = found.inside
     return {w.decode() for w in _COMMENT.sub(b"", data[start:end]).split()}
+
+
+def _copy(layers: Layers, data: bytes, entry: Entry, body: bytes) -> bytes:
+    """`body`, a mended copy of `entry` from `data`, ready for a file of its
+    own: Unix line ends, and the variables of `entry`'s file that it uses
+    defined above it. Raises FixError for a variable nothing defines."""
+    file_vars = _variables(data)
+    shared = layers.defined("common/scripted_variables")
+    header = ""
+    for name in sorted({"@" + m.decode() for m in _VARIABLE.findall(_COMMENT.sub(b"", body))}):
+        if name in file_vars:
+            header += f"{name} = {_text(data, file_vars[name])}\n"
+        elif name not in shared:
+            raise FixError(f"{entry.key.decode()} uses {name}, which nothing defines.")
+    text = (header + "\n" if header else "").encode() + body
+    return text.replace(b"\r\n", b"\n") + b"\n"
+
+
+def _game_entry(layers: Layers, folder: str, key: str) -> tuple[bytes, Entry]:
+    """The game's own definition of `key`, even where a mod replaced its file."""
+    for path in layers.paths(GAME, folder):
+        data = layers.read(GAME, path)
+        for entry in scan(data):
+            if entry.key == key.encode() and entry.block:
+                return data, entry
+    raise FixError(f"The game has no {key} any more.")
+
+
+def _edit(data: bytes, edits: list[tuple[int, int, bytes]]) -> bytes:
+    out = bytearray(data)
+    for start, end, new in sorted(edits, reverse=True):
+        out[start:end] = new
+    return bytes(out)
+
+
+def _mended(data: bytes, entry: Entry, edits: list[tuple[int, int, bytes]]) -> bytes:
+    """`entry`, key and all, with `edits` made inside it."""
+    grown = sum(len(new) - (end - start) for start, end, new in edits)
+    return _edit(data, edits)[entry.start : entry.end + grown]
+
+
+# 15. More Events Mod's shield upkeep, by the names 4.5.2 renamed
+
+
+COMPONENTS = "common/component_templates"
+# 4.5.2: "Shield upkeep scripted variables are renamed to the shared
+# @defense_<size>_t<N>_upkeep_* family."
+_OLD_UPKEEP = re.compile(r"^@shield_(\w+_upkeep_\w+)$")
+
+
+def fix_shield_upkeep(layers: Layers) -> Made:
+    """Defines each old shield upkeep name a component still uses, with the
+    game's value for its new name."""
+    shared = layers.defined("common/scripted_variables")
+    used: dict[str, set[str]] = {}  # old name -> the mods that use it
+    for layer, path in layers.ordered(COMPONENTS):
+        data = layers.read(layer, path)
+        own = _variables(data)
+        for match in _VARIABLE.findall(_COMMENT.sub(b"", data)):
+            name = "@" + match.decode()
+            if _OLD_UPKEEP.match(name) and name not in own and name not in shared:
+                used.setdefault(name, set()).add(layer)
+    if not used:
+        raise FixError("No component uses an old shield upkeep name now.")
+    game: dict[str, str] = {}
+    for path in layers.paths(GAME, "common/scripted_variables"):
+        data = layers.read(GAME, path)
+        game |= {k: _text(data, e) for k, e in _variables(data).items()}
+    lines: list[str] = []
+    for old in sorted(used):
+        new = _OLD_UPKEEP.sub(r"@defense_\1", old)
+        if not re.fullmatch(r"[\d.]+", game.get(new, "")):
+            raise FixError(f"The game has no number for {new}, which {old} became.")
+        lines.append(f"{old} = {game[new]}\n")
+    header = "# Old names some mods still use: the game's values for their 4.5.2 names.\n"
+    notes = [f"{len(lines)} names: {', '.join(sorted(used))}"]
+    return {
+        f"common/scripted_variables/{TAIL}_shield_upkeep.txt": (header + "".join(lines)).encode()
+    }, notes
+
+
+# 16. Ships in Scaling's range for the Large Mega Bombard
+
+
+MUTATION_WEAPONS = "common/component_templates/mutation_weapon_components.csv"
+
+
+def fix_mutation_ranges(layers: Layers) -> Made:
+    """Ships in Scaling's whole file, as a .csv is replaced only whole, with
+    each range it missed set the way it scales the rest: to the range it gives
+    every other weapon with the same game range, when at least two others
+    agree. 4.5.2 gave the Large Mega Bombard its range, and Ships in Scaling's
+    copy is older."""
+    _expect_winner(layers, MUTATION_WEAPONS, SHIPS_IN_SCALING, "Ships in Scaling")
+    data = layers.read(SHIPS_IN_SCALING, MUTATION_WEAPONS)
+    mod, game = _csv(data), _csv(layers.read(GAME, MUTATION_WEAPONS))
+    column = _csv_column(mod, "range")
+    if _csv_column(game, "range") != column:
+        raise FixError(f"{MUTATION_WEAPONS}'s columns differ from the game's.")
+    pairs = [  # (key, the game's range, Ships in Scaling's range, its row)
+        (key, game[key][0][column], cells[column], (cells, span))
+        for key, (cells, span) in mod.items()
+        if key in game and key != "key" and len(cells) > column and len(game[key][0]) > column
+    ]
+    edits: list[tuple[int, int, bytes]] = []
+    notes: list[str] = []
+    for key, was, now, (cells, (start, end)) in pairs:
+        others = [n for k, w, n, _ in pairs if w == was and k != key]
+        if len(others) < 2 or len(set(others)) != 1 or now == others[0]:
+            continue
+        want = others[0]
+        line = b";".join(want if i == column else c for i, c in enumerate(cells))
+        edits.append((start, end, line))
+        notes.append(
+            f"{key}: range {now.decode()} → {want.decode()}, as for the game's {was.decode()}"
+        )
+    if not edits:
+        raise FixError("Every range in Ships in Scaling's copy follows its own scaling now.")
+    return {MUTATION_WEAPONS: _edit(data, edits)}, notes
+
+
+def _csv(data: bytes) -> dict[str, tuple[list[bytes], tuple[int, int]]]:
+    """A component .csv's rows: the first cell to the cells and where the row
+    is, without its line end. Comment lines are left out."""
+    rows: dict[str, tuple[list[bytes], tuple[int, int]]] = {}
+    at = 0
+    for line in data.splitlines(keepends=True):
+        text = line.rstrip(b"\r\n")
+        if text.strip() and not text.lstrip(BOM).startswith(b"#"):
+            cells = text.split(b";")
+            rows.setdefault(
+                cells[0].lstrip(BOM).decode("utf-8", "replace"), (cells, (at, at + len(text)))
+            )
+        at += len(line)
+    return rows
+
+
+def _csv_column(rows: dict[str, tuple[list[bytes], tuple[int, int]]], name: str) -> int:
+    header = rows.get("key")
+    if header is None or name.encode() not in header[0]:
+        raise FixError(f"{MUTATION_WEAPONS} has no {name} column.")
+    return header[0].index(name.encode())
+
+
+# 17. Real Space's Surveillance Supercomputer system is still sealed
+
+
+SUPERCOMPUTER = "surveillance_supercomputer_system"
+SEALED = b"sealed_system"
+
+
+def fix_supercomputer_seal(layers: Layers) -> Made:
+    """Real Space's system, without the flag 4.5.2 took off the game's so jump
+    drives can enter, in a file that sorts first: the first initializer by
+    file name wins."""
+    defined = layers.defined(INITIALIZERS)
+    if SUPERCOMPUTER not in defined:
+        raise FixError(f"No system is called {SUPERCOMPUTER} any more.")
+    layer, path = defined[SUPERCOMPUTER]
+    if layer != REAL_SPACE:
+        raise FixError(f"{SUPERCOMPUTER} now comes from {layer}, not Real Space.")
+    data = layers.read(layer, path)
+    entry = next(e for e in scan(data) if e.key == SUPERCOMPUTER.encode() and e.block)
+    if SEALED not in _flags(data, entry):
+        raise FixError(f"Real Space's {SUPERCOMPUTER} isn't sealed now.")
+    if SEALED in _flags(*_game_entry(layers, INITIALIZERS, SUPERCOMPUTER)):
+        raise FixError(f"The game's {SUPERCOMPUTER} is sealed again.")
+    flags = next(c for c in children(data, entry) if c.key == b"flags" and c.block)
+    start, end = flags.inside
+    unsealed = re.sub(rb"[ \t]*\b" + SEALED + rb"\b", b"", data[start:end])
+    body = _mended(data, entry, [(start, end, unsealed)])
+    comment = f"# Real Space's {SUPERCOMPUTER}, without {SEALED.decode()}, as in 4.5.2\n".encode()
+    text = comment + _copy(layers, data, entry, body)
+    return {_first_file(layers, INITIALIZERS, "supercomputer"): text}, [
+        f"{SUPERCOMPUTER}: Real Space's copy, without {SEALED.decode()}"
+    ]
+
+
+def _flags(data: bytes, entry: Entry) -> set[bytes]:
+    found = next((c for c in children(data, entry) if c.key == b"flags" and c.block), None)
+    if found is None:
+        return set()
+    start, end = found.inside
+    return set(_COMMENT.sub(b"", data[start:end]).split())
+
+
+# 19. Ascension Worlds' copies miss two of the game's fixes
+
+
+BUDDING = "trait_lithoid_budding"
+POP_MODIFIER = b"triggered_planet_pop_group_modifier_for_species"
+DIVIDE = b"divide_over_pop_groups"
+GAME_RULES = "common/game_rules"
+TERRAFORM = "can_terraform_planet"
+
+
+def fix_ascension_worlds(layers: Layers) -> Made:
+    """Ascension Worlds' Lithoid Budding and terraforming rule, with the
+    game's lines they lack. A check Ascension Worlds comments out on purpose
+    stays out."""
+    files: dict[str, bytes] = {}
+    notes: list[str] = []
+    for part in (_budding, _terraform):
+        try:
+            path, data, note = part(layers)
+        except FixError as why:
+            notes.append(f"{why} Skipped.")
+            continue
+        files[path] = data
+        notes.append(note)
+    if not files:
+        raise FixError("Ascension Worlds' trait and rule match the game's now.")
+    return files, notes
+
+
+def _budding(layers: Layers) -> tuple[str, bytes, str]:
+    """Each of the trait's pop modifiers gets the game's `divide_over_pop_groups`
+    where it lacks one. 4.5.2 gave the Massive Crater's its full bonus."""
+    traits = layers.defined("common/traits")
+    if traits.get(BUDDING, ("",))[0] != ASCENSION_WORLDS:
+        raise FixError(f"{BUDDING} doesn't come from Ascension Worlds now.")
+    data = layers.read(*traits[BUDDING])
+    entry = next(e for e in scan(data) if e.key == BUDDING.encode() and e.block)
+    game_data, game_entry = _game_entry(layers, "common/traits", BUDDING)
+    theirs = [c for c in children(data, entry) if c.key == POP_MODIFIER and c.block]
+    ours = [c for c in children(game_data, game_entry) if c.key == POP_MODIFIER and c.block]
+    if len(theirs) != len(ours):
+        raise FixError(f"{BUDDING} has {len(theirs)} pop modifiers, the game's {len(ours)}.")
+    edits: list[tuple[int, int, bytes]] = []
+    for mod, game in zip(theirs, ours, strict=True):
+        want = next((c for c in children(game_data, game) if c.key == DIVIDE), None)
+        if want is None or any(c.key == DIVIDE for c in children(data, mod)):
+            continue
+        after = next((c for c in children(data, mod) if c.key == b"potential"), None)
+        at = after.end if after is not None else mod.inside[0]
+        edits.append((at, at, b"\n\t\t" + game_data[want.start : want.end]))
+    if not edits:
+        raise FixError(f"{BUDDING}'s pop modifiers divide as the game's do now.")
+    text = _copy(layers, data, entry, _mended(data, entry, edits))
+    note = f"{BUDDING}: {len(edits)} pop modifier gets the game's {DIVIDE.decode()}"
+    return _first_file(layers, "common/traits", "ascension_worlds"), text, note
+
+
+def _terraform(layers: Layers) -> tuple[str, bytes, str]:
+    """The rule gets each of the game's custom tooltips it lacks, by fail
+    text. One it has in a comment was taken out on purpose, and stays out."""
+    found: tuple[str, bytes, Entry] | None = None
+    for layer, path in layers.ordered(GAME_RULES):  # the last definition wins
+        data = layers.read(layer, path)
+        for entry in scan(data):
+            if entry.key == TERRAFORM.encode() and entry.block:
+                found = (layer, data, entry)
+    if found is None or found[0] != ASCENSION_WORLDS:
+        raise FixError(f"{TERRAFORM} doesn't come from Ascension Worlds now.")
+    _, data, entry = found
+    game_data, game_entry = _game_entry(layers, GAME_RULES, TERRAFORM)
+    have = {_fail_text(data, c) for c in children(data, entry)}
+    written = data[entry.start : entry.end]  # comments included
+    added: dict[str, bytes] = {}  # fail text -> the game's check
+    kept_out: list[str] = []
+    for check in children(game_data, game_entry):
+        text = _fail_text(game_data, check)
+        if not text or text in have:
+            continue
+        if text.encode() in written:
+            kept_out.append(text)
+            continue
+        added[text] = game_data[check.start : check.end]
+    if not added:
+        raise FixError(f"{TERRAFORM} has every game check it doesn't leave out on purpose now.")
+    at = entry.inside[0]
+    insert = b"".join(b"\n\t" + check + b"\n" for check in added.values())
+    body = _mended(data, entry, [(at, at, insert)])
+    note = f"{TERRAFORM}: adds {', '.join(added)}"
+    if kept_out:
+        note += f"; keeps out {', '.join(kept_out)}, as Ascension Worlds chose"
+    return _last_file(layers, GAME_RULES, "terraform"), _copy(layers, data, entry, body), note
+
+
+def _fail_text(data: bytes, check: Entry) -> str:
+    if check.key != b"custom_tooltip" or not check.block:
+        return ""
+    return (value_of(data, check, b"fail_text") or b"").decode().strip('"')
+
+
+# The playset's problems the patch leaves to the mods' authors, for the Workshop
+# page. Each is a mod's own bug, too big to copy or soon to be fixed upstream.
+# Drop a line once its mod has fixed it.
+LEFT_TO_AUTHORS = (
+    (
+        "Planetary Diversity, Ascension Worlds and More Events Mod: their copies of the "
+        "game's species traits predate 4.5.2. Unemployment Benefits and the Shroud-Warped "
+        "leader's psionic unity count once per species trait again"
+    ),
+    (
+        "Starbase Extended 3.0: its starbase window predates 4.5. It has no button from an "
+        "orbital ring back to its planet, no design name or retrofit, no macro builder tab, "
+        "and two lists have no scrollbar"
+    ),
+    (
+        "Starbase Extended 3.0: six modules lose one of their two conditions, two bonuses "
+        "check for buildings that don't exist, and one building's condition is broken. Some "
+        "orbital ring sections, sounds and animations are missing, and its orbital ring "
+        "hangar bay costs bio-ship empires energy, not food"
+    ),
+    "shrimpAI: a Nomadic empire can't build a Hyper Relay at its own waystation",
+    (
+        "Planetary Diversity: the AI doesn't yet value the Aquatic trait for species that "
+        "prefer wet planets, as 4.5.2's AI does"
+    ),
+    "Dark UI: 4.5.2's new icons, such as the fleet deselect button, aren't dark yet",
+)
 
 
 # Each fix: its row in the report, what it does for the player (shown on the Workshop
@@ -888,5 +1207,32 @@ FIXES: tuple[tuple[int, str, Callable[[Layers], Made], tuple[str, ...]], ...] = 
         "More Events Mod's glacier AI leader with Iron Fist keeps the trait, as a commander",
         fix_glacier_leader,
         (MORE_EVENTS,),
+    ),
+    (
+        15,
+        "More Events Mod's three Progenitor shields cost upkeep again, at the game's 4.5.2 rates",
+        fix_shield_upkeep,
+        (MORE_EVENTS,),
+    ),
+    (
+        16,
+        "Space fauna's Large Mega Bombard gets its 4.5.2 range, at Ships in Scaling's scale",
+        fix_mutation_ranges,
+        (SHIPS_IN_SCALING,),
+    ),
+    (
+        17,
+        "Fleets with a jump drive can enter the Surveillance Supercomputer system, as in 4.5.2",
+        fix_supercomputer_seal,
+        (REAL_SPACE,),
+    ),
+    (
+        19,
+        (
+            "Ascension Worlds: Lithoid Budding gets its full bonus on a Massive Crater, and "
+            "consecrated worlds and worlds being detoxified can't be terraformed, as in 4.5.2"
+        ),
+        fix_ascension_worlds,
+        (ASCENSION_WORLDS,),
     ),
 )
