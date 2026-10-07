@@ -181,12 +181,18 @@ These weren't seen in game yet:
   online. A new save with the `discovered_ziaskehorn` flag should have the
   dig site too.
 - A researched Progenitor shield shows an upkeep of energy and alloys in the
-  ship designer (fix 15).
+  ship designer (fix 15). At load, the log has no `Malformed token` for
+  `@shield_*_t7_upkeep_*`: the
+  [pre-upload run](../reports/2026-10-07-cold-steel-mix-pre-upload.md#the-patchs-fixes)
+  had none.
 - A Large Mega Bombard on space fauna fires in combat (fix 16).
 - A jump drive fleet can jump into the Surveillance Supercomputer system
-  (fix 17). That initializers go to the first file by name comes from Irony's
-  rules, and hasn't been checked. The log may name Real Space's copy as a
-  duplicate, as it does for fixes 11 and 12.
+  (fix 17). The log has one notice, `An initializer called
+  "surveillance_supercomputer_system" already exists`, naming Real Space's
+  `special_system_initializers.txt`. That's the check that the patch's copy
+  won, as for fixes 11 and 12. The
+  [pre-upload run](../reports/2026-10-07-cold-steel-mix-pre-upload.md#the-patchs-fixes)
+  had it.
 - A lithoid species with Lithoid Budding on a Massive Crater gets the full
   bonus, and a consecrated world can't be terraformed (fix 19). That traits
   go to the first file by name hasn't been checked either.
