@@ -3,7 +3,8 @@
 Builds **patch mods for Stellaris playsets**: a small mod that loads last and
 fixes the clashes and breakages between the mods in a playset.
 
-Kept in a **private GitHub repo** ([decision 4](docs/decisions.md)).
+Kept in a **public GitHub repo**, under the MIT licence
+([decision 4](docs/decisions.md)).
 
 The user's playsets live in **Cold Steel**, a separate Stellaris mod manager.
 We share its data files only, never its code

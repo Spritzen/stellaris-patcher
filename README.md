@@ -552,8 +552,7 @@ These hold in every command, and are worth keeping in your copy:
 - **Some merge rules are unchecked.** Rows in `merge_rules.json` with no
   `checked` date come from Irony Mod Manager's rules, not a game test.
 - **It's a working tool, not a release.** There's no package, and the CLI
-  builds one named patch. The repo is private
-  ([decision 4](docs/decisions.md)).
+  builds one named patch.
 
 ## Where to read more
 
@@ -568,3 +567,7 @@ These hold in every command, and are worth keeping in your copy:
 | commit, open and merge a PR | [development.md](docs/development.md#commit-and-merge) |
 | read real reports | [docs/README.md](docs/README.md#reports) |
 | write docs the house way | [docs/README.md](docs/README.md#how-we-write-docs) |
+
+## Licence
+
+MIT. See [LICENSE](LICENSE).

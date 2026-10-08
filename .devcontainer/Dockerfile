@@ -5,7 +5,7 @@ FROM archlinux:latest
 # at the SAME absolute path inside. Playsets and .mod descriptors hold host
 # paths; keeping them identical means a patch mod built in here loads the same
 # way in the host-side launcher.
-ARG USERNAME=odin
+ARG USERNAME=dev
 ARG USER_UID=1000
 ARG USER_GID=1000
 
