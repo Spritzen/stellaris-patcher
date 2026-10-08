@@ -3,8 +3,7 @@
     backup_file(db_path, backup_dir)   # raises OSError: then don't write
 
 Each backup is a dated copy in `backup_dir`, and the newest `KEEP` copies of
-each file are kept. The launcher database also gets a one-time original copy
-beside it, `launcher-v2.stellaris-patcher-orig.sqlite`, which is never overwritten.
+each file are kept.
 """
 
 import shutil
@@ -14,7 +13,6 @@ from datetime import datetime
 from pathlib import Path
 
 KEEP = 20
-ORIGINAL_SUFFIX = ".stellaris-patcher-orig"
 
 
 def backup_file(path: Path, backup_dir: Path, keep: int = KEEP) -> Path | None:
@@ -32,15 +30,6 @@ def backup_file(path: Path, backup_dir: Path, keep: int = KEEP) -> Path | None:
     _copy(path, target)
     _prune(backup_dir, path, keep)
     return target
-
-
-def keep_original(path: Path) -> Path | None:
-    """Make the one-time original copy beside `path`, if there isn't one yet."""
-    original = path.with_name(f"{path.stem}{ORIGINAL_SUFFIX}{path.suffix}")
-    if original.exists() or not path.exists():
-        return None
-    _copy(path, original)
-    return original
 
 
 def backups_of(path: Path, backup_dir: Path) -> list[Path]:

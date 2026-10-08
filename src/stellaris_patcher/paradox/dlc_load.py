@@ -9,8 +9,6 @@ from pathlib import Path
 
 import msgspec
 
-from stellaris_patcher.paradox.backup import backup_file
-
 FILE_NAME = "dlc_load.json"
 
 
@@ -25,19 +23,3 @@ def read_dlc_load(data_dir: Path) -> DlcLoad | None:
         return msgspec.json.decode((data_dir / FILE_NAME).read_bytes(), type=DlcLoad)
     except OSError, msgspec.DecodeError:
         return None
-
-
-def write_dlc_load(data_dir: Path, load: DlcLoad, backup_dir: Path) -> Path | None:
-    """Write the file after backing it up. Returns the backup, if there was a
-    file to back up. Raises OSError, and writes nothing, if the backup fails."""
-    path = data_dir / FILE_NAME
-    backup = backup_file(path, backup_dir)
-    tmp = path.with_name(f".{FILE_NAME}.tmp")
-    try:
-        # Compact, as the launcher writes it.
-        tmp.write_bytes(msgspec.json.encode(load))
-        tmp.replace(path)
-    except BaseException:
-        tmp.unlink(missing_ok=True)
-        raise
-    return backup

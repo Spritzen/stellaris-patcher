@@ -8,7 +8,6 @@ line as a script `Entry`, so callers treat both kinds of file alike.
 """
 
 import re
-from pathlib import Path
 
 from stellaris_patcher.paradox.script import Entry
 
@@ -36,16 +35,3 @@ def keys(data: bytes) -> list[Entry]:
             end -= 1
         entries.append(Entry(found.group(1), start, found.start(2), end, line, False))
     return entries
-
-
-DEFAULT_LANGUAGE = "l_english"
-_SETTING = re.compile(rb'^\s*language\s*=\s*"?(l_\w+)"?', re.MULTILINE)
-
-
-def game_language(data_dir: Path) -> str:
-    """The language the game is set to, from its settings.txt. English if unknown."""
-    try:
-        found = _SETTING.search((data_dir / "settings.txt").read_bytes())
-    except OSError:
-        return DEFAULT_LANGUAGE
-    return found.group(1).decode("ascii") if found else DEFAULT_LANGUAGE

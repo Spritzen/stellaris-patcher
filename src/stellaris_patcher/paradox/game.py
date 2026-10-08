@@ -29,7 +29,6 @@ class Game:
     version_name: str  # "Cygnus v4.5.1 (358e)"
     data_dir: Path  # Paradox user data: .../Paradox Interactive/Stellaris
     exe: Path = Path()  # the game program, from launcher-settings.json
-    exe_args: tuple[str, ...] = ()  # what the launcher passes it: ("-gdpr-compliant",)
 
     @property
     def workshop_dir(self) -> Path:
@@ -108,7 +107,6 @@ def _read_game(install: Path, library: Path) -> Game:
             "Stellaris Patcher needs the native Linux build."
         )
     data_dir = Path(data_path.replace("$LINUX_DATA_HOME", str(linux_data_home())))
-    args = settings.get("exeArgs", [])
     return Game(
         install_dir=install,
         library_dir=library,
@@ -116,7 +114,6 @@ def _read_game(install: Path, library: Path) -> Game:
         version_name=str(settings.get("version", raw_version)),
         data_dir=data_dir,
         exe=install / str(settings.get("exePath", "./stellaris")),
-        exe_args=tuple(str(a) for a in args) if isinstance(args, list) else (),
     )
 
 

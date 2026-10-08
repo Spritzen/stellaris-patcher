@@ -113,7 +113,7 @@ for tool in git gh python3 node sqlite3 rsvg-convert rg jq ruff mypy pytest; do
 		bad "$tool missing"
 	fi
 done
-for mod in msgspec xxhash pytest_benchmark; do
+for mod in msgspec xxhash; do
 	if ver=$(python3 -c "import $mod as m; print(getattr(m, '__version__', 'ok'))" 2>/dev/null); then
 		ok "$(printf '%-16s' "$mod") $ver"
 	else

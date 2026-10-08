@@ -61,11 +61,6 @@ def resolutions_file(playset_id: str) -> Path:
     return data_dir() / "resolutions" / f"{playset_id}.json"
 
 
-def patch_dir(playset_id: str) -> Path:
-    """Where Cold Steel writes a playset's patch mod."""
-    return data_dir() / "patches" / playset_id
-
-
 def build_record(playset_id: str) -> Path:
     """Which mod each file in a playset's build came from."""
     return data_dir() / "builds" / f"{playset_id}.json"
