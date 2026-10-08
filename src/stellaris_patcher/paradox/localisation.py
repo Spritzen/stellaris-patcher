@@ -4,7 +4,7 @@
      tech_lasers_1:0 "Red Lasers"
 
 Each file says its language on its first line. `keys()` gives each `KEY: "text"`
-line as a script `Entry`, so conflict checks treat both kinds of file alike.
+line as a script `Entry`, so callers treat both kinds of file alike.
 """
 
 import re

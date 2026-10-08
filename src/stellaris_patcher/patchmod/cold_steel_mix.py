@@ -44,7 +44,7 @@ class FixError(Exception):
 
 @dataclass(frozen=True)
 class Outcome:
-    number: int  # the row in the report's table
+    number: int  # its number in the report that proposed it
     title: str
     files: dict[str, bytes] = field(default_factory=dict)
     notes: tuple[str, ...] = ()  # what it did, or parts it skipped

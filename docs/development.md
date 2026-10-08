@@ -9,7 +9,7 @@ done.
 | `make lint` | ruff (lint and format check), then mypy |
 | `make format` | Fixes formatting and the lint issues ruff can fix itself |
 | `make test` | Runs the tests |
-| `make bench` | Runs only the timing benchmarks |
+| `make bench` | Runs only the timing benchmarks (none yet) |
 | `make docs` | Checks that every link in the docs points at a real file and heading |
 
 To build a patch mod, see [patches/cold-steel-mix.md](patches/cold-steel-mix.md). After
@@ -115,7 +115,9 @@ src/stellaris_patcher/
     ├── older.py     mod copies older than the game files they replace; names the notes removed
     └── snapshot.py  baselines: the game's and mods' text files at the last check
 tests/               pytest; fixtures/ is a small fake install
-tools/               check_links.py
+tools/
+├── check_links.py   the docs link checker, run by make check
+└── collection_background.py  the Workshop collection's background picture
 ```
 
 The code started as a copy of Cold Steel's parsers, and is now ours
@@ -143,8 +145,8 @@ folders on the host first, since a missing one stops the container starting.
   files with our records, and fails when they hold something new
   ([decision 13](decisions.md)). It's skipped when there's no Cold Steel data.
 - Tests marked `real_install` read the real install and must never write to it.
-- Timing tests use pytest-benchmark's `benchmark` fixture. `make test` skips
-  them, and `make bench` runs only them.
+- No test is timed yet. A timing test uses pytest-benchmark's `benchmark`
+  fixture: `make test` skips it, and `make bench` runs only those.
 
 ## Type checking
 

@@ -1,4 +1,4 @@
-"""The records in Cold Steel's data files, as of Cold Steel 0.6.0.
+"""The records in Cold Steel's data files.
 
 Field names, order and defaults must match what Cold Steel writes, or the
 files we write won't read back in Cold Steel. When its files gain a field or a
@@ -16,7 +16,7 @@ RESOLUTIONS_VERSION = 1
 
 
 class PlaysetEntry(msgspec.Struct, frozen=True):
-    key: str  # a Mod.key: "workshop:<id>" or "local:<name of the .mod file>"
+    key: str  # Cold Steel's mod key: "workshop:<id>" or "local:<name of the .mod file>"
     enabled: bool = True
     name: str = ""  # kept so a mod that's gone from disk still shows its name
 
@@ -24,8 +24,8 @@ class PlaysetEntry(msgspec.Struct, frozen=True):
 class Pin(msgspec.Struct, frozen=True):
     """A Workshop mod the playset plays from a saved copy, not Steam's folder."""
 
-    key: str  # the Workshop mod's Mod.key
-    snapshot: str  # the copy's id, in the snapshot store
+    key: str  # the Workshop mod's key
+    snapshot: str  # the copy's id, in Cold Steel's snapshots/
 
 
 class Playset(msgspec.Struct, frozen=True):
@@ -49,7 +49,7 @@ class PlaysetFile(msgspec.Struct):
 class Seen(msgspec.Struct, frozen=True):
     """One version of an object, as it was when the choice was made."""
 
-    layer: str  # "game" or a Mod.key
+    layer: str  # "game" or a mod key
     path: str
     digest: int  # the object's digest (core/definitions.py), or the file's hash
 
@@ -81,8 +81,8 @@ class ResolutionFile(msgspec.Struct):
     version: int = RESOLUTIONS_VERSION
     resolutions: list[Resolution] = msgspec.field(default_factory=list)
     ignored: list[Ignore] = msgspec.field(default_factory=list)
-    # Which choices the patch mod was last made from (Cold Steel's
-    # core.resolve.choices_digest). Cold Steel rebuilds the patch when it differs.
+    # A digest of the choices the patch mod was last made from. Cold Steel
+    # offers to rebuild the patch when the choices no longer match it.
     built: int = 0
 
 

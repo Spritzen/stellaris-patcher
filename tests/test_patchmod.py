@@ -271,6 +271,27 @@ def test_fix_4_refuses_a_step_past_the_end(game: Game, monkeypatch: pytest.Monke
     assert "ZOOM_STEPS_SHOW_FLEET_HEALTH_BARS names step { 1 3 }" in outcome.left_out
 
 
+# Fix 6: More Events Mod's old name for Planetary Diversity's trigger
+
+PD_TRIGGERS = "common/scripted_triggers/pd.txt"
+PD_TRIGGER = "pd_is_planet_for_aqua_trait = { always = yes }\n"
+
+
+def test_fix_6_calls_the_new_trigger_by_its_old_name(game: Game) -> None:
+    layers = _layers(game, {cold_steel_mix.PLANETARY_DIVERSITY: {PD_TRIGGERS: PD_TRIGGER}})
+    files, _ = cold_steel_mix.fix_pd_trigger(layers)
+    (data,) = files.values()
+    assert b"is_pd_planet_for_aqua_trait = {\n\tpd_is_planet_for_aqua_trait = yes\n}" in data
+    assert check_files(files) == []
+
+
+def test_fix_6_is_left_out_once_the_old_name_is_defined(game: Game) -> None:
+    both = PD_TRIGGER + "is_pd_planet_for_aqua_trait = { always = yes }\n"
+    layers = _layers(game, {cold_steel_mix.PLANETARY_DIVERSITY: {PD_TRIGGERS: both}})
+    with pytest.raises(FixError, match="is defined now"):
+        cold_steel_mix.fix_pd_trigger(layers)
+
+
 # Writing
 
 

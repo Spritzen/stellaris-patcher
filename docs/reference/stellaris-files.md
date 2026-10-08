@@ -1,9 +1,8 @@
 # Where Stellaris keeps things
 
-Checked against the real install on 2026-10-01 (game **v4.5.1 "Cygnus"**,
-native Linux build). The paths were the same after the update to v4.5.2 on
-2026-10-06. Paths are shown with the container's environment variables, which
-are the same paths as on the host.
+Checked against the real install of the native Linux build, last on
+**v4.5.2** (2026-10-06). Paths are shown with the container's environment
+variables, which are the same paths as on the host.
 
 ## Game install (read-only)
 

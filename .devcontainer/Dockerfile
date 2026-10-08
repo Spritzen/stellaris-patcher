@@ -37,7 +37,7 @@ RUN pacman -Syu --noconfirm --needed \
 
 # Application stack: Python, all from Arch's official repos -- no venv, no pip.
 #   Runtime:
-#     python-msgspec         typed structs + fast JSON/msgpack for the parse cache
+#     python-msgspec         typed structs, JSON and msgpack
 #     python-xxhash          fast content hashing for change detection
 #   Dev only:
 #     python-pytest, python-pytest-benchmark

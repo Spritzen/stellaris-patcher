@@ -133,12 +133,10 @@ written by hand, one line per problem.
   when one of these mods changes.
 
 Today's lines come from the
-[4.5.2 first-run report](../reports/2026-10-07-cold-steel-mix-4.5.2-first-run.md):
-item 18 and the smaller findings for Planetary Diversity's Aquatic trait and
-Dark UI. The Lost Emperor line is item 20 of the
-[pre-upload report](../reports/2026-10-07-cold-steel-mix-pre-upload.md#what-to-do-next).
-The lines for Starbase Extended (row F, run 3's items 8 and 9) and shrimpAI
-were taken out with their mods ([switched off](#mods-switched-off-for-now)).
+[4.5.2 first-run report](../reports/2026-10-07-cold-steel-mix-4.5.2-first-run.md)
+(item 18, and the findings for Planetary Diversity's Aquatic trait and Dark
+UI) and the [pre-upload report](../reports/2026-10-07-cold-steel-mix-pre-upload.md#what-to-do-next)
+(item 20, the Lost Emperor).
 
 **Ask the other authors first.** The patch ships work that isn't ours:
 
@@ -186,9 +184,6 @@ and 19 aren't shipped while their mods are
   `sol_neighbor_t2` is Procyon, so it becomes Real Space's
   `procyon_mediumsector`, not Sirius. Before copying, the fix checks that
   both systems have the same `name`.
-- **Fix 4 can't keep Cinematic Camera's 13 steps.** 13 matching planet
-  scales still logged the mismatch. Only System Scale's own 8 and 8 cleared it
-  ([decision 17](../decisions.md)).
 - A fix that ships a whole file only does so while that file still comes
   from the expected mod or the game. Otherwise it could undo another mod's
   newer copy. Fixes 11 and 12 do the same for one event: More Events Mod's
