@@ -11,6 +11,8 @@ and fixes 15–17 and 19 from the
 [4.5.2 first-run report](../reports/2026-10-07-cold-steel-mix-4.5.2-first-run.md#what-to-do-next).
 Problems it leaves to the mods' authors are listed on its Workshop page
 ([Left to the authors](#left-to-the-authors)).
+Fixes 2, 3 and 19 are left out for now: their mods are
+[switched off](#mods-switched-off-for-now).
 The code is [cold_steel_mix.py](../../src/stellaris_patcher/patchmod/cold_steel_mix.py).
 
 ## Build it
@@ -42,7 +44,34 @@ PYTHONPATH=src python3 -m stellaris_patcher cold-steel-mix --write --add-to-play
 **Run it again after every game or mod update.** Each fix is worked out from
 the files on disk, not from a saved copy ([decision 14](../decisions.md)). If
 an update changes a fix's cause, that fix is left out and the reason printed.
-The other fixes are still written.
+The other fixes are still written. A fix is left out too when none of the mods
+it patches is switched on in the playset.
+
+## Mods switched off for now
+
+**Three mods are switched off in the playset until they update for 4.5.2**
+([decision 35](../decisions.md)). They stay in the playset, so they're one
+switch from coming back. The Workshop description ends with them, and says
+we aim to put them back: `SWITCHED_OFF` in
+[cold_steel_mix.py](../../src/stellaris_patcher/patchmod/cold_steel_mix.py),
+one line per mod. The section goes once the list is empty.
+
+| Mod | Why | Fixes left out |
+|---|---|---|
+| Starbase Extended 3.0 | 47 load errors each run, a starbase window from before 4.5, and the modules, buildings and sections in [Left to the authors](#left-to-the-authors) | 2, 3, and its text key in 7 |
+| Planetary Diversity - Ascension Worlds | Its Lithoid Budding and terraforming rule are copies from before 4.5.2, and it added to the trait stacking (item 18) | 19, and one tooltip in 10 |
+| Smarter Hyper Relays: Improved AI (shrimpAI) | A Nomadic empire can't build a Hyper Relay at its own waystation | None |
+
+To bring one back:
+
+1. Switch it on in Cold Steel's Cold Steel Mix playset, in the same place.
+2. [Build the patch](#build-it). Its fixes come back if the update still
+   needs them, and are left out with a reason if not.
+3. Read the [first report after 4.5.2](../reports/2026-10-07-cold-steel-mix-4.5.2-first-run.md)
+   for what it still breaks. Put the lines it still needs back in
+   `LEFT_TO_AUTHORS`. They were taken out in the change that switched it off.
+   Drop its line from `SWITCHED_OFF`.
+4. At the next upload, add it back to the Workshop page's **Required items**.
 
 ## Add a fix
 
@@ -73,11 +102,23 @@ next upload
 - The Workshop description is in
   `~/.local/share/stellaris-patcher/mods/cold_steel_mix_patch.workshop.txt`.
   Paste it into the Workshop page.
+- The Cold Steel Mix collection's background is drawn by
+  [collection_background.py](../../tools/collection_background.py): the
+  patch icon and name on the left, Tron-style lines on the right. Render it
+  to `mods/cold_steel_mix_collection.png`:
+
+  ```sh
+  python3 tools/collection_background.py /tmp/bg.svg
+  rsvg-convert -w 1920 -h 1080 /tmp/bg.svg -o ~/.local/share/stellaris-patcher/mods/cold_steel_mix_collection.png
+  ```
+
 - Upload it from the Paradox launcher. The launcher saves the Workshop id in
   the `.mod` file, and later builds keep it, so the next upload updates the
   same Workshop item.
 - On the Workshop page, add the same mods as **Required items**. Steam doesn't
-  read `dependencies`.
+  read `dependencies`. Remove any it no longer lists: at the next upload,
+  Starbase Extended 3.0 and Ascension Worlds
+  ([switched off](#mods-switched-off-for-now)).
 
 ### Left to the authors
 
@@ -93,8 +134,11 @@ written by hand, one line per problem.
 
 Today's lines come from the
 [4.5.2 first-run report](../reports/2026-10-07-cold-steel-mix-4.5.2-first-run.md):
-item 18 and row F, the open items 8 and 9 from run 3, and the smaller
-findings for shrimpAI, Planetary Diversity's Aquatic trait and Dark UI.
+item 18 and the smaller findings for Planetary Diversity's Aquatic trait and
+Dark UI. The Lost Emperor line is item 20 of the
+[pre-upload report](../reports/2026-10-07-cold-steel-mix-pre-upload.md#what-to-do-next).
+The lines for Starbase Extended (row F, run 3's items 8 and 9) and shrimpAI
+were taken out with their mods ([switched off](#mods-switched-off-for-now)).
 
 **Ask the other authors first.** The patch ships work that isn't ours:
 
@@ -111,7 +155,9 @@ findings for shrimpAI, Planetary Diversity's Aquatic trait and Dark UI.
 | `common/game_rules/zz_stellaris_patcher_cold_steel_mix_terraform.txt` | Ascension Worlds' terraforming rule, with two of the game's checks added |
 
 The game's own files are fine to ship in a mod. The others need their
-authors' permission, or fixes 3, 5, 11, 12, 16, 17 and 19 left out.
+authors' permission, or fixes 3, 5, 11, 12, 16, 17 and 19 left out. Fixes 3
+and 19 aren't shipped while their mods are
+[switched off](#mods-switched-off-for-now).
 
 ## What each fix does
 
@@ -123,7 +169,7 @@ authors' permission, or fixes 3, 5, 11, 12, 16, 17 and 19 left out.
 | 4 | Cinematic Camera's 13 zoom steps meet System Scale's 8 planet scales | A defines file that sorts last, with System Scale's own 8 zoom steps and 8 planet scales, and its own step for entering a system (7) and focusing (3). Cinematic Camera's finer system zoom is lost ([decision 17](../decisions.md)) |
 | 5 | Planetary Diversity and More Events Mod use the game's Sol neighbour names | `sol_neighbor_t1`, `sol_neighbor_t2` and `sol_neighbor_t1_no_guaranteed_colony`, as copies of Real Space's systems for the same stars |
 | 6 | More Events Mod calls Planetary Diversity's trigger by its old name | `is_pd_planet_for_aqua_trait`, which calls `pd_is_planet_for_aqua_trait` |
-| 7 | Six text keys are missing | One English file ([decision 19](../decisions.md)) |
+| 7 | Six text keys are missing. Five while Starbase Extended is off | One English file ([decision 19](../decisions.md)) |
 | 10 | Planetary Diversity's text calls `[GetAdministratorPluralWithIcon]`, which the game no longer has | A `localisation/replace/` file. The bureaucrats' unity modifier gets the game's own text. The three necro world tooltips keep Planetary Diversity's text, calling the game's `$bureaucrat_type_plural_with_icon$` instead ([decision 22](../decisions.md)) |
 | 11 | More Events Mod's `mem_scfe_ziaskehorn.1` fires the discovery before saving the planet it's about, so the Ziaskehorn dig site is never made | A copy of that one event, with the `save_event_target_as` block moved above the `ship_event` call. It's in an `events/` file whose name starts `!!_`, so it sorts first and wins ([decision 23](../decisions.md)) |
 | 12 | More Events Mod's `mem_stuck_in_glacier.22` makes an official with Iron Fist, a commander-only trait since 4.0, so the leader gets no trait | A copy of that one event, the same way as fix 11. That leader is a commander, the one class the game's Iron Fist allows ([decision 24](../decisions.md)) |
@@ -194,5 +240,6 @@ These weren't seen in game yet:
   [pre-upload run](../reports/2026-10-07-cold-steel-mix-pre-upload.md#the-patchs-fixes)
   had it.
 - A lithoid species with Lithoid Budding on a Massive Crater gets the full
-  bonus, and a consecrated world can't be terraformed (fix 19). That traits
+  bonus, and a consecrated world can't be terraformed (fix 19). Not until
+  Ascension Worlds is [switched on](#mods-switched-off-for-now) again. That traits
   go to the first file by name hasn't been checked either.
