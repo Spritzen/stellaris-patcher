@@ -10,8 +10,8 @@
 There are two readers:
 
 - `parse()` builds the whole tree. It is used for small files like descriptors.
-- `scan()` only finds where each top-level entry starts and ends. Conflict
-  checks need nothing more, and it reads about 60 MB of game script a second.
+- `scan()` only finds where each top-level entry starts and ends. Most
+  readers need nothing more, and it reads about 60 MB of game script a second.
   It never fails: broken input gives fewer or odder entries, the way the game
   reads it as best it can.
 """

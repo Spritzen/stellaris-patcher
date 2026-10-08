@@ -36,7 +36,7 @@ from stellaris_patcher.store import paths
 from stellaris_patcher.store.files import load_json, save_json
 
 TEXT_SUFFIXES = (".txt", ".yml", ".gui", ".gfx", ".asset", ".csv", ".mod")
-LANGUAGE = "l_english"  # the only text kept (decision 19); others are tracked by time
+LANGUAGE = "l_english"  # the only text kept (decision 26); others are tracked by time
 KEEP_BASELINES = 3  # older baselines, and archives only they use, are removed
 
 

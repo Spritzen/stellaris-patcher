@@ -5,14 +5,14 @@ description: Check the Cold Steel Mix playset and its patch after Stellaris or a
 
 Follow [docs/update-check.md](../../../docs/update-check.md) step by step. It
 holds the commands, how to read the check, how to write the report, and
-the lessons from earlier checks.
+its gotchas.
 
 Rules from it that are easy to miss:
 
 - Propose fixes in the report and wait for the user before adding any
   ([decision 25](../../../docs/decisions.md)).
-- Ask the user to close the game and the launcher before `--write`. The
-  container can't see them.
+- Ask the user to close the game and the launcher before the rebuild's
+  `cold-steel-mix --write`. The container can't see them.
 - Run with `--notes`, and read "Older mod copies" against the notes, not
   only what changed since the baseline. Most mods lag a release, and an
   older copy undoes a game fix without logging anything.

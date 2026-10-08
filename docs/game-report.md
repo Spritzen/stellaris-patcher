@@ -54,5 +54,5 @@ its mod, write a report and propose fixes. Add no fix until the user agrees**
    did, run `check-update --accept` afterwards. The next check then skips
    what was read ([decision 30](decisions.md)).
 
-Reports before 6 October ran Cold Steel's own error reader. Its source is no
-longer mounted ([decision 27](decisions.md)), so use ours.
+Reports before 6 October name Cold Steel's error reader. Use ours: Cold
+Steel's source isn't mounted ([decision 27](decisions.md)).

@@ -105,34 +105,25 @@ PYTHONPATH=src python3 -m stellaris_patcher check-update --accept  # 8. once rev
   and the forum asks for a browser check. A diff in "Older mod copies" that
   no note names may be one of those fixes.
 
-## Lessons from earlier checks
+## Gotchas
 
-From the 4.5.2 check on 6 October:
-
-- **Keep the old game.** Steam leaves no copy of the previous version, so the
-  accepted baseline is the only one. Without it, each diff mixes a mod's own
-  changes with the update's.
+- **Most mods lag a release.** On 4.5.2, 24 of 26 hadn't updated. An older
+  copy undoes a game fix without any error, so it shows only in "Older mod
+  copies", not in the log.
 - **A mod can catch up the same day.** Stellar AI updated for 4.5.2 hours
   after the game. Look at its newest file and `supported_version` before
   calling a copy old.
+- **Go by Steam's update times, not file times.** Steam rewrites a mod's
+  files without a new version. The check reads `appworkshop_281990.acf`.
 - **A mod's rule may hold in one file and not another.** Ships in Scaling
-  divides every range by 6 in one weapons table. In the other it sets many
-  ranges by hand. Check every row before relying on a rule.
+  divides every range by 6 in one weapons table, and sets many by hand in
+  the other. Check every row before relying on a rule.
 - **Zipped mods, and mods with no `descriptor.mod`, exist.** The check reads
   inside zips. The patch's fixes can't: [layers.py](../src/stellaris_patcher/patchmod/layers.py)
   sees only loose files.
-- **Read the full notes.** A web page summary cut 4.5.2's notes off before
-  the bug fixes and the Modding section. Steam's news API, which `--notes`
-  uses, gives the whole text.
-
-From the first 4.5.2 game report on 7 October:
-
-- **Most mods haven't updated for the latest release.** 24 of 26 hadn't. An
-  older copy undoes a fix without any error, so it shows only in "Older mod
-  copies", not in the log.
-- **Use Steam's update times, not file times.** Steam rewrites a mod's files
-  without a new version: Just Star Names' newest file was from 3 October, its
-  last update 19 June. The check reads `appworkshop_281990.acf`.
+- **Read the full notes.** A web page summary can stop before the bug fixes
+  and the Modding section. Steam's news API, which `--notes` uses, gives the
+  whole text.
 
 ## Where things are
 

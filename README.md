@@ -437,32 +437,29 @@ reads `.yml` text files.
 
 ### Test it
 
-Each fix gets two tests in [test_patchmod.py](tests/test_patchmod.py): one
+Give each fix two tests in [test_patchmod.py](tests/test_patchmod.py): one
 that it fixes the problem, and one that it's left out once the cause is
 gone. `_layers()` there builds a small fake game and mods in a temporary
-folder:
+folder. Fix 6's:
 
 ```python
+PD_TRIGGERS = "common/scripted_triggers/pd.txt"
+PD_TRIGGER = "pd_is_planet_for_aqua_trait = { always = yes }\n"
+
+
 def test_fix_6_calls_the_new_trigger_by_its_old_name(game: Game) -> None:
-    layers = _layers(
-        game,
-        {
-            GAME: {},
-            PLANETARY_DIVERSITY: {
-                "common/scripted_triggers/pd.txt": "pd_is_planet_for_aqua_trait = { always = yes }\n"
-            },
-        },
-    )
-    files, notes = fix_pd_trigger(layers)
+    layers = _layers(game, {cold_steel_mix.PLANETARY_DIVERSITY: {PD_TRIGGERS: PD_TRIGGER}})
+    files, _ = cold_steel_mix.fix_pd_trigger(layers)
     (data,) = files.values()
-    assert b"pd_is_planet_for_aqua_trait = yes" in data
+    assert b"is_pd_planet_for_aqua_trait = {\n\tpd_is_planet_for_aqua_trait = yes\n}" in data
     assert check_files(files) == []
 
 
 def test_fix_6_is_left_out_once_the_old_name_is_defined(game: Game) -> None:
-    ...
+    both = PD_TRIGGER + "is_pd_planet_for_aqua_trait = { always = yes }\n"
+    layers = _layers(game, {cold_steel_mix.PLANETARY_DIVERSITY: {PD_TRIGGERS: both}})
     with pytest.raises(FixError, match="is defined now"):
-        fix_pd_trigger(layers)
+        cold_steel_mix.fix_pd_trigger(layers)
 ```
 
 `check_files()` parses each file the way the build does. Run `make check`.

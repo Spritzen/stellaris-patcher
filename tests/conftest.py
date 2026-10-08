@@ -23,10 +23,6 @@ class SampleInstall:
     steam_dir: Path  # the main Steam folder; Stellaris is in a second library
     data_dir: Path  # Paradox user data for Stellaris
     workshop_dir: Path
-    cache_file: Path
-
-    def scanner_args(self) -> tuple[tuple[Path, ...], Path]:
-        return (self.steam_dir,), self.cache_file
 
 
 @pytest.fixture
@@ -44,7 +40,6 @@ def sample_install(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> SampleIns
         steam_dir=root / "home/.local/share/Steam",
         data_dir=root / PARADOX,
         workshop_dir=root / WORKSHOP,
-        cache_file=tmp_path / "cache/stellaris-patcher/mods.msgpack",
     )
 
 
