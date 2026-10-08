@@ -3,7 +3,7 @@
 PY := python3
 export PYTHONPATH := src
 
-.PHONY: check lint format test bench docs
+.PHONY: check lint format test docs
 
 check: lint test docs  ## Lint, type-check, test and check doc links
 
@@ -16,11 +16,8 @@ format:         ## Fix formatting and safe lint issues
 	ruff format .
 	ruff check --fix .
 
-test:           ## Run the tests (skips timing benchmarks)
-	$(PY) -m pytest --benchmark-skip
-
-bench:          ## Run only the timing benchmarks
-	$(PY) -m pytest --benchmark-only
+test:           ## Run the tests
+	$(PY) -m pytest
 
 docs:           ## Check that every link in the docs resolves
 	$(PY) tools/check_links.py

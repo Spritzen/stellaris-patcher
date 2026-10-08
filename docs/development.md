@@ -5,11 +5,10 @@ done.
 
 | Command | Does |
 |---|---|
-| `make check` | Everything below except `bench` and `format` |
+| `make check` | Everything below except `format` |
 | `make lint` | ruff (lint and format check), then mypy |
 | `make format` | Fixes formatting and the lint issues ruff can fix itself |
 | `make test` | Runs the tests |
-| `make bench` | Runs only the timing benchmarks (none yet) |
 | `make docs` | Checks that every link in the docs points at a real file and heading |
 
 To build a patch mod, see [patches/cold-steel-mix.md](patches/cold-steel-mix.md). After
@@ -92,13 +91,12 @@ src/stellaris_patcher/
 ├── paradox/         reading and writing Paradox and Steam files
 │   ├── backup.py    dated backups, made before every write
 │   ├── descriptor.py  .mod files
-│   ├── dlc.py       the installed DLC, and the launcher's names for them
 │   ├── dlc_load.py  dlc_load.json: what the game loads
 │   ├── error_log.py logs/error.log: its entries, and the file each one names
 │   ├── game.py      finding Stellaris through Steam's libraries
-│   ├── launcher_db.py  launcher-v2.sqlite: read, and write one playset
-│   ├── localisation.py  .yml localisation keys, and the game's language
-│   ├── processes.py is the launcher, the game or Steam running?
+│   ├── launcher_db.py  launcher-v2.sqlite: its playsets, read only
+│   ├── localisation.py  .yml localisation keys
+│   ├── processes.py is the launcher or the game running?
 │   ├── script.py    the Paradox script parser, and the fast scanner
 │   ├── vdf.py       Steam's .vdf files
 │   └── workshop.py  when Steam last updated each Workshop mod
@@ -145,8 +143,6 @@ folders on the host first, since a missing one stops the container starting.
   files with our records, and fails when they hold something new
   ([decision 13](decisions.md)). It's skipped when there's no Cold Steel data.
 - Tests marked `real_install` read the real install and must never write to it.
-- No test is timed yet. A timing test uses pytest-benchmark's `benchmark`
-  fixture: `make test` skips it, and `make bench` runs only those.
 
 ## Type checking
 

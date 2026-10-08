@@ -12,19 +12,8 @@ from typing import Any
 import msgspec
 
 
-def load_msgpack[T](path: Path, type_: type[T]) -> T | None:
-    """The saved value, or None if the file is missing, unreadable or out of date."""
-    try:
-        return msgspec.msgpack.decode(path.read_bytes(), type=type_)
-    except OSError, msgspec.DecodeError:
-        return None
-
-
-def save_msgpack(path: Path, value: Any) -> None:
-    _write_atomic(path, msgspec.msgpack.encode(value))
-
-
 def load_json[T](path: Path, type_: type[T]) -> T | None:
+    """The saved value, or None if the file is missing, unreadable or out of date."""
     try:
         return msgspec.json.decode(path.read_bytes(), type=type_)
     except OSError, msgspec.DecodeError:

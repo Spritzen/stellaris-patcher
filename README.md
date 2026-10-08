@@ -76,7 +76,7 @@ A report proposes fixes. None is added until you agree
 |---|---|
 | **Linux, with Stellaris from Steam** | The tool finds the game through Steam's library list, in `~/.local/share/Steam` or `~/.steam/steam`. It tells whether the game is running from `/proc` |
 | **Python 3.14, msgspec and xxhash** | The code. msgspec reads and writes the JSON, xxhash hashes files |
-| **pytest, pytest-benchmark, ruff and mypy** | Only for `make check` |
+| **pytest, ruff and mypy** | Only for `make check` |
 | **[Cold Steel](https://github.com/Spritzen/cold-steel)** | The mod manager that holds the playsets. You can do without it: see [Without Cold Steel](#without-cold-steel) |
 | Optional: Docker or Podman, and VS Code | For the dev container |
 | Optional: Claude Code, and the GitHub CLI | For the [skills](#work-with-claude-code) and the PR flow |
@@ -117,7 +117,7 @@ A change to the mounts takes effect only after **Rebuild Container**.
 On Arch:
 
 ```sh
-sudo pacman -S python python-msgspec python-xxhash python-pytest python-pytest-benchmark ruff mypy librsvg
+sudo pacman -S python python-msgspec python-xxhash python-pytest ruff mypy librsvg
 ```
 
 On another distribution, install the same packages its own way. The code

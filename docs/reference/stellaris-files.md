@@ -79,8 +79,7 @@ The order of `enabled_mods` is the load order.
 | `playsets_dlcs` | DLC per playset: `playsetId`, `dlcId`, `enabled` |
 
 A `dlcId` is the DLC's folder name (`dlc033_cosmic_storms`), or for older DLC
-the folder name without its number (`arachnoid` for `dlc002_arachnoid`). See
-[dlc.py](../../src/stellaris_patcher/paradox/dlc.py).
+the folder name without its number (`arachnoid` for `dlc002_arachnoid`).
 
 The layout changes between launcher versions.
 [launcher_db.py](../../src/stellaris_patcher/paradox/launcher_db.py) checks for

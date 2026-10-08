@@ -40,15 +40,13 @@ RUN pacman -Syu --noconfirm --needed \
 #     python-msgspec         typed structs, JSON and msgpack
 #     python-xxhash          fast content hashing for change detection
 #   Dev only:
-#     python-pytest, python-pytest-benchmark
-#                            tests and timing regressions
+#     python-pytest          tests
 #     ruff                   lint + format
 #     mypy                   type checking
 RUN pacman -S --noconfirm --needed \
         python-msgspec \
         python-xxhash \
         python-pytest \
-        python-pytest-benchmark \
         ruff \
         mypy \
     && pacman -Scc --noconfirm

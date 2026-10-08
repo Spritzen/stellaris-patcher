@@ -1,4 +1,4 @@
-"""Is the Paradox launcher, the game or Steam running? Read from /proc.
+"""Is the Paradox launcher or the game running? Read from /proc.
 
 The launcher keeps playsets in memory and writes them back, so writing its
 database while it runs would lose our change. The game reads `dlc_load.json`
@@ -10,7 +10,6 @@ from pathlib import Path
 # Names as /proc/<pid>/comm gives them: the program's file name, cut to 15 characters.
 LAUNCHER = frozenset({"dowser", "Paradox Launche"})
 GAME = frozenset({"stellaris"})
-STEAM = frozenset({"steam", "steamwebhelper"})
 
 
 def running(names: frozenset[str], proc: Path = Path("/proc")) -> bool:
