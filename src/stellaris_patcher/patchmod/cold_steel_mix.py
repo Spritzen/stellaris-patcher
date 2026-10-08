@@ -69,9 +69,14 @@ def own_keys(game: Game) -> list[str]:
 
 
 def plan(layers: Layers) -> list[Outcome]:
+    """A fix whose mods are all out of the playset is left out without looking:
+    its cause went with them, and its files may be gone."""
+    present = {layer.key for layer in layers.layers}
     outcomes: list[Outcome] = []
     for number, title, make, mods in FIXES:
         try:
+            if not present.intersection(mods):
+                raise FixError(f"The playset has none of its mods now: {', '.join(mods)}.")
             files, notes = make(layers)
         except FixError as why:
             outcomes.append(Outcome(number, title, left_out=str(why), mods=mods))
@@ -94,6 +99,16 @@ def workshop_description(outcomes: list[Outcome], names: dict[str, str], version
     required = "".join(f"[*]{name}\n" for name in names.values())
     fixes = "".join(f"[*]{o.title}\n" for o in written)
     waiting = "".join(f"[*]{problem}\n" for problem in LEFT_TO_AUTHORS)
+    off = "".join(f"[*]{mod}\n" for mod in SWITCHED_OFF)
+    taken_out = (
+        "\n[h2]Mods taken out of the playset for now[/h2]\n"
+        "These mods are switched off in the playset until they're updated for Stellaris "
+        "4.5.2. We aim to put them back once they are, and the patch's fixes for them "
+        "come back with them.\n"
+        f"[list]\n{off}[/list]\n"
+        if SWITCHED_OFF
+        else ""
+    )
     return (
         f"[h1]{NAME}[/h1]\n"
         f"Fixes clashes and breakages between the mods of the {PLAYSET} playset, "
@@ -106,6 +121,7 @@ def workshop_description(outcomes: list[Outcome], names: dict[str, str], version
         "These come from the mods themselves. The patch leaves them to their authors, "
         "whose next updates should fix them.\n"
         f"[list]\n{waiting}[/list]\n"
+        f"{taken_out}"
     )
 
 
@@ -1114,31 +1130,39 @@ def _fail_text(data: bytes, check: Entry) -> str:
 # Drop a line once its mod has fixed it.
 LEFT_TO_AUTHORS = (
     (
-        "Planetary Diversity, Ascension Worlds and More Events Mod: their copies of the "
-        "game's species traits predate 4.5.2. Unemployment Benefits and the Shroud-Warped "
-        "leader's psionic unity count once per species trait again"
-    ),
-    (
-        "Starbase Extended 3.0: its starbase window predates 4.5. It has no button from an "
-        "orbital ring back to its planet, no design name or retrofit, no macro builder tab, "
-        "and two lists have no scrollbar"
-    ),
-    (
-        "Starbase Extended 3.0: six modules lose one of their two conditions, two bonuses "
-        "check for buildings that don't exist, and one building's condition is broken. Some "
-        "orbital ring sections, sounds and animations are missing, and its orbital ring "
-        "hangar bay costs bio-ship empires energy, not food"
+        "Planetary Diversity and More Events Mod: their copies of the game's species traits "
+        "predate 4.5.2. Unemployment Benefits and the Shroud-Warped leader's psionic unity "
+        "count once per species trait again"
     ),
     (
         "More Events Mod: the Lost Emperor story sometimes can't place its system at game "
         "start. The story then never begins in that galaxy"
     ),
-    "shrimpAI: a Nomadic empire can't build a Hyper Relay at its own waystation",
     (
         "Planetary Diversity: the AI doesn't yet value the Aquatic trait for species that "
         "prefer wet planets, as 4.5.2's AI does"
     ),
     "Dark UI: 4.5.2's new icons, such as the fleet deselect button, aren't dark yet",
+)
+
+
+# The mods switched off in the playset until they update, and why, for the Workshop
+# page (decision 35). Drop a line once its mod is switched back on.
+SWITCHED_OFF = (
+    (
+        "Starbase Extended 3.0: it predates 4.5 and logs dozens of errors each game. Its "
+        "starbase window lacks 4.5's buttons, and some of its modules and buildings check "
+        "for things that no longer exist"
+    ),
+    (
+        "Planetary Diversity - Ascension Worlds: its copies of the game's Lithoid Budding "
+        "trait and terraforming rule predate 4.5.2, and its species traits stack their "
+        "bonuses again"
+    ),
+    (
+        "Smarter Hyper Relays: Improved AI (shrimpAI): a Nomadic empire can't build a Hyper "
+        "Relay at its own waystation"
+    ),
 )
 
 
@@ -1190,7 +1214,7 @@ FIXES: tuple[tuple[int, str, Callable[[Layers], Made], tuple[str, ...]], ...] = 
     ),
     (
         7,
-        "Six missing names and tooltips",
+        "Missing names and tooltips",
         fix_text,
         (REAL_SPACE, SHIPS_IN_SCALING, STARBASE_EXTENDED),
     ),

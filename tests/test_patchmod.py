@@ -378,6 +378,16 @@ def test_the_workshop_description_lists_needed_mods_once_and_written_fixes() -> 
     assert "Fix three" not in text
     waiting = text.partition("[h2]Known issues, waiting for the mod authors[/h2]")[2]
     assert all(f"[*]{problem}\n" in waiting for problem in cold_steel_mix.LEFT_TO_AUTHORS)
+    off = waiting.partition("[h2]Mods taken out of the playset for now[/h2]")[2]
+    assert all(f"[*]{mod}\n" in off for mod in cold_steel_mix.SWITCHED_OFF)
+
+
+def test_the_workshop_description_has_no_taken_out_section_when_every_mod_is_on(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(cold_steel_mix, "SWITCHED_OFF", ())
+    text = cold_steel_mix.workshop_description([], {}, "v4.5.2")
+    assert "taken out" not in text and text.endswith("[/list]\n")
 
 
 def test_fix_10_ships_the_games_text_and_mends_the_tooltips(game: Game) -> None:
@@ -692,6 +702,24 @@ def test_fix_19_is_left_out_once_the_mods_copies_have_the_games_lines(game: Game
         cold_steel_mix.fix_ascension_worlds(_ascension_worlds(game, budding, rule))
 
 
+# Mods out of the playset
+
+
+def test_a_fix_is_left_out_while_its_mods_are_out_of_the_playset(
+    game: Game, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    made: cold_steel_mix.Made = ({"a.txt": b"a"}, [])
+    real_space, starbase = cold_steel_mix.REAL_SPACE, cold_steel_mix.STARBASE_EXTENDED
+    fixes = (
+        (3, "Three", lambda _: made, (starbase,)),
+        (7, "Seven", lambda _: made, (real_space, starbase)),
+    )
+    monkeypatch.setattr(cold_steel_mix, "FIXES", fixes)
+    three, seven = cold_steel_mix.plan(_layers(game, {real_space: {"a.txt": "a"}}))
+    assert three.left_out == f"The playset has none of its mods now: {starbase}."
+    assert seven.files == {"a.txt": b"a"}  # one of its mods is enough
+
+
 def test_own_keys_include_the_workshop_copy_once_uploaded(
     game: Game, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -706,7 +734,7 @@ def test_own_keys_include_the_workshop_copy_once_uploaded(
 
 
 @pytest.mark.real_install
-def test_every_fix_applies_to_the_real_cold_steel_mix() -> None:
+def test_every_fix_with_a_mod_in_the_real_cold_steel_mix_applies() -> None:
     try:
         game = find_game(DEFAULT_STEAM_DIRS)
     except GameNotFound:
@@ -717,7 +745,8 @@ def test_every_fix_applies_to_the_real_cold_steel_mix() -> None:
         pytest.skip("Cold Steel has no Cold Steel Mix playset here.")
     layers = Layers.for_playset(found[0], game, skip=cold_steel_mix.own_keys(game))
     outcomes = cold_steel_mix.plan(layers)
-    assert [o.left_out for o in outcomes] == [""] * len(cold_steel_mix.FIXES)
+    gone = "The playset has none of its mods now"
+    assert [o.left_out for o in outcomes if o.left_out and not o.left_out.startswith(gone)] == []
     files = {p: d for o in outcomes for p, d in o.files.items()}
     assert check_files(files) == []
     order = [layer.key for layer in layers.layers]
