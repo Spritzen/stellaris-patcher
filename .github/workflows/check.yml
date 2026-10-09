@@ -19,7 +19,9 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
-    container: archlinux:latest
+    # Docker's official image, from Amazon's public copy: Docker Hub limits anonymous
+    # pulls, and GitHub's runners share addresses (decision 38).
+    container: public.ecr.aws/docker/library/archlinux:latest
     steps:
       - name: Install packages
         run: |
