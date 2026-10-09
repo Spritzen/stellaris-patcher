@@ -11,8 +11,8 @@ and fixes 15–17 and 19 from the
 [4.5.2 first-run report](../reports/2026-10-07-cold-steel-mix-4.5.2-first-run.md#what-to-do-next).
 Problems it leaves to the mods' authors are listed on its Workshop page
 ([Left to the authors](#left-to-the-authors)).
-Fixes 2, 3 and 19 are left out for now: their mods are
-[switched off](#mods-switched-off-for-now).
+Fixes 2 and 3, and fix 19's terraforming half, are left out for now: their
+mods are [switched off](#mods-switched-off-for-now).
 The code is [cold_steel_mix.py](../../src/stellaris_patcher/patchmod/cold_steel_mix.py).
 
 ## Build it
@@ -59,7 +59,7 @@ one line per mod. The section goes once the list is empty.
 | Mod | Why | Fixes left out |
 |---|---|---|
 | Starbase Extended 3.0 | 47 load errors each run, a starbase window from before 4.5, and the modules, buildings and sections in [Left to the authors](#left-to-the-authors) | 2, 3, and its text key in 7 |
-| Planetary Diversity - Ascension Worlds | Its Lithoid Budding and terraforming rule are copies from before 4.5.2, and it added to the trait stacking (item 18) | 19, and one tooltip in 10 |
+| Planetary Diversity - Ascension Worlds | Its Lithoid Budding and terraforming rule are copies from before 4.5.2, and it added to the trait stacking (item 18) | 19's terraforming half, and one tooltip in 10. Its Lithoid Budding half now patches Planetary Diversity's copy |
 | Smarter Hyper Relays: Improved AI (shrimpAI) | A Nomadic empire can't build a Hyper Relay at its own waystation | None |
 
 To bring one back:
@@ -72,6 +72,12 @@ To bring one back:
    `LEFT_TO_AUTHORS`. They were taken out in the change that switched it off.
    Drop its line from `SWITCHED_OFF`.
 4. At the next upload, add it back to the Workshop page's **Required items**.
+
+**Switching a mod off can put another mod's older copy back in use.** With
+Ascension Worlds off, Planetary Diversity's Lithoid Budding came back
+([three-mods-off report](../reports/2026-10-09-cold-steel-mix-three-mods-off.md#planetary-diversitys-lithoid-budding)).
+After switching one off, run the [update check](../update-check.md) and read
+the copies it lists as new.
 
 ## Add a fix
 
@@ -149,12 +155,12 @@ UI) and the [pre-upload report](../reports/2026-10-07-cold-steel-mix-pre-upload.
 | `events/!!_stellaris_patcher_cold_steel_mix_stuck_in_glacier.txt` | One of More Events Mod's events, with one word changed |
 | `common/component_templates/mutation_weapon_components.csv` | Real Space - Ships in Scaling's whole file, with one range changed |
 | `common/solar_system_initializers/!!_stellaris_patcher_cold_steel_mix_supercomputer.txt` | One of Real Space 4.0's systems, with one flag removed |
-| `common/traits/!!_stellaris_patcher_cold_steel_mix_ascension_worlds.txt` | Planetary Diversity - Ascension Worlds' Lithoid Budding, with one line added |
+| `common/traits/!!_stellaris_patcher_cold_steel_mix_lithoid_budding.txt` | Lithoid Budding from Planetary Diversity, or from Ascension Worlds while it's on, with one line added |
 | `common/game_rules/zz_stellaris_patcher_cold_steel_mix_terraform.txt` | Ascension Worlds' terraforming rule, with two of the game's checks added |
 
 The game's own files are fine to ship in a mod. The others need their
-authors' permission, or fixes 3, 5, 11, 12, 16, 17 and 19 left out. Fixes 3
-and 19 aren't shipped while their mods are
+authors' permission, or fixes 3, 5, 11, 12, 16, 17 and 19 left out. Fix 3
+and fix 19's rule aren't shipped while their mods are
 [switched off](#mods-switched-off-for-now).
 
 ## What each fix does
@@ -174,7 +180,7 @@ and 19 aren't shipped while their mods are
 | 15 | More Events Mod's three Progenitor shields use `@shield_*_t7_upkeep_*`, which 4.5.2 renamed to `@defense_*_t7_upkeep_*`, so they have no upkeep | A `common/scripted_variables/` file that defines each old name a component still uses, with the game's value for its new name |
 | 16 | Ships in Scaling's copy of `mutation_weapon_components.csv` predates 4.5.2, so the Large Mega Bombard keeps a range of 2 | Ships in Scaling's whole file, with each range it missed set to the one it gives every other weapon with the same game range: 100 → 17. A range is only changed when at least two other rows agree ([decision 31](../decisions.md)) |
 | 17 | Real Space 4.0's copy of the Surveillance Supercomputer system keeps the `sealed_system` flag 4.5.2 removed, so jump drive fleets can't enter | A copy of that one system without the flag, in a file whose name starts `!!_`. Initializers go to the first file by name |
-| 19 | Ascension Worlds' Lithoid Budding lacks 4.5.2's `divide_over_pop_groups = no` on the Massive Crater bonus. Its terraforming rule lacks the game's checks for a consecrated world and a Knights detox in progress | A copy of the trait, with the game's line added, in a `!!_` file. A copy of the rule, with the two checks added, in a `zz_` file: game rules go to the last file by name. The legendary leader check Ascension Worlds comments out on purpose stays out ([decision 32](../decisions.md)) |
+| 19 | Planetary Diversity's and Ascension Worlds' Lithoid Budding lack 4.5.2's `divide_over_pop_groups = no` on the Massive Crater bonus. Ascension Worlds' terraforming rule lacks the game's checks for a consecrated world and a Knights detox in progress | A copy of the trait in use, with the game's line added, in a `!!_` file. Both mods ship a whole `04_species_traits.txt`, and Ascension Worlds' replaces Planetary Diversity's, so the copy is from whichever is on ([decision 37](../decisions.md)). Only Ascension Worlds has the rule: a copy of it, with the two checks added, in a `zz_` file: game rules go to the last file by name. A copy of the rule, with the two checks added, in a `zz_` file: game rules go to the last file by name. The legendary leader check Ascension Worlds comments out on purpose stays out ([decision 32](../decisions.md)) |
 
 ### Notes
 
@@ -235,6 +241,7 @@ These weren't seen in game yet:
   [pre-upload run](../reports/2026-10-07-cold-steel-mix-pre-upload.md#the-patchs-fixes)
   had it.
 - A lithoid species with Lithoid Budding on a Massive Crater gets the full
-  bonus, and a consecrated world can't be terraformed (fix 19). Not until
-  Ascension Worlds is [switched on](#mods-switched-off-for-now) again. That traits
-  go to the first file by name hasn't been checked either.
+  bonus (fix 19). That traits go to the first file by name hasn't been
+  checked either.
+- A consecrated world can't be terraformed (fix 19). Not until Ascension
+  Worlds is [switched on](#mods-switched-off-for-now) again.
