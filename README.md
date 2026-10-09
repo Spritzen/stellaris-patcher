@@ -89,10 +89,11 @@ This is how the project is developed
 ([.devcontainer/](.devcontainer/), [decision 5](docs/decisions.md)).
 
 1. **Run Stellaris and Cold Steel once on the host**, so their folders exist.
-2. **Open the folder in VS Code** and choose **Reopen in Container**. The
+2. **Open the folder in VS Code** and (F1) choose **Rebuild and Reopen in Container**. The
    container is Arch Linux. Every package comes from pacman, so there's no
    venv and nothing to `pip install` ([decision 2](docs/decisions.md)).
-3. **Read the post-create output.** It installs Claude Code, takes one-time
+   You only need to rebuild once and then you can just select **Reopen in Container**.
+4. **Read the post-create output.** It installs Claude Code, takes one-time
    backups of the launcher's database and Cold Steel's playsets, and checks
    each mount. A red ✗ names what's missing.
 
