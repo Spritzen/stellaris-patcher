@@ -36,6 +36,7 @@ RUN pacman -Syu --noconfirm --needed \
     && pacman -Scc --noconfirm
 
 # Application stack: Python, all from Arch's official repos -- no venv, no pip.
+# CI installs the same list: keep .github/workflows/check.yml in step.
 #   Runtime:
 #     python-msgspec         typed structs, JSON and msgpack
 #     python-xxhash          fast content hashing for change detection

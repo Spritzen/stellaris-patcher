@@ -11,6 +11,9 @@ done.
 | `make test` | Runs the tests |
 | `make docs` | Checks that every link in the docs points at a real file and heading |
 
+GitHub runs `make check` too, on every pull request and every push to `main`
+([check.yml](../.github/workflows/check.yml), [decision 36](decisions.md)).
+
 To build a patch mod, see [patches/cold-steel-mix.md](patches/cold-steel-mix.md). After
 a game or mod update, see [update-check.md](update-check.md).
 
@@ -36,20 +39,37 @@ the user asks.
    gh pr create --base main --head <branch> --title "…" --body-file -
    ```
 
-4. **Merge it with a merge commit.** Squash or rebase would leave the branch
-   unmerged as far as git can tell, and step 6 would skip it.
+4. **Wait for GitHub's check to finish.** GitHub runs `make check` on the PR
+   ([decision 36](decisions.md)). It takes a minute or two. For a few seconds
+   after the PR opens, GitHub reports no checks, and `--watch` would stop at
+   once, so wait for the check to show up first:
+
+   ```sh
+   until gh pr checks <number> 2>&1 | grep -qv 'no checks reported'; do sleep 5; done
+   gh pr checks <number> --watch --fail-fast
+   ```
+
+   **If it fails, don't merge.** Read why, fix it on the branch, run
+   `make check`, commit, push, and wait again:
+
+   ```sh
+   gh run view --log-failed $(gh run list --branch <branch> --limit 1 --json databaseId --jq '.[0].databaseId')
+   ```
+
+5. **Once it passes, merge with a merge commit.** Squash or rebase would
+   leave the branch unmerged as far as git can tell, and step 7 would skip it.
 
    ```sh
    gh pr merge <number> --merge
    ```
 
-5. **Go back to `main`** and bring it up to date:
+6. **Go back to `main`** and bring it up to date:
 
    ```sh
    git switch main && git pull --ff-only && git fetch --prune
    ```
 
-6. **Delete every branch merged into `main`**, locally and on GitHub. List
+7. **Delete every branch merged into `main`**, locally and on GitHub. List
    them first, and never delete `main`:
 
    ```sh

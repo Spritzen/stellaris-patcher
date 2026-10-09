@@ -1,0 +1,35 @@
+# Runs `make check` on every pull request and on main (decision 36).
+# Arch, with the same pacman packages as the dev container, so ruff, mypy
+# and Python match. Keep the package list in step with .devcontainer/Dockerfile.
+
+name: check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - name: Install packages
+        run: |
+          pacman -Syu --noconfirm --needed \
+              git make python \
+              python-msgspec python-xxhash \
+              python-pytest ruff mypy
+
+      - uses: actions/checkout@v5
+
+      # The real-install tests skip themselves: there's no Stellaris or Cold Steel here.
+      - name: make check
+        run: make check
