@@ -1026,10 +1026,12 @@ def _flags(data: bytes, entry: Entry) -> set[bytes]:
     return set(_COMMENT.sub(b"", data[start:end]).split())
 
 
-# 19. Ascension Worlds' copies miss two of the game's fixes
+# 19. Planetary Diversity's and Ascension Worlds' copies miss two of the game's fixes
 
 
 BUDDING = "trait_lithoid_budding"
+# Both ship a whole 04_species_traits.txt. Ascension Worlds' replaces Planetary Diversity's.
+BUDDING_MODS = {PLANETARY_DIVERSITY: "Planetary Diversity", ASCENSION_WORLDS: "Ascension Worlds"}
 POP_MODIFIER = b"triggered_planet_pop_group_modifier_for_species"
 DIVIDE = b"divide_over_pop_groups"
 GAME_RULES = "common/game_rules"
@@ -1037,9 +1039,9 @@ TERRAFORM = "can_terraform_planet"
 
 
 def fix_ascension_worlds(layers: Layers) -> Made:
-    """Ascension Worlds' Lithoid Budding and terraforming rule, with the
-    game's lines they lack. A check Ascension Worlds comments out on purpose
-    stays out."""
+    """Lithoid Budding, from Planetary Diversity or Ascension Worlds, and
+    Ascension Worlds' terraforming rule, with the game's lines they lack. A
+    check Ascension Worlds comments out on purpose stays out."""
     files: dict[str, bytes] = {}
     notes: list[str] = []
     for part in (_budding, _terraform):
@@ -1051,7 +1053,7 @@ def fix_ascension_worlds(layers: Layers) -> Made:
         files[path] = data
         notes.append(note)
     if not files:
-        raise FixError("Ascension Worlds' trait and rule match the game's now.")
+        raise FixError("The trait and rule match the game's now.")
     return files, notes
 
 
@@ -1059,8 +1061,9 @@ def _budding(layers: Layers) -> tuple[str, bytes, str]:
     """Each of the trait's pop modifiers gets the game's `divide_over_pop_groups`
     where it lacks one. 4.5.2 gave the Massive Crater's its full bonus."""
     traits = layers.defined("common/traits")
-    if traits.get(BUDDING, ("",))[0] != ASCENSION_WORLDS:
-        raise FixError(f"{BUDDING} doesn't come from Ascension Worlds now.")
+    owner = traits.get(BUDDING, ("",))[0]
+    if owner not in BUDDING_MODS:
+        raise FixError(f"{BUDDING} doesn't come from Planetary Diversity or Ascension Worlds now.")
     data = layers.read(*traits[BUDDING])
     entry = next(e for e in scan(data) if e.key == BUDDING.encode() and e.block)
     game_data, game_entry = _game_entry(layers, "common/traits", BUDDING)
@@ -1079,8 +1082,11 @@ def _budding(layers: Layers) -> tuple[str, bytes, str]:
     if not edits:
         raise FixError(f"{BUDDING}'s pop modifiers divide as the game's do now.")
     text = _copy(layers, data, entry, _mended(data, entry, edits))
-    note = f"{BUDDING}: {len(edits)} pop modifier gets the game's {DIVIDE.decode()}"
-    return _first_file(layers, "common/traits", "ascension_worlds"), text, note
+    note = (
+        f"{BUDDING}, from {BUDDING_MODS[owner]}: {len(edits)} pop modifier gets the game's "
+        f"{DIVIDE.decode()}"
+    )
+    return _first_file(layers, "common/traits", "lithoid_budding"), text, note
 
 
 def _terraform(layers: Layers) -> tuple[str, bytes, str]:
@@ -1257,10 +1263,10 @@ FIXES: tuple[tuple[int, str, Callable[[Layers], Made], tuple[str, ...]], ...] = 
     (
         19,
         (
-            "Ascension Worlds: Lithoid Budding gets its full bonus on a Massive Crater, and "
+            "Lithoid Budding gets its full bonus on a Massive Crater and, with Ascension Worlds, "
             "consecrated worlds and worlds being detoxified can't be terraformed, as in 4.5.2"
         ),
         fix_ascension_worlds,
-        (ASCENSION_WORLDS,),
+        (PLANETARY_DIVERSITY, ASCENSION_WORLDS),
     ),
 )

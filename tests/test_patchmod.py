@@ -656,7 +656,7 @@ def test_fix_17_is_left_out_once_real_space_drops_the_seal(game: Game) -> None:
         cold_steel_mix.fix_supercomputer_seal(layers)
 
 
-# Fix 19: Ascension Worlds' trait and terraforming rule
+# Fix 19: Lithoid Budding, and Ascension Worlds' terraforming rule
 
 SPECIES_TRAITS = "common/traits/04_species_traits.txt"
 BUDDING = """trait_lithoid_budding = {\r
@@ -681,15 +681,20 @@ LEGENDARY\tcustom_tooltip = { fail_text = "legendary_leader_planet_no_terraform"
 """
 
 
+LITHOID_BUDDING = "common/traits/!!_stellaris_patcher_cold_steel_mix_lithoid_budding.txt"
+GAME_BUDDING = {
+    SPECIES_TRAITS: BUDDING.replace("DIVIDE", "divide_over_pop_groups = no"),
+    RULES: TERRAFORM.replace("LEGENDARY", ""),
+    "common/scripted_variables/00_vars.txt": "@budding_rate = 0.02\n",
+}
+
+
 def _ascension_worlds(game: Game, budding: str, rule: str) -> Layers:
     return _layers(
         game,
         {
-            GAME: {
-                SPECIES_TRAITS: BUDDING.replace("DIVIDE", "divide_over_pop_groups = no"),
-                RULES: TERRAFORM.replace("LEGENDARY", ""),
-                "common/scripted_variables/00_vars.txt": "@budding_rate = 0.02\n",
-            },
+            GAME: GAME_BUDDING,
+            cold_steel_mix.PLANETARY_DIVERSITY: {SPECIES_TRAITS: BUDDING.replace("DIVIDE", "")},
             cold_steel_mix.ASCENSION_WORLDS: {
                 SPECIES_TRAITS: budding,
                 "common/game_rules/pd_terraformrulesreplace.txt": rule,
@@ -703,15 +708,34 @@ def test_fix_19_adds_the_games_lines_but_keeps_the_mods_own_choice(game: Game) -
     lines = TERRAFORM.replace("LEGENDARY\tcustom", "\t# custom").splitlines(keepends=True)
     rule = "".join(line for line in lines if "consecrated" not in line)
     files, notes = cold_steel_mix.fix_ascension_worlds(_ascension_worlds(game, budding, rule))
-    trait = files["common/traits/!!_stellaris_patcher_cold_steel_mix_ascension_worlds.txt"]
+    trait = files[LITHOID_BUDDING]
     assert trait.count(b"divide_over_pop_groups = no") == 2 and b"\r" not in trait
     terraform = files["common/game_rules/zz_stellaris_patcher_cold_steel_mix_terraform.txt"]
     assert b"fail_text = terraform_fail_consecrated NOT = { has_modifier = c }" in terraform
     assert b"\t# custom_tooltip" in terraform  # still commented out
     assert notes == [
-        "trait_lithoid_budding: 1 pop modifier gets the game's divide_over_pop_groups",
+        "trait_lithoid_budding, from Ascension Worlds: 1 pop modifier gets the game's "
+        "divide_over_pop_groups",
         "can_terraform_planet: adds terraform_fail_consecrated; keeps out "
         "legendary_leader_planet_no_terraform, as Ascension Worlds chose",
+    ]
+    assert check_files(files) == []
+
+
+def test_fix_19_mends_planetary_diversitys_budding_while_ascension_worlds_is_off(
+    game: Game,
+) -> None:
+    budding = BUDDING.replace("DIVIDE", "divide_over_pop_groups = no", 1).replace("DIVIDE", "")
+    layers = _layers(
+        game, {GAME: GAME_BUDDING, cold_steel_mix.PLANETARY_DIVERSITY: {SPECIES_TRAITS: budding}}
+    )
+    files, notes = cold_steel_mix.fix_ascension_worlds(layers)
+    assert list(files) == [LITHOID_BUDDING]
+    assert files[LITHOID_BUDDING].count(b"divide_over_pop_groups = no") == 2
+    assert notes == [
+        "trait_lithoid_budding, from Planetary Diversity: 1 pop modifier gets the game's "
+        "divide_over_pop_groups",
+        "can_terraform_planet doesn't come from Ascension Worlds now. Skipped.",
     ]
     assert check_files(files) == []
 
