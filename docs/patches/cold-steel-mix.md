@@ -1,6 +1,6 @@
 # Cold Steel Mix patch
 
-**A mod named "Cold Steel Mix patch" that fixes 14 problems in the Cold
+**A mod named "Cold Steel Mix patch" that fixes 15 problems in the Cold
 Steel Mix playset.** They're fixes 1–7 from the
 [third run's report](../reports/2026-10-03-cold-steel-mix-errors-run-3.md#what-a-patch-mod-could-fix),
 fix 10 from the
@@ -8,7 +8,8 @@ fix 10 from the
 fixes 11 and 12 from the
 [new-galaxy report](../reports/2026-10-05-cold-steel-mix-new-galaxy.md#what-to-do-next),
 and fixes 15–17 and 19 from the
-[4.5.2 first-run report](../reports/2026-10-07-cold-steel-mix-4.5.2-first-run.md#what-to-do-next).
+[4.5.2 first-run report](../reports/2026-10-07-cold-steel-mix-4.5.2-first-run.md#what-to-do-next),
+and fix 25 from the localisation errors Cold Steel lists for the playset.
 Problems it leaves to the mods' authors are listed on its Workshop page
 ([Left to the authors](#left-to-the-authors)).
 Fixes 2 and 3, and fix 19's terraforming half, are left out for now: their
@@ -124,7 +125,8 @@ next upload
 - On the Workshop page, add the same mods as **Required items**. Steam doesn't
   read `dependencies`. Remove any it no longer lists: at the next upload,
   Starbase Extended 3.0 and Ascension Worlds
-  ([switched off](#mods-switched-off-for-now)).
+  ([switched off](#mods-switched-off-for-now)). Add Planetary Diversity -
+  More Arcologies, which fix 25 patches.
 
 ### Left to the authors
 
@@ -157,9 +159,11 @@ UI) and the [pre-upload report](../reports/2026-10-07-cold-steel-mix-pre-upload.
 | `common/solar_system_initializers/!!_stellaris_patcher_cold_steel_mix_supercomputer.txt` | One of Real Space 4.0's systems, with one flag removed |
 | `common/traits/!!_stellaris_patcher_cold_steel_mix_lithoid_budding.txt` | Lithoid Budding from Planetary Diversity, or from Ascension Worlds while it's on, with one line added |
 | `common/game_rules/zz_stellaris_patcher_cold_steel_mix_terraform.txt` | Ascension Worlds' terraforming rule, with two of the game's checks added |
+| Seven `localisation/<language>/planetarydiversity_…` files | Planetary Diversity's whole files, with broken lines mended |
+| Two `localisation/<language>/planetarydiversity_more_arcologies_…` files | Planetary Diversity - More Arcologies' whole files, with one line mended in each |
 
 The game's own files are fine to ship in a mod. The others need their
-authors' permission, or fixes 3, 5, 11, 12, 16, 17 and 19 left out. Fix 3
+authors' permission, or fixes 3, 5, 11, 12, 16, 17, 19 and 25 left out. Fix 3
 and fix 19's rule aren't shipped while their mods are
 [switched off](#mods-switched-off-for-now).
 
@@ -181,6 +185,7 @@ and fix 19's rule aren't shipped while their mods are
 | 16 | Ships in Scaling's copy of `mutation_weapon_components.csv` predates 4.5.2, so the Large Mega Bombard keeps a range of 2 | Ships in Scaling's whole file, with each range it missed set to the one it gives every other weapon with the same game range: 100 → 17. A range is only changed when at least two other rows agree ([decision 31](../decisions.md)) |
 | 17 | Real Space 4.0's copy of the Surveillance Supercomputer system keeps the `sealed_system` flag 4.5.2 removed, so jump drive fleets can't enter | A copy of that one system without the flag, in a file whose name starts `!!_`. Initializers go to the first file by name |
 | 19 | Planetary Diversity's and Ascension Worlds' Lithoid Budding lack 4.5.2's `divide_over_pop_groups = no` on the Massive Crater bonus. Ascension Worlds' terraforming rule lacks the game's checks for a consecrated world and a Knights detox in progress | A copy of the trait in use, with the game's line added, in a `!!_` file. Both mods ship a whole `04_species_traits.txt`, and Ascension Worlds' replaces Planetary Diversity's, so the copy is from whichever is on ([decision 37](../decisions.md)). Only Ascension Worlds has the rule: a copy of it, with the two checks added, in a `zz_` file: game rules go to the last file by name. A copy of the rule, with the two checks added, in a `zz_` file: game rules go to the last file by name. The legendary leader check Ascension Worlds comments out on purpose stays out ([decision 32](../decisions.md)) |
+| 25 | Lines in Planetary Diversity's and More Arcologies' translations the game can't read: quotes missing (German, Russian, Polish), German text with no key, and German obsidian world text pasted in after its own key (also Japanese, Korean and Russian, which read but show the key) | Each broken file whole, at its own path, with the lines mended. The keyless line takes the key the mod's English file has in its place ([decision 39](../decisions.md)). A file whose line no rule mends is skipped |
 
 ### Notes
 
