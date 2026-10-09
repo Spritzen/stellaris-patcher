@@ -43,7 +43,9 @@ RUN pacman -Syu --noconfirm --needed \
 #     python-pytest          tests
 #     ruff                   lint + format
 #     mypy                   type checking
-RUN pacman -S --noconfirm --needed \
+# -Syu, not -S: the layer above may come from the build cache with an old
+# package database, and mirrors drop old package versions (404 on download).
+RUN pacman -Syu --noconfirm --needed \
         python-msgspec \
         python-xxhash \
         python-pytest \
