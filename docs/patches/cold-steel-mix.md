@@ -12,8 +12,8 @@ and fixes 15–17 and 19 from the
 and fix 25 from the localisation errors Cold Steel lists for the playset.
 Problems it leaves to the mods' authors are listed on its Workshop page
 ([Left to the authors](#left-to-the-authors)).
-Fixes 2 and 3, and fix 19's terraforming half, are left out for now: their
-mods are [switched off](#mods-switched-off-for-now).
+Fixes 2 and 3 are left out for now: their mod is
+[switched off](#mods-switched-off-for-now).
 The code is [cold_steel_mix.py](../../src/stellaris_patcher/patchmod/cold_steel_mix.py).
 
 ## Build it
@@ -50,7 +50,7 @@ it patches is switched on in the playset.
 
 ## Mods switched off for now
 
-**Three mods are switched off in the playset until they update for 4.5.2**
+**Two mods are switched off in the playset until they update for 4.5.2**
 ([decision 35](../decisions.md)). They stay in the playset, so they're one
 switch from coming back. The Workshop description ends with them, and says
 we aim to put them back: `SWITCHED_OFF` in
@@ -60,7 +60,6 @@ one line per mod. The section goes once the list is empty.
 | Mod | Why | Fixes left out |
 |---|---|---|
 | Starbase Extended 3.0 | 47 load errors each run, a starbase window from before 4.5, and the modules, buildings and sections in [Left to the authors](#left-to-the-authors) | 2, 3, and its text key in 7 |
-| Planetary Diversity - Ascension Worlds | Its Lithoid Budding and terraforming rule are copies from before 4.5.2, and it added to the trait stacking (item 18) | 19's terraforming half, and one tooltip in 10. Its Lithoid Budding half now patches Planetary Diversity's copy |
 | Smarter Hyper Relays: Improved AI (shrimpAI) | A Nomadic empire can't build a Hyper Relay at its own waystation | None |
 
 To bring one back:
@@ -124,9 +123,9 @@ next upload
   same Workshop item.
 - On the Workshop page, add the same mods as **Required items**. Steam doesn't
   read `dependencies`. Remove any it no longer lists: at the next upload,
-  Starbase Extended 3.0 and Ascension Worlds
-  ([switched off](#mods-switched-off-for-now)). Add Planetary Diversity -
-  More Arcologies, which fix 25 patches.
+  Starbase Extended 3.0 ([switched off](#mods-switched-off-for-now)). Keep
+  Planetary Diversity - Ascension Worlds, which is back on. Add Planetary
+  Diversity - More Arcologies, which fix 25 patches.
 
 ### Left to the authors
 
@@ -157,14 +156,15 @@ UI) and the [pre-upload report](../reports/2026-10-07-cold-steel-mix-pre-upload.
 | `events/!!_stellaris_patcher_cold_steel_mix_stuck_in_glacier.txt` | One of More Events Mod's events, with one word changed |
 | `common/component_templates/mutation_weapon_components.csv` | Real Space - Ships in Scaling's whole file, with one range changed |
 | `common/solar_system_initializers/!!_stellaris_patcher_cold_steel_mix_supercomputer.txt` | One of Real Space 4.0's systems, with one flag removed |
-| `common/traits/!!_stellaris_patcher_cold_steel_mix_lithoid_budding.txt` | Lithoid Budding from Planetary Diversity, or from Ascension Worlds while it's on, with one line added |
+| `common/traits/!!_stellaris_patcher_cold_steel_mix_lithoid_budding.txt` | Lithoid Budding from Ascension Worlds, or from Planetary Diversity while Ascension Worlds is off, with one line added |
 | `common/game_rules/zz_stellaris_patcher_cold_steel_mix_terraform.txt` | Ascension Worlds' terraforming rule, with two of the game's checks added |
 | Seven `localisation/<language>/planetarydiversity_…` files | Planetary Diversity's whole files, with broken lines mended |
+| Ten `localisation/<language>/planetarydiversity_aw_…` files | Planetary Diversity - Ascension Worlds' whole files, with one line mended in each |
 | Two `localisation/<language>/planetarydiversity_more_arcologies_…` files | Planetary Diversity - More Arcologies' whole files, with one line mended in each |
 
 The game's own files are fine to ship in a mod. The others need their
 authors' permission, or fixes 3, 5, 11, 12, 16, 17, 19 and 25 left out. Fix 3
-and fix 19's rule aren't shipped while their mods are
+isn't shipped while Starbase Extended is
 [switched off](#mods-switched-off-for-now).
 
 ## What each fix does
@@ -184,8 +184,8 @@ and fix 19's rule aren't shipped while their mods are
 | 15 | More Events Mod's three Progenitor shields use `@shield_*_t7_upkeep_*`, which 4.5.2 renamed to `@defense_*_t7_upkeep_*`, so they have no upkeep | A `common/scripted_variables/` file that defines each old name a component still uses, with the game's value for its new name |
 | 16 | Ships in Scaling's copy of `mutation_weapon_components.csv` predates 4.5.2, so the Large Mega Bombard keeps a range of 2 | Ships in Scaling's whole file, with each range it missed set to the one it gives every other weapon with the same game range: 100 → 17. A range is only changed when at least two other rows agree ([decision 31](../decisions.md)) |
 | 17 | Real Space 4.0's copy of the Surveillance Supercomputer system keeps the `sealed_system` flag 4.5.2 removed, so jump drive fleets can't enter | A copy of that one system without the flag, in a file whose name starts `!!_`. Initializers go to the first file by name |
-| 19 | Planetary Diversity's and Ascension Worlds' Lithoid Budding lack 4.5.2's `divide_over_pop_groups = no` on the Massive Crater bonus. Ascension Worlds' terraforming rule lacks the game's checks for a consecrated world and a Knights detox in progress | A copy of the trait in use, with the game's line added, in a `!!_` file. Both mods ship a whole `04_species_traits.txt`, and Ascension Worlds' replaces Planetary Diversity's, so the copy is from whichever is on ([decision 37](../decisions.md)). Only Ascension Worlds has the rule: a copy of it, with the two checks added, in a `zz_` file: game rules go to the last file by name. A copy of the rule, with the two checks added, in a `zz_` file: game rules go to the last file by name. The legendary leader check Ascension Worlds comments out on purpose stays out ([decision 32](../decisions.md)) |
-| 25 | Lines in Planetary Diversity's and More Arcologies' translations the game can't read: quotes missing (German, Russian, Polish), German text with no key, and German obsidian world text pasted in after its own key (also Japanese, Korean and Russian, which read but show the key) | Each broken file whole, at its own path, with the lines mended. The keyless line takes the key the mod's English file has in its place ([decision 39](../decisions.md)). A file whose line no rule mends is skipped |
+| 19 | Planetary Diversity's and Ascension Worlds' Lithoid Budding lack 4.5.2's `divide_over_pop_groups = no` on the Massive Crater bonus. Ascension Worlds' terraforming rule lacks the game's checks for a consecrated world and a Knights detox in progress | A copy of the trait in use, with the game's line added, in a `!!_` file. Both mods ship a whole `04_species_traits.txt`, and Ascension Worlds' replaces Planetary Diversity's, so the copy is from whichever is on ([decision 37](../decisions.md)). Only Ascension Worlds has the rule: a copy of it, with the two checks added, in a `zz_` file: game rules go to the last file by name. The legendary leader check Ascension Worlds comments out on purpose stays out ([decision 32](../decisions.md)) |
+| 25 | Lines in Planetary Diversity's, Ascension Worlds' and More Arcologies' translations the game can't read: quotes missing (German, Russian, Polish), text with no key (German, and Ascension Worlds' flooded world tooltip in all nine translations), and German obsidian world text pasted in after its own key (also Japanese, Korean and Russian, which read but show the key) | Each broken file whole, at its own path, with the lines mended. The keyless line takes the key the mod's English file has in its place ([decision 39](../decisions.md)). A file whose line no rule mends is skipped |
 
 ### Notes
 
@@ -214,6 +214,10 @@ and fix 19's rule aren't shipped while their mods are
 [fourth run](../reports/2026-10-03-cold-steel-mix-errors-run-4.md) and, for
 fix 4, the [solid-background run](../reports/2026-10-03-cold-steel-mix-solid-background.md).
 Later runs found none back.
+
+**Fix 25 cleared every localisation error Cold Steel's health check listed**:
+Planetary Diversity's and More Arcologies' 7, and on 9 October Ascension
+Worlds' 10, once it was back on. Cold Steel's health check passes.
 
 These weren't seen in game yet:
 
@@ -248,5 +252,4 @@ These weren't seen in game yet:
 - A lithoid species with Lithoid Budding on a Massive Crater gets the full
   bonus (fix 19). That traits go to the first file by name hasn't been
   checked either.
-- A consecrated world can't be terraformed (fix 19). Not until Ascension
-  Worlds is [switched on](#mods-switched-off-for-now) again.
+- A consecrated world can't be terraformed (fix 19).

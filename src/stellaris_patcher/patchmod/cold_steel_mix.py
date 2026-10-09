@@ -1135,7 +1135,11 @@ def _fail_text(data: bytes, check: Entry) -> str:
 # 25. Lines in Planetary Diversity's translations the game can't read
 
 
-TEXT_MODS = {PLANETARY_DIVERSITY: "Planetary Diversity", MORE_ARCOLOGIES: "More Arcologies"}
+TEXT_MODS = {
+    PLANETARY_DIVERSITY: "Planetary Diversity",
+    ASCENSION_WORLDS: "Ascension Worlds",
+    MORE_ARCOLOGIES: "More Arcologies",
+}
 _LINE = re.compile(r'^\s*([^\s:#"]+)\s*:\s*\d*\s*"(.*)"\s*(?:#.*)?$')
 _NO_CLOSE = re.compile(r'^\s*([^\s:#"]+)\s*:\s*\d*\s*"[^"]*$')
 _NO_OPEN = re.compile(r'^\s*([^\s:#"]+)\s*:\s*\d*\s*()[^"\s][^"]*"$')
@@ -1255,9 +1259,9 @@ def _english_key(
 # Drop a line once its mod has fixed it.
 LEFT_TO_AUTHORS = (
     (
-        "Planetary Diversity and More Events Mod: their copies of the game's species traits "
-        "predate 4.5.2. Unemployment Benefits and the Shroud-Warped leader's psionic unity "
-        "count once per species trait again"
+        "Planetary Diversity, Ascension Worlds and More Events Mod: their copies of the "
+        "game's species traits predate 4.5.2. Unemployment Benefits and the Shroud-Warped "
+        "leader's psionic unity count once per species trait again"
     ),
     (
         "More Events Mod: the Lost Emperor story sometimes can't place its system at game "
@@ -1278,11 +1282,6 @@ SWITCHED_OFF = (
         "Starbase Extended 3.0: it predates 4.5 and logs dozens of errors each game. Its "
         "starbase window lacks 4.5's buttons, and some of its modules and buildings check "
         "for things that no longer exist"
-    ),
-    (
-        "Planetary Diversity - Ascension Worlds: its copies of the game's Lithoid Budding "
-        "trait and terraforming rule predate 4.5.2, and its species traits stack their "
-        "bonuses again"
     ),
     (
         "Smarter Hyper Relays: Improved AI (shrimpAI): a Nomadic empire can't build a Hyper "
@@ -1391,10 +1390,10 @@ FIXES: tuple[tuple[int, str, Callable[[Layers], Made], tuple[str, ...]], ...] = 
     (
         25,
         (
-            "Planetary Diversity's and More Arcologies' translations: broken lines are mended, "
-            "so the game reads them"
+            "Planetary Diversity's, Ascension Worlds' and More Arcologies' translations: broken "
+            "lines are mended, so the game reads them"
         ),
         fix_broken_text,
-        (PLANETARY_DIVERSITY, MORE_ARCOLOGIES),
+        (PLANETARY_DIVERSITY, ASCENSION_WORLDS, MORE_ARCOLOGIES),
     ),
 )
