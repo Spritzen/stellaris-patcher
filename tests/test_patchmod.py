@@ -825,6 +825,23 @@ def test_fix_25_skips_a_file_with_a_line_no_rule_mends(game: Game) -> None:
     ]
 
 
+def test_fix_25_mends_ascension_worlds_from_its_own_english_file(game: Game) -> None:
+    french = "localisation/french/aw_l_french.yml"
+    english = 'l_english:\n ap_flooded: "Flooded"\n ap_flooded_tooltip: "Water."\n'
+    texts = {
+        "localisation/english/aw_l_english.yml": english,
+        french: 'l_french:\n ap_flooded: "Inondé"\n "Eau."\n',
+    }
+    layers = _layers(game, {cold_steel_mix.ASCENSION_WORLDS: texts})
+    files, notes = cold_steel_mix.fix_broken_text(layers)
+    assert files == {
+        french: 'l_french:\n ap_flooded: "Inondé"\n ap_flooded_tooltip: "Eau."\n'.encode()
+    }
+    assert notes == [
+        f"{french}: line 3: the text gets its key, ap_flooded_tooltip, from the English file"
+    ]
+
+
 # Mods out of the playset
 
 

@@ -153,8 +153,8 @@ Each fix prints `ok` with what it did, or `left out` with the reason:
      ENTER_SYSTEM_ZOOM_STEP: System Scale's 7
 6. A More Events Mod anomaly recognises Planetary Diversity's ocean worlds again: ok
      is_pd_planet_for_aqua_trait calls pd_is_planet_for_aqua_trait
-19. Ascension Worlds: Lithoid Budding gets its full bonus on a Massive Crater, …: left out
-     The playset has none of its mods now: workshop:3241119393.
+2. The Starlit Starbase design gets 12 of its 13 guns in Starbase Extended's citadel: left out
+     The playset has none of its mods now: workshop:3250900527.
 
 13 files. Nothing written: pass --write.
 ```
