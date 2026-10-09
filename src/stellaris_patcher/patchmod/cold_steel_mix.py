@@ -36,6 +36,7 @@ CINEMATIC_CAMERA = "workshop:703156866"
 PLANETARY_DIVERSITY = "workshop:819148835"
 ASCENSION_WORLDS = "workshop:3241119393"  # Planetary Diversity - Ascension Worlds
 MORE_EVENTS = "workshop:727000451"
+MORE_ARCOLOGIES = "workshop:1732447147"  # Planetary Diversity - More Arcologies
 
 
 class FixError(Exception):
@@ -1131,6 +1132,124 @@ def _fail_text(data: bytes, check: Entry) -> str:
     return (value_of(data, check, b"fail_text") or b"").decode().strip('"')
 
 
+# 25. Lines in Planetary Diversity's translations the game can't read
+
+
+TEXT_MODS = {PLANETARY_DIVERSITY: "Planetary Diversity", MORE_ARCOLOGIES: "More Arcologies"}
+_LINE = re.compile(r'^\s*([^\s:#"]+)\s*:\s*\d*\s*"(.*)"\s*(?:#.*)?$')
+_NO_CLOSE = re.compile(r'^\s*([^\s:#"]+)\s*:\s*\d*\s*"[^"]*$')
+_NO_OPEN = re.compile(r'^\s*([^\s:#"]+)\s*:\s*\d*\s*()[^"\s][^"]*"$')
+
+
+def fix_broken_text(layers: Layers) -> Made:
+    """Each of the mods' localisation files with a line the game can't read,
+    whole, with the line mended. A whole file at the same path replaces the
+    mod's. A replace/ file couldn't: the mod's broken line would still be read."""
+    present = {layer.key for layer in layers.layers}
+    files: dict[str, bytes] = {}
+    notes: list[str] = []
+    for mod, name in TEXT_MODS.items():
+        if mod not in present:
+            continue
+        english = [
+            [e.key.decode("utf-8", "replace") for e in keys(layers.read(mod, path))]
+            for path in layers.paths(mod, "localisation", ".yml")
+            if language(layers.read(mod, path)) == "l_english"
+        ]
+        for path in layers.paths(mod, "localisation", ".yml"):
+            data = layers.read(mod, path)
+            if not language(data):
+                continue
+            try:
+                mended, changes = mend_text(data, english)
+            except FixError as why:
+                notes.append(f"{path}: {why} Skipped.")
+                continue
+            if not changes:
+                continue
+            if (winner := layers.winner(path)) != mod:
+                notes.append(f"{path} now comes from {winner}, not {name}. Skipped.")
+                continue
+            files[path] = mended
+            notes += [f"{path}: {change}" for change in changes]
+    if not files:
+        raise FixError("The game can read every line of their text files now.")
+    return files, notes
+
+
+def mend_text(data: bytes, english: Sequence[list[str]]) -> tuple[bytes, list[str]]:
+    """A localisation file with each line the game can't read mended, and what
+    was done. Text that starts with its own key again, as a bad paste left in
+    several of Planetary Diversity's translations, loses the copy. `english` is
+    the mod's English keys, file by file, in order: a line of text with no key
+    gets the key the English file has in its place. Raises FixError for a line
+    no rule mends."""
+    start = len(BOM) if data.startswith(BOM) else 0
+    try:
+        lines = data[start:].decode("utf-8").splitlines(keepends=True)
+    except UnicodeDecodeError as error:
+        raise FixError(f"Isn't UTF-8 at byte {error.start}.") from error
+    bodies = [line.rstrip("\r\n") for line in lines]
+    named = [
+        found.group(1)
+        if (found := _LINE.match(b) or _NO_CLOSE.match(b) or _NO_OPEN.match(b))
+        else None
+        for b in bodies
+    ]
+    have = {key for key in named if key}
+    out: list[str] = []
+    changes: list[str] = []
+    header = False
+    for i, (line, body) in enumerate(zip(lines, bodies, strict=True)):
+        end, stripped, n = line[len(body) :], body.strip(), i + 1
+        if not stripped or stripped.startswith("#"):
+            out.append(line)
+        elif not header:  # the language line
+            header = True
+            out.append(line)
+        elif found := _LINE.match(body):
+            key, value = found.group(1), found.group(2)
+            doubled = re.match(rf'\s*{re.escape(key)}\s*:\s*\d*\s*"', value)
+            if doubled:
+                at = found.start(2)
+                out.append(body[:at] + value[doubled.end() :] + body[found.end(2) :] + end)
+                changes.append(f"line {n}: {key}'s text no longer starts with its own key")
+            else:
+                out.append(line)
+        elif stripped == '"':
+            changes.append(f"line {n}: a stray quote taken out")
+        elif found := _NO_CLOSE.match(body):
+            out.append(body.rstrip() + '"' + end)
+            changes.append(f"line {n}: {found.group(1)}'s closing quote added")
+        elif found := _NO_OPEN.match(body):
+            at = found.start(2)
+            out.append(body[:at] + '"' + body[at:] + end)
+            changes.append(f"line {n}: {found.group(1)}'s opening quote added")
+        else:
+            before = next((k for k in reversed(named[:i]) if k), None)
+            after = next((k for k in named[i + 1 :] if k), None)
+            key = _english_key(english, before, after, have)
+            if key is None:
+                raise FixError(f"Line {n} has no key, and the English text doesn't say which.")
+            indent, text = body[: len(body) - len(body.lstrip())], stripped.strip('"')
+            out.append(f'{indent}{key}: "{text}"{end}')
+            changes.append(f"line {n}: the text gets its key, {key}, from the English file")
+    return data[:start] + "".join(out).encode(), changes
+
+
+def _english_key(
+    english: Sequence[list[str]], before: str | None, after: str | None, have: set[str]
+) -> str | None:
+    """The key an English file has between `before` and `after`, if this file lacks it."""
+    for order in english:
+        if before is None or before not in order:
+            continue
+        at = order.index(before) + 1
+        if at < len(order) and order[at] not in have and order[at + 1 : at + 2] in ([after], []):
+            return order[at]
+    return None
+
+
 # The playset's problems the patch leaves to the mods' authors, for the Workshop
 # page. Each is a mod's own bug, too big to copy or soon to be fixed upstream.
 # Drop a line once its mod has fixed it.
@@ -1268,5 +1387,14 @@ FIXES: tuple[tuple[int, str, Callable[[Layers], Made], tuple[str, ...]], ...] = 
         ),
         fix_ascension_worlds,
         (PLANETARY_DIVERSITY, ASCENSION_WORLDS),
+    ),
+    (
+        25,
+        (
+            "Planetary Diversity's and More Arcologies' translations: broken lines are mended, "
+            "so the game reads them"
+        ),
+        fix_broken_text,
+        (PLANETARY_DIVERSITY, MORE_ARCOLOGIES),
     ),
 )

@@ -747,6 +747,84 @@ def test_fix_19_is_left_out_once_the_mods_copies_have_the_games_lines(game: Game
         cold_steel_mix.fix_ascension_worlds(_ascension_worlds(game, budding, rule))
 
 
+# Fix 25: broken lines in Planetary Diversity's translations
+
+PD_GERMAN = "localisation/german/pd_l_german.yml"
+ARCOLOGIES_GERMAN = "localisation/german/arcs_l_german.yml"
+ARCOLOGIES_ENGLISH = '﻿l_english:\n drone: "Drone"\n drone_desc: "Drones."\n drone_add: "+1"\n'
+
+
+def test_fix_25_mends_each_broken_line_and_keeps_the_rest(game: Game) -> None:
+    pd_german = (
+        "﻿l_german:\r\n"
+        " # a comment\r\n"
+        ' factory: "Fabrik"\r\n'
+        ' foundry: Giesserei"\r\n'
+        ' obsidian_desc: " obsidian_desc: "A humid world."\r\n'
+        '"\r\n'
+        ' ethane: "Ethan Ozeanwelt\r\n'
+    )
+    arcologies_german = 'l_german:\ndrone: "Drohne"\nDrohnen."\ndrone_add: "+1"\n'
+    layers = _layers(
+        game,
+        {
+            cold_steel_mix.PLANETARY_DIVERSITY: {PD_GERMAN: pd_german},
+            cold_steel_mix.MORE_ARCOLOGIES: {
+                ARCOLOGIES_GERMAN: "﻿" + arcologies_german,
+                "localisation/english/arcs_l_english.yml": ARCOLOGIES_ENGLISH,
+            },
+        },
+    )
+    files, notes = cold_steel_mix.fix_broken_text(layers)
+    assert files == {
+        PD_GERMAN: BOM
+        + (
+            b"l_german:\r\n"
+            b" # a comment\r\n"
+            b' factory: "Fabrik"\r\n'
+            b' foundry: "Giesserei"\r\n'
+            b' obsidian_desc: "A humid world."\r\n'
+            b' ethane: "Ethan Ozeanwelt"\r\n'
+        ),
+        ARCOLOGIES_GERMAN: BOM
+        + b'l_german:\ndrone: "Drohne"\ndrone_desc: "Drohnen."\ndrone_add: "+1"\n',
+    }
+    assert notes == [
+        f"{PD_GERMAN}: line 4: foundry's opening quote added",
+        f"{PD_GERMAN}: line 5: obsidian_desc's text no longer starts with its own key",
+        f"{PD_GERMAN}: line 6: a stray quote taken out",
+        f"{PD_GERMAN}: line 7: ethane's closing quote added",
+        f"{ARCOLOGIES_GERMAN}: line 3: the text gets its key, drone_desc, from the English file",
+    ]
+    assert check_files(files) == []
+
+
+def test_fix_25_is_left_out_once_every_line_reads(game: Game) -> None:
+    layers = _layers(
+        game,
+        {
+            cold_steel_mix.PLANETARY_DIVERSITY: {PD_GERMAN: 'l_german:\n a:0 "A" # fine\n'},
+            cold_steel_mix.MORE_ARCOLOGIES: {
+                "localisation/english/arcs_l_english.yml": ARCOLOGIES_ENGLISH,
+            },
+        },
+    )
+    with pytest.raises(FixError, match="every line"):
+        cold_steel_mix.fix_broken_text(layers)
+
+
+def test_fix_25_skips_a_file_with_a_line_no_rule_mends(game: Game) -> None:
+    polish = "localisation/polish/pd_l_polish.yml"
+    texts = {PD_GERMAN: 'l_german:\n a: "A"\nkeyless text\n', polish: 'l_polish:\n a: "A\n'}
+    layers = _layers(game, {cold_steel_mix.PLANETARY_DIVERSITY: texts})
+    files, notes = cold_steel_mix.fix_broken_text(layers)
+    assert list(files) == [polish]
+    assert notes == [
+        f"{PD_GERMAN}: Line 3 has no key, and the English text doesn't say which. Skipped.",
+        f"{polish}: line 2: a's closing quote added",
+    ]
+
+
 # Mods out of the playset
 
 
