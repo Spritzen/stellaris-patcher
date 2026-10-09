@@ -770,6 +770,15 @@ def _event(layers: Layers, event_id: str) -> bytes:
     """The event the game uses, the first by file name, with its namespace
     line before it and Unix line ends. Raises FixError
     unless More Events Mod's copy is the one used."""
+    data, entry = _event_entry(layers, event_id)
+    namespace = event_id.rpartition(".")[0]
+    text = f"namespace = {namespace}\n\n".encode() + data[entry.start : entry.end]
+    return text.replace(b"\r\n", b"\n") + b"\n"
+
+
+def _event_entry(layers: Layers, event_id: str) -> tuple[bytes, Entry]:
+    """The event the game uses, in the file it's in. Raises FixError unless
+    More Events Mod's copy is the one used."""
     wanted = event_id.encode()
     for layer, path in layers.ordered("events"):
         data = layers.read(layer, path)
@@ -779,9 +788,7 @@ def _event(layers: Layers, event_id: str) -> bytes:
             if entry.block and value_of(data, entry, b"id") == wanted:
                 if layer != MORE_EVENTS:
                     raise FixError(f"{event_id} now comes from {layer}, not More Events Mod.")
-                namespace = event_id.rpartition(".")[0]
-                text = f"namespace = {namespace}\n\n".encode() + data[entry.start : entry.end]
-                return text.replace(b"\r\n", b"\n") + b"\n"
+                return data, entry
     raise FixError(f"No event is called {event_id} any more.")
 
 
@@ -1093,12 +1100,7 @@ def _budding(layers: Layers) -> tuple[str, bytes, str]:
 def _terraform(layers: Layers) -> tuple[str, bytes, str]:
     """The rule gets each of the game's custom tooltips it lacks, by fail
     text. One it has in a comment was taken out on purpose, and stays out."""
-    found: tuple[str, bytes, Entry] | None = None
-    for layer, path in layers.ordered(GAME_RULES):  # the last definition wins
-        data = layers.read(layer, path)
-        for entry in scan(data):
-            if entry.key == TERRAFORM.encode() and entry.block:
-                found = (layer, data, entry)
+    found = _game_rule(layers, TERRAFORM)
     if found is None or found[0] != ASCENSION_WORLDS:
         raise FixError(f"{TERRAFORM} doesn't come from Ascension Worlds now.")
     _, data, entry = found
@@ -1124,6 +1126,18 @@ def _terraform(layers: Layers) -> tuple[str, bytes, str]:
     if kept_out:
         note += f"; keeps out {', '.join(kept_out)}, as Ascension Worlds chose"
     return _last_file(layers, GAME_RULES, "terraform"), _copy(layers, data, entry, body), note
+
+
+def _game_rule(layers: Layers, rule: str) -> tuple[str, bytes, Entry] | None:
+    """The rule the game uses, the last definition by file name, with its layer
+    and the file it's in."""
+    found: tuple[str, bytes, Entry] | None = None
+    for layer, path in layers.ordered(GAME_RULES):
+        data = layers.read(layer, path)
+        for entry in scan(data):
+            if entry.key == rule.encode() and entry.block:
+                found = (layer, data, entry)
+    return found
 
 
 def _fail_text(data: bytes, check: Entry) -> str:
@@ -1252,6 +1266,88 @@ def _english_key(
         if at < len(order) and order[at] not in have and order[at + 1 : at + 2] in ([after], []):
             return order[at]
     return None
+
+
+# 26. More Events Mod's Under the Blanket story picks leaders the game won't give
+# its traits, and starts for Fallen Empires
+
+
+BLANKET_START = "mem_under_blanket.1"  # starts the story for any empire but a homicidal one
+BLANKET_PICKS = "mem_under_blanket.2"  # picks its scientists, an autocracy's ruler and heir too
+NORMAL_TRAIT = "can_leader_get_normal_trait"  # the game rule that refuses those two normal traits
+NORMAL_TRAIT_CHECK = b"can_leader_get_normal_trait_trigger"  # the trigger the rule calls
+NORMAL_EMPIRE = b"Root.Owner = { is_country_type = default }"  # as the game's Strange Worlds
+
+
+def fix_under_blanket(layers: Layers) -> Made:
+    """Copies of the story's first two events, in a file that sorts first. Its
+    scientist picks leave out leaders the game won't give a normal trait, so the
+    traits its endings give stick. It starts only for normal empires."""
+    events: list[bytes] = []
+    notes: list[str] = []
+    for part in (_blanket_start, _blanket_picks):
+        try:
+            event, note = part(layers)
+        except FixError as why:
+            notes.append(f"{why} Skipped.")
+            continue
+        events.append(event)
+        notes.append(note)
+    if not events:
+        raise FixError(
+            "The story starts only for normal empires, and picks leaders who can take "
+            "its traits, now."
+        )
+    namespace = BLANKET_PICKS.rpartition(".")[0]
+    text = f"namespace = {namespace}\n\n".encode() + b"\n".join(events)
+    return {_first_file(layers, "events", "under_blanket"): text}, notes
+
+
+def _blanket_start(layers: Layers) -> tuple[bytes, str]:
+    data, entry = _event_entry(layers, BLANKET_START)
+    trigger = next((c for c in children(data, entry) if c.key == b"trigger" and c.block), None)
+    if trigger is None:
+        raise FixError(f"{BLANKET_START} has no trigger now.")
+    if b"is_country_type" in _COMMENT.sub(b"", data[trigger.start : trigger.end]):
+        raise FixError(f"{BLANKET_START} checks the empire's type now.")
+    at = trigger.inside[0]
+    body = _mended(data, entry, [(at, at, b"\n\t\t" + NORMAL_EMPIRE)])
+    return _copy(layers, data, entry, body), f"{BLANKET_START}: starts only for normal empires"
+
+
+def _blanket_picks(layers: Layers) -> tuple[bytes, str]:
+    """Each block that picks a scientist gets the game's check beside it."""
+    rule = _game_rule(layers, NORMAL_TRAIT)
+    if rule is None or NORMAL_TRAIT_CHECK not in _COMMENT.sub(
+        b"", rule[1][rule[2].start : rule[2].end]
+    ):
+        raise FixError(
+            f"The game rule {NORMAL_TRAIT} doesn't call {NORMAL_TRAIT_CHECK.decode()} now."
+        )
+    if NORMAL_TRAIT_CHECK.decode() not in layers.defined("common/scripted_triggers"):
+        raise FixError(f"Nothing defines {NORMAL_TRAIT_CHECK.decode()} now.")
+    data, entry = _event_entry(layers, BLANKET_PICKS)
+    immediate = next((c for c in children(data, entry) if c.key == b"immediate" and c.block), None)
+    if immediate is None:
+        raise FixError(f"{BLANKET_PICKS} has no immediate block now.")
+    edits: list[tuple[int, int, bytes]] = []
+    for block in _blocks(data, immediate):
+        inner = children(data, block)
+        if any(c.key == NORMAL_TRAIT_CHECK for c in inner):
+            continue
+        for c in inner:
+            if c.key == b"leader_class" and not c.block and _text(data, c) == "scientist":
+                before = data[data.rfind(b"\n", 0, c.start) + 1 : c.start]
+                gap = b" " if before.strip() else b"\n" + before  # on its own line, or not
+                edits.append((c.end, c.end, gap + NORMAL_TRAIT_CHECK + b" = yes"))
+    if not edits:
+        raise FixError(f"{BLANKET_PICKS} picks only leaders who can take normal traits now.")
+    body = _mended(data, entry, edits)
+    note = (
+        f"{BLANKET_PICKS}: {len(edits)} scientist picks leave out an autocracy's ruler "
+        f"and heir, who can't take normal traits ({NORMAL_TRAIT})"
+    )
+    return _copy(layers, data, entry, body), note
 
 
 # The playset's problems the patch leaves to the mods' authors, for the Workshop
@@ -1395,5 +1491,14 @@ FIXES: tuple[tuple[int, str, Callable[[Layers], Made], tuple[str, ...]], ...] = 
         ),
         fix_broken_text,
         (PLANETARY_DIVERSITY, ASCENSION_WORLDS, MORE_ARCOLOGIES),
+    ),
+    (
+        26,
+        (
+            "More Events Mod's Under the Blanket story gives its leader their trait: it no "
+            "longer picks an autocracy's ruler or heir, and Fallen Empires don't start it"
+        ),
+        fix_under_blanket,
+        (MORE_EVENTS,),
     ),
 )

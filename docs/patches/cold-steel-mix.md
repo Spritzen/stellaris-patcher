@@ -1,6 +1,6 @@
 # Cold Steel Mix patch
 
-**A mod named "Cold Steel Mix patch" that fixes 15 problems in the Cold
+**A mod named "Cold Steel Mix patch" that fixes 16 problems in the Cold
 Steel Mix playset.** They're fixes 1–7 from the
 [third run's report](../reports/2026-10-03-cold-steel-mix-errors-run-3.md#what-a-patch-mod-could-fix),
 fix 10 from the
@@ -9,7 +9,9 @@ fixes 11 and 12 from the
 [new-galaxy report](../reports/2026-10-05-cold-steel-mix-new-galaxy.md#what-to-do-next),
 and fixes 15–17 and 19 from the
 [4.5.2 first-run report](../reports/2026-10-07-cold-steel-mix-4.5.2-first-run.md#what-to-do-next),
-and fix 25 from the localisation errors Cold Steel lists for the playset.
+fix 25 from the localisation errors Cold Steel lists for the playset,
+and fix 26 from the
+[Ascension Worlds report](../reports/2026-10-09-cold-steel-mix-ascension-worlds-back.md#what-to-do-next).
 Problems it leaves to the mods' authors are listed on its Workshop page
 ([Left to the authors](#left-to-the-authors)).
 Fixes 2 and 3 are left out for now: their mod is
@@ -161,9 +163,10 @@ UI) and the [pre-upload report](../reports/2026-10-07-cold-steel-mix-pre-upload.
 | Seven `localisation/<language>/planetarydiversity_…` files | Planetary Diversity's whole files, with broken lines mended |
 | Ten `localisation/<language>/planetarydiversity_aw_…` files | Planetary Diversity - Ascension Worlds' whole files, with one line mended in each |
 | Two `localisation/<language>/planetarydiversity_more_arcologies_…` files | Planetary Diversity - More Arcologies' whole files, with one line mended in each |
+| `events/!!_stellaris_patcher_cold_steel_mix_under_blanket.txt` | Two of More Events Mod's events, with 15 lines added |
 
 The game's own files are fine to ship in a mod. The others need their
-authors' permission, or fixes 3, 5, 11, 12, 16, 17, 19 and 25 left out. Fix 3
+authors' permission, or fixes 3, 5, 11, 12, 16, 17, 19, 25 and 26 left out. Fix 3
 isn't shipped while Starbase Extended is
 [switched off](#mods-switched-off-for-now).
 
@@ -186,6 +189,7 @@ isn't shipped while Starbase Extended is
 | 17 | Real Space 4.0's copy of the Surveillance Supercomputer system keeps the `sealed_system` flag 4.5.2 removed, so jump drive fleets can't enter | A copy of that one system without the flag, in a file whose name starts `!!_`. Initializers go to the first file by name |
 | 19 | Planetary Diversity's and Ascension Worlds' Lithoid Budding lack 4.5.2's `divide_over_pop_groups = no` on the Massive Crater bonus. Ascension Worlds' terraforming rule lacks the game's checks for a consecrated world and a Knights detox in progress | A copy of the trait in use, with the game's line added, in a `!!_` file. Both mods ship a whole `04_species_traits.txt`, and Ascension Worlds' replaces Planetary Diversity's, so the copy is from whichever is on ([decision 37](../decisions.md)). Only Ascension Worlds has the rule: a copy of it, with the two checks added, in a `zz_` file: game rules go to the last file by name. The legendary leader check Ascension Worlds comments out on purpose stays out ([decision 32](../decisions.md)) |
 | 25 | Lines in Planetary Diversity's, Ascension Worlds' and More Arcologies' translations the game can't read: quotes missing (German, Russian, Polish), text with no key (German, and Ascension Worlds' flooded world tooltip in all nine translations), and German obsidian world text pasted in after its own key (also Japanese, Korean and Russian, which read but show the key) | Each broken file whole, at its own path, with the lines mended. The keyless line takes the key the mod's English file has in its place ([decision 39](../decisions.md)). A file whose line no rule mends is skipped |
+| 26 | More Events Mod's Under the Blanket story picks its scientist with no check that the game lets them take a normal trait, so an autocracy's ruler or heir loses the trait its ending gives: Substance Abuser, Archaeologist or Adaptable. It also starts for Fallen Empires, on the worlds they own from the start | Copies of `mem_under_blanket.1` and `.2`, in an `events/` file whose name starts `!!_`. Each of `.2`'s 14 scientist picks gets the game's `can_leader_get_normal_trait_trigger`, the trigger its rule calls. `.1` starts only for `is_country_type = default`, as the game's Strange Worlds colony events do ([decision 40](../decisions.md)) |
 
 ### Notes
 
@@ -253,3 +257,8 @@ These weren't seen in game yet:
   bonus (fix 19). That traits go to the first file by name hasn't been
   checked either.
 - A consecrated world can't be terraformed (fix 19).
+- More Events Mod's Under the Blanket story gives its scientist the trait its
+  ending names, even in an autocracy, and a Fallen Empire never starts it
+  (fix 26). The log has no `rules_leader_cannot_get_normal_trait` for
+  `mem_under_blanket.txt`, and two duplicate event notices name More Events
+  Mod's file, for `mem_under_blanket.1` and `.2`, as for fixes 11 and 12.

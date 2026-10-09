@@ -842,6 +842,107 @@ def test_fix_25_mends_ascension_worlds_from_its_own_english_file(game: Game) -> 
     ]
 
 
+# Fix 26: More Events Mod's Under the Blanket story
+
+NORMAL_TRAIT_RULE = {
+    "common/game_rules/00_rules.txt": (
+        "can_leader_get_normal_trait = {\n\tcan_leader_get_normal_trait_trigger = yes\n}\n"
+    ),
+    "common/scripted_triggers/03_paragon.txt": (
+        "can_leader_get_normal_trait_trigger = { NOT = { is_heir = yes } }\n"
+    ),
+}
+BLANKET = """namespace = mem_under_blanket\r
+carrier_event = {\r
+\tid = mem_under_blanket.1\r
+\ttrigger = {\r
+\t\tRoot.Owner = { NOT = { is_homicidal = yes } }\r
+\t}\r
+}\r
+carrier_event = {\r
+\tid = mem_under_blanket.2\r
+\timmediate = {\r
+\t\tIF = {\r
+\t\t\tlimit = { Root.Owner = { any_owned_leader = { leader_class = scientist } } }\r
+\t\t\tRoot.Owner = {\r
+\t\t\t\trandom_owned_leader = {\r
+\t\t\t\t\tlimit = {\r
+\t\t\t\t\t\tleader_class = scientist\r
+\t\t\t\t\t}\r
+\t\t\t\t\tsave_event_target_as = mem_under_blanket_expert_leader\r
+\t\t\t\t}\r
+\t\t\t}\r
+\t\t}\r
+\t}\r
+\toption = {\r
+\t\tRoot.Owner = { random_owned_leader = { limit = { leader_class = scientist } } }\r
+\t}\r
+}\r
+"""
+
+
+def test_fix_26_picks_leaders_who_can_take_traits_for_normal_empires_only(
+    game: Game,
+) -> None:
+    mem = cold_steel_mix.MORE_EVENTS
+    layers = _layers(
+        game, {GAME: dict(NORMAL_TRAIT_RULE), mem: {"events/mem_under_blanket.txt": BLANKET}}
+    )
+    files, notes = cold_steel_mix.fix_under_blanket(layers)
+    (path,) = files
+    assert path == "events/!!_stellaris_patcher_cold_steel_mix_under_blanket.txt"
+    data = files[path]
+    assert data.startswith(b"namespace = mem_under_blanket\n\ncarrier_event = {\n")
+    assert b"\r" not in data and data.count(b"namespace") == 1
+    assert b"\t\tRoot.Owner = { is_country_type = default }\n" in data
+    # Both picks in the immediate block, the one on its own line indented like it.
+    assert (
+        b"any_owned_leader = { leader_class = scientist can_leader_get_normal_trait_trigger" in data
+    )
+    assert b"\t\t\t\t\t\tleader_class = scientist\n\t\t\t\t\t\tcan_leader_get_normal_trait" in data
+    assert data.count(b"can_leader_get_normal_trait_trigger") == 2  # the option is left alone
+    assert notes == [
+        "mem_under_blanket.1: starts only for normal empires",
+        "mem_under_blanket.2: 2 scientist picks leave out an autocracy's ruler and heir, "
+        "who can't take normal traits (can_leader_get_normal_trait)",
+    ]
+    assert check_files(files) == []
+
+
+def test_fix_26_is_left_out_once_the_mod_checks_both(game: Game) -> None:
+    mem = cold_steel_mix.MORE_EVENTS
+    checked = BLANKET.replace(
+        "is_homicidal = yes } }", "is_homicidal = yes } is_country_type = default }"
+    )
+    checked = checked.replace(
+        "leader_class = scientist",
+        "leader_class = scientist can_leader_get_normal_trait_trigger = yes",
+    )
+    layers = _layers(
+        game, {GAME: dict(NORMAL_TRAIT_RULE), mem: {"events/mem_under_blanket.txt": checked}}
+    )
+    with pytest.raises(FixError, match="starts only for normal empires, and picks"):
+        cold_steel_mix.fix_under_blanket(layers)
+
+
+def test_fix_26_skips_the_picks_once_the_game_rule_changes(game: Game) -> None:
+    rule = {
+        **NORMAL_TRAIT_RULE,
+        "common/game_rules/00_rules.txt": "can_leader_get_normal_trait = { always = yes }\n",
+    }
+    layers = _layers(
+        game,
+        {GAME: rule, cold_steel_mix.MORE_EVENTS: {"events/mem_under_blanket.txt": BLANKET}},
+    )
+    files, notes = cold_steel_mix.fix_under_blanket(layers)
+    (data,) = files.values()
+    assert b"is_country_type = default" in data and b"mem_under_blanket.2" not in data
+    assert notes[1] == (
+        "The game rule can_leader_get_normal_trait doesn't call "
+        "can_leader_get_normal_trait_trigger now. Skipped."
+    )
+
+
 # Mods out of the playset
 
 
