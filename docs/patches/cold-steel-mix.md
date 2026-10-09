@@ -1,13 +1,13 @@
 # Cold Steel Mix patch
 
-**A mod named "Cold Steel Mix patch" that fixes 16 problems in the Cold
+**A mod named "Cold Steel Mix patch" that fixes 18 problems in the Cold
 Steel Mix playset.** They're fixes 1–7 from the
 [third run's report](../reports/2026-10-03-cold-steel-mix-errors-run-3.md#what-a-patch-mod-could-fix),
 fix 10 from the
 [long-session report](../reports/2026-10-04-cold-steel-mix-long-session.md#what-to-do-next),
 fixes 11 and 12 from the
 [new-galaxy report](../reports/2026-10-05-cold-steel-mix-new-galaxy.md#what-to-do-next),
-and fixes 15–17 and 19 from the
+and fixes 15–19 and 27 from the
 [4.5.2 first-run report](../reports/2026-10-07-cold-steel-mix-4.5.2-first-run.md#what-to-do-next),
 fix 25 from the localisation errors Cold Steel lists for the playset,
 and fix 26 from the
@@ -54,10 +54,8 @@ it patches is switched on in the playset.
 
 **Two mods are switched off in the playset until they update for 4.5.2**
 ([decision 35](../decisions.md)). They stay in the playset, so they're one
-switch from coming back. The Workshop description ends with them, and says
-we aim to put them back: `SWITCHED_OFF` in
-[cold_steel_mix.py](../../src/stellaris_patcher/patchmod/cold_steel_mix.py),
-one line per mod. The section goes once the list is empty.
+switch from coming back. The Workshop description doesn't list them for now
+([decision 44](../decisions.md)).
 
 | Mod | Why | Fixes left out |
 |---|---|---|
@@ -72,7 +70,6 @@ To bring one back:
 3. Read the [first report after 4.5.2](../reports/2026-10-07-cold-steel-mix-4.5.2-first-run.md)
    for what it still breaks. Put the lines it still needs back in
    `LEFT_TO_AUTHORS`. They were taken out in the change that switched it off.
-   Drop its line from `SWITCHED_OFF`.
 4. At the next upload, add it back to the Workshop page's **Required items**.
 
 **Switching a mod off can put another mod's older copy back in use.** With
@@ -88,8 +85,8 @@ the copies it lists as new.
 1. Write a `fix_…(layers) -> Made` function in
    [cold_steel_mix.py](../../src/stellaris_patcher/patchmod/cold_steel_mix.py),
    under a `# N. …` comment, and add it to `FIXES` with its number, title and
-   the mods it patches. It raises `FixError` when its cause is gone
-   ([decision 14](../decisions.md)).
+   the mods it patches, and its number to one heading in `FIX_GROUPS`. It
+   raises `FixError` when its cause is gone ([decision 14](../decisions.md)).
 2. Test it in [test_patchmod.py](../../tests/test_patchmod.py): one test that
    it fixes the problem, one that it's left out once the cause is gone.
 3. Add a row to [What each fix does](#what-each-fix-does), and to the
@@ -109,7 +106,10 @@ next upload
   mods the written fixes patch, by the names their own descriptors give.
 - The Workshop description is in
   `~/.local/share/stellaris-patcher/mods/cold_steel_mix_patch.workshop.txt`.
-  Paste it into the Workshop page.
+  Paste it into the Workshop page. It lists the fixes under headings, such as
+  "Species and traits": `FIX_GROUPS` in
+  [cold_steel_mix.py](../../src/stellaris_patcher/patchmod/cold_steel_mix.py).
+  A fix in no group is listed last, under "Other".
 - The Cold Steel Mix collection's background is drawn by
   [collection_background.py](../../tools/collection_background.py): the
   patch icon and name on the left, Tron-style lines on the right. Render it
@@ -131,8 +131,9 @@ next upload
 
 ### Left to the authors
 
-**The description ends with the playset's known problems that the patch
-doesn't fix**, under "Known issues, waiting for the mod authors"
+**The list is empty, so the description has no known issues section.**
+When it has lines, the description lists the playset's known problems that
+the patch doesn't fix, under "Known issues, waiting for the mod authors"
 ([decision 33](../decisions.md)). They're in `LEFT_TO_AUTHORS` in
 [cold_steel_mix.py](../../src/stellaris_patcher/patchmod/cold_steel_mix.py),
 written by hand, one line per problem.
@@ -141,11 +142,13 @@ written by hand, one line per problem.
 - Drop it once the mod fixes it. The [update check](../update-check.md) shows
   when one of these mods changes.
 
-Today's lines come from the
-[4.5.2 first-run report](../reports/2026-10-07-cold-steel-mix-4.5.2-first-run.md)
-(item 18, and the findings for Planetary Diversity's Aquatic trait and Dark
-UI) and the [pre-upload report](../reports/2026-10-07-cold-steel-mix-pre-upload.md#what-to-do-next)
-(item 20, the Lost Emperor).
+Its last line, item 18, became fix 18 on 10 October.
+
+- Not listed, as too small to matter
+  ([decision 41](../decisions.md)): More Events Mod's Lost Emperor story
+  sometimes can't place its system
+  ([pre-upload report](../reports/2026-10-07-cold-steel-mix-pre-upload.md#what-to-do-next),
+  item 20), and Dark UI has no dark versions of 4.5.2's new icons.
 
 **Ask the other authors first.** The patch ships work that isn't ours:
 
@@ -164,9 +167,11 @@ UI) and the [pre-upload report](../reports/2026-10-07-cold-steel-mix-pre-upload.
 | Ten `localisation/<language>/planetarydiversity_aw_…` files | Planetary Diversity - Ascension Worlds' whole files, with one line mended in each |
 | Two `localisation/<language>/planetarydiversity_more_arcologies_…` files | Planetary Diversity - More Arcologies' whole files, with one line mended in each |
 | `events/!!_stellaris_patcher_cold_steel_mix_under_blanket.txt` | Two of More Events Mod's events, with 15 lines added |
+| `common/traits/!!_stellaris_patcher_cold_steel_mix_trait_categories.txt` | 15 traits from Planetary Diversity, Ascension Worlds and More Events Mod, with one word changed in each |
+| `common/traits/!!_stellaris_patcher_cold_steel_mix_aquatic.txt` | Planetary Diversity's Aquatic trait, with the game's AI weight |
 
 The game's own files are fine to ship in a mod. The others need their
-authors' permission, or fixes 3, 5, 11, 12, 16, 17, 19, 25 and 26 left out. Fix 3
+authors' permission, or fixes 3, 5, 11, 12, 16, 17, 18, 19, 25, 26 and 27 left out. Fix 3
 isn't shipped while Starbase Extended is
 [switched off](#mods-switched-off-for-now).
 
@@ -187,9 +192,11 @@ isn't shipped while Starbase Extended is
 | 15 | More Events Mod's three Progenitor shields use `@shield_*_t7_upkeep_*`, which 4.5.2 renamed to `@defense_*_t7_upkeep_*`, so they have no upkeep | A `common/scripted_variables/` file that defines each old name a component still uses, with the game's value for its new name |
 | 16 | Ships in Scaling's copy of `mutation_weapon_components.csv` predates 4.5.2, so the Large Mega Bombard keeps a range of 2 | Ships in Scaling's whole file, with each range it missed set to the one it gives every other weapon with the same game range: 100 → 17. A range is only changed when at least two other rows agree ([decision 31](../decisions.md)) |
 | 17 | Real Space 4.0's copy of the Surveillance Supercomputer system keeps the `sealed_system` flag 4.5.2 removed, so jump drive fleets can't enter | A copy of that one system without the flag, in a file whose name starts `!!_`. Initializers go to the first file by name |
+| 18 | Planetary Diversity's, Ascension Worlds' and More Events Mod's traits file their resources under `planet_pops`, which 4.5.2 keeps for a species' archetype. An `_add` modifier on `planet_pops` applies once per resource table, so Unemployment Benefits and the Shroud-Warped leader's psionic unity count once per trait | A copy of each trait in use with `category = planet_pops`, in one `!!_` file, with the game's `planet_pops_traits` instead. 15 today: 7 from Planetary Diversity (among them Organic, Lithoid, Mechanical and Machine Unit), 5 from Ascension Worlds and 3 from More Events Mod. A trait fix 19 or 27 copies is left to it ([decision 43](../decisions.md)) |
 | 19 | Planetary Diversity's and Ascension Worlds' Lithoid Budding lack 4.5.2's `divide_over_pop_groups = no` on the Massive Crater bonus. Ascension Worlds' terraforming rule lacks the game's checks for a consecrated world and a Knights detox in progress | A copy of the trait in use, with the game's line added, in a `!!_` file. Both mods ship a whole `04_species_traits.txt`, and Ascension Worlds' replaces Planetary Diversity's, so the copy is from whichever is on ([decision 37](../decisions.md)). Only Ascension Worlds has the rule: a copy of it, with the two checks added, in a `zz_` file: game rules go to the last file by name. The legendary leader check Ascension Worlds comments out on purpose stays out ([decision 32](../decisions.md)) |
 | 25 | Lines in Planetary Diversity's, Ascension Worlds' and More Arcologies' translations the game can't read: quotes missing (German, Russian, Polish), text with no key (German, and Ascension Worlds' flooded world tooltip in all nine translations), and German obsidian world text pasted in after its own key (also Japanese, Korean and Russian, which read but show the key) | Each broken file whole, at its own path, with the lines mended. The keyless line takes the key the mod's English file has in its place ([decision 39](../decisions.md)). A file whose line no rule mends is skipped |
 | 26 | More Events Mod's Under the Blanket story picks its scientist with no check that the game lets them take a normal trait, so an autocracy's ruler or heir loses the trait its ending gives: Substance Abuser, Archaeologist or Adaptable. It also starts for Fallen Empires, on the worlds they own from the start | Copies of `mem_under_blanket.1` and `.2`, in an `events/` file whose name starts `!!_`. Each of `.2`'s 14 scientist picks gets the game's `can_leader_get_normal_trait_trigger`, the trigger its rule calls. `.1` starts only for `is_country_type = default`, as the game's Strange Worlds colony events do ([decision 40](../decisions.md)) |
+| 27 | Planetary Diversity's copy of the Aquatic trait predates 4.5.2, so the AI doesn't value it for species with Wet Climate Mods (`trait_cyborg_climate_adjustment_wet`), as the game's AI now does | A copy of Planetary Diversity's trait, in a `!!_` file, with the game's `ai_weight` in place of its own. Planetary Diversity's planet classes and checks stay. Only while its weight differs from the game's by that trait alone ([decision 42](../decisions.md)) |
 
 ### Notes
 
@@ -208,9 +215,10 @@ isn't shipped while Starbase Extended is
   Fixes 17 and 19 do the same for one system, one trait and one rule.
 - **Fix 15 doesn't name More Events Mod.** It defines every old shield upkeep
   name any component uses and nothing defines.
-- **Fix 18 isn't in the patch.** The trait copies from Planetary Diversity,
-  Ascension Worlds and More Events Mod would be 18 traits from three mods, for
-  a one-word change each. It's [left to their authors](#left-to-the-authors).
+- **Fix 18 copies 15 traits from three mods for a one-word change each.**
+  It was left to the authors until 10 October
+  ([decision 43](../decisions.md)). The report counted 18 traits: three of
+  More Events Mod's six are commented out.
 
 ## Check in game
 
@@ -262,3 +270,10 @@ These weren't seen in game yet:
   (fix 26). The log has no `rules_leader_cannot_get_normal_trait` for
   `mem_under_blanket.txt`, and two duplicate event notices name More Events
   Mod's file, for `mem_under_blanket.1` and `.2`, as for fixes 11 and 12.
+- In a Megacorp with Unemployment Benefits, an unemployed pop's upkeep is 2
+  consumer goods, not 2 per species trait (fix 18). As for fix 19, the log
+  can't show which copy of a trait won.
+- An AI cyborg species with Wet Climate Mods can gain Aquatic when it
+  modifies its genes (fix 27). It's rare, and only AI empires' choices
+  change. As for fix 19, the log has no notice for a copied trait, so it
+  can't show which copy won.
