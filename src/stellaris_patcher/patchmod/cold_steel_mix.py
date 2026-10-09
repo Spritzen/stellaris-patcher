@@ -98,16 +98,20 @@ def workshop_description(outcomes: list[Outcome], names: dict[str, str], version
     needed. `names` gives the required mods, in the order they're listed."""
     written = [o for o in outcomes if not o.left_out]
     required = "".join(f"[*]{name}\n" for name in names.values())
-    fixes = "".join(f"[*]{o.title}\n" for o in written)
+    grouped = {n for _, members in FIX_GROUPS for n in members}
+    groups = [*FIX_GROUPS, ("Other", tuple(o.number for o in written if o.number not in grouped))]
+    fixes = ""
+    for heading, members in groups:
+        titles = "".join(f"[*]{o.title}\n" for o in written if o.number in members)
+        if titles:
+            fixes += f"[h3]{heading}[/h3]\n[list]\n{titles}[/list]\n"
     waiting = "".join(f"[*]{problem}\n" for problem in LEFT_TO_AUTHORS)
-    off = "".join(f"[*]{mod}\n" for mod in SWITCHED_OFF)
-    taken_out = (
-        "\n[h2]Mods taken out of the playset for now[/h2]\n"
-        "These mods are switched off in the playset until they're updated for Stellaris "
-        "4.5.2. We aim to put them back once they are, and the patch's fixes for them "
-        "come back with them.\n"
-        f"[list]\n{off}[/list]\n"
-        if SWITCHED_OFF
+    left = (
+        "\n[h2]Known issues, waiting for the mod authors[/h2]\n"
+        "These come from the mods themselves. The patch leaves them to their authors, "
+        "whose next updates should fix them.\n"
+        f"[list]\n{waiting}[/list]\n"
+        if LEFT_TO_AUTHORS
         else ""
     )
     return (
@@ -117,12 +121,8 @@ def workshop_description(outcomes: list[Outcome], names: dict[str, str], version
         "[h2]Load order[/h2]\n"
         "Load it last, after every mod below.\n\n"
         f"[h2]Required mods[/h2]\n[list]\n{required}[/list]\n\n"
-        f"[h2]What it fixes[/h2]\n[list]\n{fixes}[/list]\n\n"
-        "[h2]Known issues, waiting for the mod authors[/h2]\n"
-        "These come from the mods themselves. The patch leaves them to their authors, "
-        "whose next updates should fix them.\n"
-        f"[list]\n{waiting}[/list]\n"
-        f"{taken_out}"
+        f"[h2]What it fixes[/h2]\n{fixes}"
+        f"{left}"
     )
 
 
@@ -854,16 +854,25 @@ def _copy(layers: Layers, data: bytes, entry: Entry, body: bytes) -> bytes:
     """`body`, a mended copy of `entry` from `data`, ready for a file of its
     own: Unix line ends, and the variables of `entry`'s file that it uses
     defined above it. Raises FixError for a variable nothing defines."""
-    file_vars = _variables(data)
-    shared = layers.defined("common/scripted_variables")
-    header = ""
-    for name in sorted({"@" + m.decode() for m in _VARIABLE.findall(_COMMENT.sub(b"", body))}):
-        if name in file_vars:
-            header += f"{name} = {_text(data, file_vars[name])}\n"
-        elif name not in shared:
-            raise FixError(f"{entry.key.decode()} uses {name}, which nothing defines.")
+    header = "".join(f"{n} = {v}\n" for n, v in _copied_variables(layers, data, entry, body))
     text = (header + "\n" if header else "").encode() + body
     return text.replace(b"\r\n", b"\n") + b"\n"
+
+
+def _copied_variables(
+    layers: Layers, data: bytes, entry: Entry, body: bytes
+) -> list[tuple[str, str]]:
+    """The variables of `entry`'s file that `body`, a copy of it, uses, with
+    their values. Raises FixError for a variable nothing defines."""
+    file_vars = _variables(data)
+    shared = layers.defined("common/scripted_variables")
+    found: list[tuple[str, str]] = []
+    for name in sorted({"@" + m.decode() for m in _VARIABLE.findall(_COMMENT.sub(b"", body))}):
+        if name in file_vars:
+            found.append((name, _text(data, file_vars[name])))
+        elif name not in shared:
+            raise FixError(f"{entry.key.decode()} uses {name}, which nothing defines.")
+    return found
 
 
 def _game_entry(layers: Layers, folder: str, key: str) -> tuple[bytes, Entry]:
@@ -1032,6 +1041,68 @@ def _flags(data: bytes, entry: Entry) -> set[bytes]:
         return set()
     start, end = found.inside
     return set(_COMMENT.sub(b"", data[start:end]).split())
+
+
+# 18. Trait resources still filed under planet_pops, which 4.5.2 keeps for species
+
+
+POPS = b"planet_pops"
+POPS_TRAITS = b"planet_pops_traits"
+TRAIT_MODS = {
+    PLANETARY_DIVERSITY: "Planetary Diversity",
+    ASCENSION_WORLDS: "Ascension Worlds",
+    MORE_EVENTS: "More Events Mod",
+}
+# 4.5.2: "The Shroud-Warped leader trait and the Unemployment Benefits modifier no
+# longer scale with the number of traits a species has." An _add modifier applies
+# once per resource table under its category, so each trait's table moved to
+# planet_pops_traits. The archetype's stays on planet_pops.
+
+
+def fix_trait_categories(layers: Layers) -> Made:
+    """Copies of each trait in use that files its resources under planet_pops,
+    with the game's planet_pops_traits instead, in a file that sorts first.
+    A trait another fix copies is left to it."""
+    if POPS_TRAITS.decode() not in layers.defined("common/economic_categories"):
+        raise FixError(f"The game has no {POPS_TRAITS.decode()} category now.")
+    copied_elsewhere = {BUDDING, AQUATIC}
+    bodies: list[bytes] = []
+    header: dict[str, str] = {}
+    counts: dict[str, int] = {}  # mod name -> traits mended
+    notes: list[str] = []
+    for trait, (layer, path) in layers.defined("common/traits").items():
+        data = layers.read(layer, path)
+        entry = next((e for e in scan(data) if e.key == trait.encode() and e.block), None)
+        if entry is None:
+            continue
+        edits = [
+            (c.value, c.end, POPS_TRAITS)
+            for table in children(data, entry)
+            if table.key == b"resources" and table.block
+            for c in children(data, table)
+            if c.key == b"category" and data[c.value : c.end] == POPS
+        ]
+        if not edits:
+            continue
+        if trait in copied_elsewhere:
+            notes.append(f"{trait} is copied by another fix. Skipped.")
+            continue
+        body = _mended(data, entry, edits)
+        found = _copied_variables(layers, data, entry, body)
+        if any(header.get(name, value) != value for name, value in found):
+            notes.append(f"{trait} uses a variable another trait defines differently. Skipped.")
+            continue
+        header.update(found)
+        bodies.append(body)
+        mod = TRAIT_MODS.get(layer, layer)
+        counts[mod] = counts.get(mod, 0) + 1
+    if not bodies:
+        raise FixError(f"No trait in use files its resources under {POPS.decode()} now.")
+    top = "".join(f"{name} = {value}\n" for name, value in sorted(header.items()))
+    text = ((top + "\n" if top else "").encode() + b"\n\n".join(bodies)).replace(b"\r\n", b"\n")
+    mended = ", ".join(f"{n} from {mod}" for mod, n in counts.items())
+    notes.insert(0, f"{sum(counts.values())} traits ({mended}) use {POPS_TRAITS.decode()}")
+    return {_first_file(layers, "common/traits", "trait_categories"): text + b"\n"}, notes
 
 
 # 19. Planetary Diversity's and Ascension Worlds' copies miss two of the game's fixes
@@ -1350,39 +1421,70 @@ def _blanket_picks(layers: Layers) -> tuple[bytes, str]:
     return _copy(layers, data, entry, body), note
 
 
+# 27. Planetary Diversity's Aquatic trait misses the game's 4.5.2 AI weight
+
+
+AQUATIC = "trait_aquatic"
+# 4.5.2: "The AI now values the Aquatic trait on species that use the Wet Climate
+# Mods planet preference."
+_HAS_TRAIT = re.compile(rb"has_trait\s*=\s*(\w+)")
+
+
+def fix_aquatic(layers: Layers) -> Made:
+    """A copy of Planetary Diversity's Aquatic trait with the game's AI weight,
+    in a file that sorts first. Only while the two weights differ by the traits
+    the game's checks and nothing else, so no choice of theirs is undone."""
+    traits = layers.defined("common/traits")
+    if traits.get(AQUATIC, ("",))[0] != PLANETARY_DIVERSITY:
+        raise FixError(f"{AQUATIC} doesn't come from Planetary Diversity now.")
+    data = layers.read(*traits[AQUATIC])
+    entry = next(e for e in scan(data) if e.key == AQUATIC.encode() and e.block)
+    game_data, game_entry = _game_entry(layers, "common/traits", AQUATIC)
+    theirs = _ai_weight(data, entry)
+    ours = _ai_weight(game_data, game_entry)
+    their_text = _COMMENT.sub(b"", data[theirs.start : theirs.end])
+    game_text = _COMMENT.sub(b"", game_data[ours.start : ours.end])
+    added = sorted(set(_HAS_TRAIT.findall(game_text)) - set(_HAS_TRAIT.findall(their_text)))
+    if not added:
+        raise FixError(f"{AQUATIC}'s ai_weight checks every trait the game's does now.")
+    without = _HAS_TRAIT.sub(lambda m: b"" if m[1] in added else m[0], game_text)
+    if _weight_words(without) != _weight_words(their_text):
+        raise FixError(f"{AQUATIC}'s ai_weight differs from the game's in more than its traits.")
+    body = _mended(data, entry, [(theirs.start, theirs.end, game_data[ours.start : ours.end])])
+    path = _first_file(layers, "common/traits", "aquatic")
+    named = ", ".join(t.decode() for t in added)
+    note = f"{AQUATIC}, from Planetary Diversity: its ai_weight gets the game's {named}"
+    return {path: _copy(layers, data, entry, body)}, [note]
+
+
+def _weight_words(text: bytes) -> list[bytes]:
+    """`text`'s words, with NOT read as NOR: the game reads a NOT of several
+    checks as NOR, and Planetary Diversity's copy has NOT of one."""
+    return [b"NOR" if w == b"NOT" else w for w in text.split()]
+
+
+def _ai_weight(data: bytes, entry: Entry) -> Entry:
+    found = next((c for c in children(data, entry) if c.key == b"ai_weight" and c.block), None)
+    if found is None:
+        raise FixError(f"{AQUATIC} has no ai_weight in one of its copies now.")
+    return found
+
+
 # The playset's problems the patch leaves to the mods' authors, for the Workshop
 # page. Each is a mod's own bug, too big to copy or soon to be fixed upstream.
 # Drop a line once its mod has fixed it.
-LEFT_TO_AUTHORS = (
-    (
-        "Planetary Diversity, Ascension Worlds and More Events Mod: their copies of the "
-        "game's species traits predate 4.5.2. Unemployment Benefits and the Shroud-Warped "
-        "leader's psionic unity count once per species trait again"
-    ),
-    (
-        "More Events Mod: the Lost Emperor story sometimes can't place its system at game "
-        "start. The story then never begins in that galaxy"
-    ),
-    (
-        "Planetary Diversity: the AI doesn't yet value the Aquatic trait for species that "
-        "prefer wet planets, as 4.5.2's AI does"
-    ),
-    "Dark UI: 4.5.2's new icons, such as the fleet deselect button, aren't dark yet",
-)
+LEFT_TO_AUTHORS: tuple[str, ...] = ()
 
 
-# The mods switched off in the playset until they update, and why, for the Workshop
-# page (decision 35). Drop a line once its mod is switched back on.
-SWITCHED_OFF = (
-    (
-        "Starbase Extended 3.0: it predates 4.5 and logs dozens of errors each game. Its "
-        "starbase window lacks 4.5's buttons, and some of its modules and buildings check "
-        "for things that no longer exist"
-    ),
-    (
-        "Smarter Hyper Relays: Improved AI (shrimpAI): a Nomadic empire can't build a Hyper "
-        "Relay at its own waystation"
-    ),
+# The headings the Workshop page lists the fixes under, in order, by fix number.
+# A fix in none of them is listed last, under "Other".
+FIX_GROUPS: tuple[tuple[str, tuple[int, ...]], ...] = (
+    ("Species and traits", (18, 19, 27)),
+    ("Events and stories", (6, 11, 12, 26)),
+    ("Galaxy and systems", (5, 17)),
+    ("Ships and starbases", (2, 3, 15, 16)),
+    ("Graphics and camera", (1, 4)),
+    ("Text and translations", (7, 10, 25)),
 )
 
 
@@ -1475,6 +1577,15 @@ FIXES: tuple[tuple[int, str, Callable[[Layers], Made], tuple[str, ...]], ...] = 
         (REAL_SPACE,),
     ),
     (
+        18,
+        (
+            "Unemployment Benefits and the Shroud-Warped leader's psionic unity count once per "
+            "pop again, not once per species trait, as in 4.5.2"
+        ),
+        fix_trait_categories,
+        (PLANETARY_DIVERSITY, ASCENSION_WORLDS, MORE_EVENTS),
+    ),
+    (
         19,
         (
             "Lithoid Budding gets its full bonus on a Massive Crater and, with Ascension Worlds, "
@@ -1500,5 +1611,14 @@ FIXES: tuple[tuple[int, str, Callable[[Layers], Made], tuple[str, ...]], ...] = 
         ),
         fix_under_blanket,
         (MORE_EVENTS,),
+    ),
+    (
+        27,
+        (
+            "The AI values the Aquatic trait for species with Wet Climate Mods, as in 4.5.2, "
+            "with Planetary Diversity's Aquatic trait"
+        ),
+        fix_aquatic,
+        (PLANETARY_DIVERSITY,),
     ),
 )

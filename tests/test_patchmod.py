@@ -385,7 +385,11 @@ def test_with_mod_last_goes_before_cold_steels_patch() -> None:
     assert with_mod_last(new, "p1", "local:ours", "Ours") == new
 
 
-def test_the_workshop_description_lists_needed_mods_once_and_written_fixes() -> None:
+def test_the_workshop_description_lists_needed_mods_once_and_written_fixes_by_group(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(cold_steel_mix, "LEFT_TO_AUTHORS", ("A mod's own bug",))
+    monkeypatch.setattr(cold_steel_mix, "FIX_GROUPS", (("Ships", (2, 3)), ("Empty", (4,))))
     outcomes = [
         cold_steel_mix.Outcome(1, "Fix one", mods=("w:1", "w:2")),
         cold_steel_mix.Outcome(2, "Fix two", mods=("w:2",)),
@@ -395,20 +399,28 @@ def test_the_workshop_description_lists_needed_mods_once_and_written_fixes() -> 
     assert cold_steel_mix.patched_mods(outcomes, ["w:3", "w:2", "w:1"]) == ["w:2", "w:1"]
     text = cold_steel_mix.workshop_description(outcomes, {"w:2": "Two", "w:1": "One"}, "v4.5.1")
     assert "[*]Two\n[*]One\n" in text
-    assert "[*]Fix one\n[*]Fix two\n" in text
-    assert "Fix three" not in text
+    # Grouped in FIX_GROUPS' order, with a fix in no group last, under "Other".
+    assert (
+        "[h2]What it fixes[/h2]\n"
+        "[h3]Ships[/h3]\n[list]\n[*]Fix two\n[/list]\n"
+        "[h3]Other[/h3]\n[list]\n[*]Fix one\n[/list]\n"
+    ) in text
+    assert "Fix three" not in text and "Empty" not in text
     waiting = text.partition("[h2]Known issues, waiting for the mod authors[/h2]")[2]
-    assert all(f"[*]{problem}\n" in waiting for problem in cold_steel_mix.LEFT_TO_AUTHORS)
-    off = waiting.partition("[h2]Mods taken out of the playset for now[/h2]")[2]
-    assert all(f"[*]{mod}\n" in off for mod in cold_steel_mix.SWITCHED_OFF)
+    assert "[*]A mod's own bug\n" in waiting
 
 
-def test_the_workshop_description_has_no_taken_out_section_when_every_mod_is_on(
+def test_each_fix_is_in_one_workshop_group() -> None:
+    grouped = [n for _, members in cold_steel_mix.FIX_GROUPS for n in members]
+    assert sorted(grouped) == sorted(f[0] for f in cold_steel_mix.FIXES)
+
+
+def test_the_workshop_description_has_no_known_issues_section_when_none_are_left(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(cold_steel_mix, "SWITCHED_OFF", ())
+    monkeypatch.setattr(cold_steel_mix, "LEFT_TO_AUTHORS", ())
     text = cold_steel_mix.workshop_description([], {}, "v4.5.2")
-    assert "taken out" not in text and text.endswith("[/list]\n")
+    assert "Known issues" not in text and text.endswith("[h2]What it fixes[/h2]\n")
 
 
 def test_fix_10_ships_the_games_text_and_mends_the_tooltips(game: Game) -> None:
@@ -654,6 +666,83 @@ def test_fix_17_is_left_out_once_real_space_drops_the_seal(game: Game) -> None:
     )
     with pytest.raises(FixError, match="isn't sealed now"):
         cold_steel_mix.fix_supercomputer_seal(layers)
+
+
+# Fix 18: trait resources filed under planet_pops
+
+CATEGORIES = {
+    "common/economic_categories/02_pop.txt": "planet_pops_traits = { parent = planet_pops }\n"
+}
+TRAIT = """trait_NAME = {\r
+\tresources = {\r
+\t\tcategory = CATEGORY\r
+\t\tupkeep = { food = @food }\r
+\t}\r
+}\r
+"""
+TRAITS_COPY = "common/traits/!!_stellaris_patcher_cold_steel_mix_trait_categories.txt"
+
+
+def _trait(name: str, category: str = "planet_pops") -> str:
+    return TRAIT.replace("NAME", name).replace("CATEGORY", category)
+
+
+def test_fix_18_files_each_traits_resources_under_planet_pops_traits(game: Game) -> None:
+    layers = _layers(
+        game,
+        {
+            GAME: CATEGORIES,
+            cold_steel_mix.PLANETARY_DIVERSITY: {
+                "common/traits/02_basic.txt": "@food = 1\n"
+                + _trait("organic")
+                + _trait("done", "planet_pops_traits"),
+            },
+            cold_steel_mix.MORE_EVENTS: {
+                "common/traits/mem_grudge.txt": "@food = 1\n" + _trait("grudge"),
+            },
+        },
+    )
+    files, notes = cold_steel_mix.fix_trait_categories(layers)
+    text = files[TRAITS_COPY]
+    assert text.startswith(b"@food = 1\n\ntrait_organic = {")
+    assert text.count(b"category = planet_pops_traits") == 2 and b"trait_done" not in text
+    assert b"trait_grudge" in text and b"\r" not in text
+    assert notes == [
+        "2 traits (1 from Planetary Diversity, 1 from More Events Mod) use planet_pops_traits"
+    ]
+    assert check_files(files) == []
+
+
+def test_fix_18_skips_a_trait_whose_variable_clashes(game: Game) -> None:
+    layers = _layers(
+        game,
+        {
+            GAME: CATEGORIES,
+            cold_steel_mix.PLANETARY_DIVERSITY: {
+                "common/traits/02_basic.txt": "@food = 1\n" + _trait("organic"),
+                "common/traits/03_more.txt": "@food = 2\n" + _trait("lithoid"),
+            },
+        },
+    )
+    files, notes = cold_steel_mix.fix_trait_categories(layers)
+    assert b"trait_lithoid" not in files[TRAITS_COPY]
+    assert notes[1] == "trait_lithoid uses a variable another trait defines differently. Skipped."
+
+
+def test_fix_18_is_left_out_once_every_trait_uses_planet_pops_traits(game: Game) -> None:
+    traits = "@food = 1\n" + _trait("organic", "planet_pops_traits")
+    pd = {"common/traits/a.txt": traits}
+    layers = _layers(game, {GAME: CATEGORIES, cold_steel_mix.PLANETARY_DIVERSITY: pd})
+    with pytest.raises(FixError, match="under planet_pops now"):
+        cold_steel_mix.fix_trait_categories(layers)
+
+
+def test_fix_18_is_left_out_if_the_game_drops_planet_pops_traits(game: Game) -> None:
+    layers = _layers(
+        game, {cold_steel_mix.PLANETARY_DIVERSITY: {"common/traits/a.txt": _trait("organic")}}
+    )
+    with pytest.raises(FixError, match="no planet_pops_traits category"):
+        cold_steel_mix.fix_trait_categories(layers)
 
 
 # Fix 19: Lithoid Budding, and Ascension Worlds' terraforming rule
@@ -941,6 +1030,71 @@ def test_fix_26_skips_the_picks_once_the_game_rule_changes(game: Game) -> None:
         "The game rule can_leader_get_normal_trait doesn't call "
         "can_leader_get_normal_trait_trigger now. Skipped."
     )
+
+
+# Fix 27: Planetary Diversity's Aquatic trait and the game's AI weight
+
+BASIC_TRAITS = "common/traits/02_species_traits_basic_characteristics.txt"
+AQUATIC = """trait_aquatic = {\r
+\tcost = 2\r
+\tinline_script = "traits/pd_aquatic_allowed_planet_classes"\r
+\tai_weight = {\r
+\t\tweight = 1\r
+\t\tmodifier = {\r
+\t\t\tfactor = 0\r
+\t\t\tNOT = { has_trait = trait_pc_ocean_preference }\r
+\t\t}\r
+\t}\r
+}\r
+"""
+GAME_AQUATIC = """trait_aquatic = {
+\tcost = 2
+\tai_weight = {
+\t\tweight = 1
+\t\tmodifier = {
+\t\t\tfactor = 0
+\t\t\tNOR = {
+\t\t\t\thas_trait = trait_pc_ocean_preference
+\t\t\t\thas_trait = trait_cyborg_climate_adjustment_wet
+\t\t\t}
+\t\t}
+\t}
+}
+"""
+AQUATIC_COPY = "common/traits/!!_stellaris_patcher_cold_steel_mix_aquatic.txt"
+
+
+def _aquatic(game: Game, aquatic: str) -> Layers:
+    return _layers(
+        game,
+        {
+            GAME: {BASIC_TRAITS: GAME_AQUATIC},
+            cold_steel_mix.PLANETARY_DIVERSITY: {BASIC_TRAITS: aquatic},
+        },
+    )
+
+
+def test_fix_27_gives_the_trait_the_games_ai_weight_and_keeps_the_rest(game: Game) -> None:
+    files, notes = cold_steel_mix.fix_aquatic(_aquatic(game, AQUATIC))
+    trait = files[AQUATIC_COPY]
+    assert b"has_trait = trait_cyborg_climate_adjustment_wet" in trait
+    assert b"pd_aquatic_allowed_planet_classes" in trait and b"\r" not in trait
+    assert notes == [
+        "trait_aquatic, from Planetary Diversity: its ai_weight gets the game's "
+        "trait_cyborg_climate_adjustment_wet"
+    ]
+    assert check_files(files) == []
+
+
+def test_fix_27_is_left_out_once_the_mod_checks_the_games_traits(game: Game) -> None:
+    with pytest.raises(FixError, match="checks every trait the game's does now"):
+        cold_steel_mix.fix_aquatic(_aquatic(game, GAME_AQUATIC))
+
+
+def test_fix_27_is_left_out_if_the_mods_weight_is_its_own(game: Game) -> None:
+    aquatic = AQUATIC.replace("weight = 1", "weight = 5")
+    with pytest.raises(FixError, match="in more than its traits"):
+        cold_steel_mix.fix_aquatic(_aquatic(game, aquatic))
 
 
 # Mods out of the playset

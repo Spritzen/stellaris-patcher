@@ -309,7 +309,7 @@ and empty the rest:
 | | `PLAYSET`: your playset's name |
 | | `TAIL`: the end of every file name it ships, so its files are easy to spot |
 | | The mod constants (`SYSTEM_SCALE = "workshop:1887282318"` …): your mods |
-| | `FIXES`, `LEFT_TO_AUTHORS`, `SWITCHED_OFF`: empty to start |
+| | `FIXES`, `FIX_GROUPS`, `LEFT_TO_AUTHORS`: empty to start |
 
 Then point [\_\_main\_\_.py](src/stellaris_patcher/__main__.py) at it. It
 names `cold_steel_mix` in `_playset()`, `_check_update()` and
@@ -489,8 +489,8 @@ This is optional. Each build keeps the mod ready
    in the `.mod` file. Later builds keep it, so the next upload updates the
    same item, and the build skips the Workshop copy as well as the local one.
 3. **Paste the description** from `mods/<folder>.workshop.txt`. It lists the
-   fixes that were written, the mods needed, the problems left to their
-   authors, and the mods switched off for now.
+   mods needed, the fixes that were written, by heading, and any problems
+   left to their authors.
 4. **Add the needed mods as Required items** on the Workshop page. Steam
    doesn't read `dependencies`.
 
