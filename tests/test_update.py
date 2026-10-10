@@ -167,6 +167,26 @@ def test_the_build_status_names_what_changed_after_the_build(game: Game, tmp_pat
     assert "Changed after it: workshop:1. Rebuild it in Cold Steel." in report.build
 
 
+def test_the_build_status_names_our_patch_when_written_after_the_build(
+    game: Game, tmp_path: Path
+) -> None:
+    layers = _layers(game, {GAME: dict(OLD_GAME), "workshop:1": dict(MOD)})
+    record = tmp_path / "build.json"
+    record.write_text("{}", "utf-8")
+    built = record.stat().st_mtime
+    for path in (game.install_dir, game.workshop_dir):
+        for f in path.rglob("*"):
+            os.utime(f, (built - 60, built - 60))
+    patch = tmp_path / "patch"
+    _put(patch, {"common/buildings/fix.txt": "a = {}\n"})
+    os.utime(patch / "common/buildings/fix.txt", (built - 60, built - 60))
+    report = check.check(layers, game, None, [], record, patch=patch)
+    assert "Nothing changed after it." in report.build
+    os.utime(patch / "common/buildings/fix.txt", (built + 60, built + 60))
+    report = check.check(layers, game, None, [], record, patch=patch)
+    assert "Changed after it: the patch. Rebuild it in Cold Steel." in report.build
+
+
 def test_plain_turns_steams_bbcode_into_text() -> None:
     bbcode = "[h3]4.5.2 Notes[/h3][p][b]Modding[/b][/p][list][*][p]Added `x`[/p][/*][/list]"
     assert plain(bbcode) == "## 4.5.2 Notes\n\nModding\n\n- Added `x`\n"

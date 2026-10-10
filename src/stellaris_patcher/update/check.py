@@ -93,9 +93,11 @@ def check(
     build_record: Path | None = None,
     updated: dict[str, float] | None = None,
     kept_notes: list[Note] | None = None,
+    patch: Path | None = None,
 ) -> Report:
     """`updated` is each Workshop mod's last update (workshop.update_times),
-    and `kept_notes` the archived patch notes (notes.load_archive)."""
+    `kept_notes` the archived patch notes (notes.load_archive), and `patch`
+    the folder our patch is written to."""
     now = {layer.key: snapshot.manifest(layer, game) for layer in layers.layers}
     then = _old_manifests(base)
     if base is not None and GAME in then:
@@ -124,7 +126,7 @@ def check(
         old_copies=copies,
         removed=removed,
         undefined=undefined,
-        build=_build_status(build_record, now),
+        build=_build_status(build_record, now, patch),
         diffs=diffs,
         older=older,
         note_uses=note_uses(layers, now, updated, kept_notes, known),
@@ -319,12 +321,17 @@ def undefined_variables(layers: Layers) -> list[Use]:
     return found
 
 
-def _build_status(record: Path | None, now: dict[str, Manifest]) -> str:
-    """Whether Cold Steel's build of the playset is older than its game or mods."""
+def _build_status(record: Path | None, now: dict[str, Manifest], patch: Path | None) -> str:
+    """Whether Cold Steel's build of the playset is older than its game, its
+    mods or our patch. The check skips the patch's layer, so its folder is
+    read here."""
     if record is None or not record.is_file():
         return "Cold Steel has no build of this playset."
     built = record.stat().st_mtime
     after = [m.name for m in now.values() if m.newest > built]
+    patch_files = [f for f in patch.rglob("*") if f.is_file()] if patch is not None else []
+    if any(f.stat().st_mtime > built for f in patch_files):
+        after.append("the patch")
     when = _time(built)
     if not after:
         return f"Built {when}. Nothing changed after it."

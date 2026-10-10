@@ -35,7 +35,7 @@ PYTHONPATH=src python3 -m stellaris_patcher check-update --accept  # 8. once rev
    | Variables nothing defines | **(new)** marks findings not reviewed at the last accept. Each is a value the game treats as missing |
    | Older mod copies | Objects and whole files a mod's copy wins with, where the game's file changed after the mod's last Steam update. Each new one has a diff against the copy it replaces: the game's, or a newer mod's, like UI Overhaul Dynamic's. A mod's own change and a missing game change look the same, so match each to the notes. Reviewed ones are only counted |
    | Names the patch notes removed that older mods still use | Names from the notes' Modding lines that remove, rename or move something, found in a mod last updated before those notes. Names the game's files still contain are left out. **(new)** marks the ones not reviewed |
-   | Cold Steel build | Says whether Cold Steel's build is older than the game or a mod. If so, it must be rebuilt before play |
+   | Cold Steel build | Says whether Cold Steel's build is older than the game, a mod or our patch. If so, it must be rebuilt before play |
 
 3. **Read the patch notes** in `notes/`. Read the Modding section first,
    then the bug fixes. Match each line to a finding, or to a file a mod

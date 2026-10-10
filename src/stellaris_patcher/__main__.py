@@ -22,6 +22,7 @@ from stellaris_patcher.patchmod.layers import Layers
 from stellaris_patcher.patchmod.write import (
     THUMBNAIL,
     check_files,
+    mods_dir,
     supported_version,
     thumbnail,
     with_mod_last,
@@ -88,7 +89,9 @@ def _check_update(fetch_notes: bool, accept: bool, out: Path | None) -> int:
     record = cold_steel.build_record(playset.id)
     updated = workshop.update_times(game)
     kept = notes.load_archive()
-    report = check.check(layers, game, base, cold_steel_mix.plan(layers), record, updated, kept)
+    patch = mods_dir() / cold_steel_mix.FOLDER
+    fixes = cold_steel_mix.plan(layers)
+    report = check.check(layers, game, base, fixes, record, updated, kept, patch)
     if accept:
         # Every finding there now counts as reviewed: the next check shows it
         # again only once one of its copies changes.
