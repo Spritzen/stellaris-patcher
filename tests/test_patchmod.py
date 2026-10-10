@@ -1748,6 +1748,74 @@ def test_fix_36_is_left_out_once_no_text_names_a_planet_through_from(game: Game)
         cold_steel_mix.fix_specimen_places(_layers(game, {cold_steel_mix.MORE_EVENTS: text}))
 
 
+# Fix 37: Stellar AI's Archaeostudies Faculty and More Arcologies' Archeotech Preserve
+
+FACULTY = """building_archaeostudies_faculty = {
+\ttriggered_planet_modifier = {
+\t\tpotential = { owner = { is_gestalt = no } }
+\t\tplanet_biologists_consumer_goods_upkeep_add = 0.5
+\t}
+\ttriggered_planet_modifier = {
+\t\tpotential = { RELIC }
+\t\tplanet_biologists_minor_artifacts_produces_add = 0.25
+\t}
+\tai_weight_coefficient = COEFFICIENT
+}
+"""
+RELIC = "is_planet_class = pc_relic"
+PRESERVE = (
+    "OR = { is_planet_class = pc_relic "
+    "num_zones = { type = zone_pd_archeotech_preserve value > 0 } }"
+)
+FACULTY_COPY = "common/buildings/~~_stellaris_patcher_cold_steel_mix_faculty.txt"
+
+
+def _faculty(game: Game, arcology: str = PRESERVE, coefficient: str = "@sai_coefficient") -> Layers:
+    def faculty(relic: str, weight: str) -> str:
+        return FACULTY.replace("RELIC", relic).replace("COEFFICIENT", weight)
+
+    return _layers(
+        game,
+        {
+            GAME: {"common/buildings/05_research_buildings.txt": faculty(RELIC, "1.5")},
+            cold_steel_mix.MORE_ARCOLOGIES: {
+                "common/buildings/zzz_pd_archaeostudies_faculty_archeotech_override.txt": faculty(
+                    arcology, "1.5"
+                )
+            },
+            cold_steel_mix.STELLAR_AI: {
+                "common/buildings/~stellarai_research_buildings.txt": faculty(RELIC, coefficient),
+                "common/scripted_variables/stellarai.txt": "@sai_coefficient = 4.8\n",
+            },
+        },
+    )
+
+
+def test_fix_37_gives_stellar_ais_faculty_more_arcologies_preserve(game: Game) -> None:
+    files, notes = cold_steel_mix.fix_faculty(_faculty(game))
+    merged = FACULTY.replace("RELIC", PRESERVE).replace("COEFFICIENT", "@sai_coefficient")
+    assert files == {FACULTY_COPY: merged.encode()}
+    assert notes == [
+        "building_archaeostudies_faculty, from Stellar AI: gets More Arcologies' "
+        "triggered_planet_modifier"
+    ]
+    assert check_files(files) == []
+
+
+def test_fix_37_is_left_out_once_more_arcologies_faculty_is_the_games(game: Game) -> None:
+    with pytest.raises(FixError, match="building_archaeostudies_faculty is the game's now"):
+        cold_steel_mix.fix_faculty(_faculty(game, arcology=RELIC))
+
+
+def test_fix_37_is_left_out_when_both_mods_change_the_same_block(game: Game) -> None:
+    layers = _faculty(game)
+    stellar_ai = "common/buildings/~stellarai_research_buildings.txt"
+    path = layers.layer(cold_steel_mix.STELLAR_AI).root / stellar_ai
+    path.write_text(path.read_text().replace("pc_relic", "pc_relic is_ai = yes"))
+    with pytest.raises(FixError, match="both change building_archaeostudies_faculty's"):
+        cold_steel_mix.fix_faculty(layers)
+
+
 # Mods out of the playset
 
 

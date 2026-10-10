@@ -115,7 +115,7 @@ next upload
   read `dependencies`. Remove any it no longer lists. At the next upload,
   add Planetary Diversity - More Arcologies, which fix 25 patches, Smarter
   Hyper Relays: Improved AI (shrimpAI), back on with fix 28, and UI Overhaul
-  Dynamic, whose window fix 30 ships. Keep Starbase Extended 3.0, back on with
+  Dynamic, whose window fix 30 ships, and Stellar AI, which fix 37 patches. Keep Starbase Extended 3.0, back on with
   fixes 29–34, and Planetary Diversity - Ascension Worlds.
 
 ### Left to the authors
@@ -165,9 +165,10 @@ written by hand, one line per problem.
 | `common/section_templates/!!!!_stellaris_patcher_cold_steel_mix_ring_sections.txt` | Starbase Extended 3.0's ring anchorage section, twice, under two new keys |
 | `common/ship_sizes/zzzz_stellaris_patcher_cold_steel_mix_starbase_sizes.txt` | 21 of Starbase Extended 3.0's starbase sizes, with the game's 4.5 values for eight fields |
 | `localisation/english/replace/stellaris_patcher_cold_steel_mix_specimens_l_english.yml` | Six of More Events Mod's specimen descriptions, with a planet's name swapped for a few words in each |
+| `common/buildings/~~_stellaris_patcher_cold_steel_mix_faculty.txt` | Stellar AI's Archaeostudies Faculty, with More Arcologies' two Archeotech Preserve checks |
 
 The game's own files are fine to ship in a mod. The others need their
-authors' permission, or fixes 3, 5, 10–12, 16–19, 25–34 and 36 left out.
+authors' permission, or fixes 3, 5, 10–12, 16–19, 25–34, 36 and 37 left out.
 
 ## What each fix does
 
@@ -199,6 +200,7 @@ authors' permission, or fixes 3, 5, 10–12, 16–19, 25–34 and 36 left out.
 | 33 | Starbase Extended 3.0's orbital ring shield and armour modules name sections nothing defines, so they have no section (2 errors) | `SHIELD_ORBITAL_RING_SECTION` and `ARMOR_ORBITAL_RING_SECTION`, as copies of its ring anchorage section, as its starbase shield and armour modules use its anchorage. Each only while a module uses it and nothing defines it ([decision 50](../decisions.md)) |
 | 34 | Starbase Extended 3.0's 19 copies of the game's starbase sizes predate 4.5: their size and combat size are the old values, they have no map icon, the orbital rings lack `is_orbital_ring`, and the Ion Cannon can be built at a waystation or arkship | Copies of its sizes in a `zzzz_` file, with the game's 4.5 values for eight fields, and the game's construction conditions they lack. Its own hit points, armour, costs and slots stay. Its Stronghold and HQ take the Citadel's values. A variable its file uses but doesn't define takes the one value the other ship size files give it, as fix 3 does ([decision 51](../decisions.md)) |
 | 36 | Six of More Events Mod's specimen descriptions name a planet with `[From.From.GetName]` (`[From.From.From.GetName]` for the datacore). A specimen keeps only its event's scope, the science ship, so the name is blank in the Grand Archive and logs `Unknown promotion From` | A `localisation/english/replace/` file with the six lines, each the winning text with the name swapped for a few words: "a lifeless planetoid", "a world of long-dead civilizations", "alien ruins", "an ancient satellite", "a living asteroid", "a disguised planet". A line More Events Mod has reworded is skipped ([decision 52](../decisions.md)) |
+| 37 | Stellar AI and More Arcologies each replace the game's Archaeostudies Faculty, and Stellar AI's `~stellarai_…` file sorts after More Arcologies' `zzz_…` one. Stellar AI raises its AI weight. More Arcologies gives its Relic World bonuses, +0.25 minor artifacts per biologist and +25% archaeostudies research speed, to planets with its Archeotech Preserve zone, and that's lost | Stellar AI's faculty in a `~~_` file, with each block More Arcologies changed from the game's: its two Relic World checks, each an `OR` with the zone. Only while Stellar AI's copy of each such block is still the game's, so neither mod's change is lost ([decision 53](../decisions.md)) |
 
 ### Notes
 
@@ -213,8 +215,8 @@ authors' permission, or fixes 3, 5, 10–12, 16–19, 25–34 and 36 left out.
   copy must be the one the game uses.
 - **Fixes 11, 12 and 26 copy whole events**, and the game then has two
   events with one id. More Events Mod's copy is still loaded, but never
-  used. Fixes 17, 18, 19, 27 and 28 do the same for a system, traits, a
-  rule and a megastructure.
+  used. Fixes 17, 18, 19, 27, 28 and 37 do the same for a system, traits, a
+  rule, a megastructure and a building.
 - **Fix 15 doesn't name More Events Mod.** It defines every old shield upkeep
   name any component uses and nothing defines.
 - **Fix 18 copies 15 traits, not 18.** Three of More Events Mod's six are
@@ -308,3 +310,8 @@ These weren't seen in game yet:
 - A More Events Mod specimen in the Grand Archive, such as the Hologenerator
   Unit, says where it was found, with no blank (fix 36). The log has no
   `Unknown promotion From` for `From.From.GetName]`.
+- An Archaeostudies Faculty on a planet with More Arcologies' Archeotech
+  Preserve zone gives its biologists minor artifacts, and the empire's
+  archaeostudies research speed from it is +50%, not +25% (fix 37). The log has a third duplicate
+  object notice for `building_archaeostudies_faculty`, naming the patch's
+  file. That's the check that the patch's copy won.
