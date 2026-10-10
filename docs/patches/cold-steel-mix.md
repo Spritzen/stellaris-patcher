@@ -14,8 +14,6 @@ and fix 26 from the
 [Ascension Worlds report](../reports/2026-10-09-cold-steel-mix-ascension-worlds-back.md#what-to-do-next).
 Problems it leaves to the mods' authors are listed on its Workshop page
 ([Left to the authors](#left-to-the-authors)).
-Fixes 2 and 3 are left out for now: their mod is
-[switched off](#mods-switched-off-for-now).
 The code is [cold_steel_mix.py](../../src/stellaris_patcher/patchmod/cold_steel_mix.py).
 
 ## Build it
@@ -52,25 +50,25 @@ it patches is switched on in the playset.
 
 ## Mods switched off for now
 
-**One mod is switched off in the playset until it updates for 4.5.2**
-([decision 35](../decisions.md)). It stays in the playset, so it's one
-switch from coming back. The Workshop description doesn't list it for now
-([decision 44](../decisions.md)). shrimpAI came back on 10 October, with
-fix 28.
+**No mod is switched off now.** Starbase Extended 3.0 and shrimpAI were
+switched off until they updated for 4.5.2 ([decision 35](../decisions.md)).
+shrimpAI came back on 10 October with fix 28. Starbase Extended came back the
+same day with fixes 29–34, as its author isn't updating
+([decisions 46–51](../decisions.md),
+[report](../reports/2026-10-10-cold-steel-mix-starbase-extended-back.md)).
 
-| Mod | Why | Fixes left out |
-|---|---|---|
-| Starbase Extended 3.0 | 47 load errors each run, a starbase window from before 4.5, and the modules, buildings and sections in [Left to the authors](#left-to-the-authors) | 2, 3, and its text key in 7 |
-
-To bring one back:
+A mod switched off stays in the playset, so it's one switch from coming
+back. Its fixes are left out while it's off. To bring one back:
 
 1. Switch it on in Cold Steel's Cold Steel Mix playset, in the same place.
 2. [Build the patch](#build-it). Its fixes come back if the update still
    needs them, and are left out with a reason if not.
-3. Read the [first report after 4.5.2](../reports/2026-10-07-cold-steel-mix-4.5.2-first-run.md)
-   for what it still breaks. Put the lines it still needs back in
-   `LEFT_TO_AUTHORS`. They were taken out in the change that switched it off.
+3. Play a run and [report on its error log](../game-report.md). For
+   Starbase Extended, check its fixes as [Check in game](#check-in-game) lists.
 4. At the next upload, add it back to the Workshop page's **Required items**.
+   With Starbase Extended, add UI Overhaul Dynamic too: fix 30 ships its
+   window, so the build lists it in `dependencies` (`NEEDS` in
+   [cold_steel_mix.py](../../src/stellaris_patcher/patchmod/cold_steel_mix.py)).
 
 **Switching a mod off can put another mod's older copy back in use.** With
 Ascension Worlds off, Planetary Diversity's Lithoid Budding came back
@@ -124,11 +122,11 @@ next upload
   the `.mod` file, and later builds keep it, so the next upload updates the
   same Workshop item.
 - On the Workshop page, add the same mods as **Required items**. Steam doesn't
-  read `dependencies`. Remove any it no longer lists: at the next upload,
-  Starbase Extended 3.0 ([switched off](#mods-switched-off-for-now)). Keep
-  Planetary Diversity - Ascension Worlds, which is back on. Add Planetary
-  Diversity - More Arcologies, which fix 25 patches, and Smarter Hyper Relays:
-  Improved AI (shrimpAI), back on with fix 28.
+  read `dependencies`. Remove any it no longer lists. At the next upload,
+  add Planetary Diversity - More Arcologies, which fix 25 patches, Smarter
+  Hyper Relays: Improved AI (shrimpAI), back on with fix 28, and UI Overhaul
+  Dynamic, whose window fix 30 ships. Keep Starbase Extended 3.0, back on with
+  fixes 29–34, and Planetary Diversity - Ascension Worlds.
 
 ### Left to the authors
 
@@ -170,11 +168,16 @@ Its last line, item 18, became fix 18 on 10 October.
 | `events/!!_stellaris_patcher_cold_steel_mix_under_blanket.txt` | Two of More Events Mod's events, with 15 lines added |
 | `common/traits/!!_stellaris_patcher_cold_steel_mix_trait_categories.txt` | 15 traits from Planetary Diversity, Ascension Worlds and More Events Mod, with one word changed in each |
 | `common/traits/!!_stellaris_patcher_cold_steel_mix_aquatic.txt` | Planetary Diversity's Aquatic trait, with the game's AI weight |
+| `common/starbase_modules/zz_stellaris_patcher_cold_steel_mix_sbx_buildings.txt` | Three of Starbase Extended 3.0's modules, with one building name changed in each check |
+| `interface/zzzz_stellaris_patcher_cold_steel_mix_starbase_view.gui` | UI Overhaul Dynamic's starbase window and slot, with Starbase Extended's slot sizes and nine header values changed |
+| 19 `gfx/models/ships/starbases/_starbase_entities_SBX_3_0_…` files | Starbase Extended 3.0's whole files, rebuilt: its copies of the game's models are the game's, with its attach points added |
+| `gfx/models/ships/starbases/zz_stellaris_patcher_cold_steel_mix_attach_points.asset` | 50 of the game's models, with attach points added |
+| `common/starbase_modules/sbx_3_0_orbital_ring_modules.txt`, `common/starbase_modules/sbx_3_0_starbase_modules.txt` and `common/starbase_buildings/sbx_3_0_starbase_buildings.txt` | Starbase Extended 3.0's whole files, with 7 modules' and 10 buildings' checks mended, and the game's 4.5 hangar lines in its hangar bay |
+| `common/section_templates/!!!!_stellaris_patcher_cold_steel_mix_ring_sections.txt` | Starbase Extended 3.0's ring anchorage section, twice, under two new keys |
+| `common/ship_sizes/zzzz_stellaris_patcher_cold_steel_mix_starbase_sizes.txt` | 21 of Starbase Extended 3.0's starbase sizes, with the game's 4.5 values for eight fields |
 
 The game's own files are fine to ship in a mod. The others need their
-authors' permission, or fixes 3, 5, 11, 12, 16, 17, 18, 19, 25, 26 and 27 left out. Fix 3
-isn't shipped while Starbase Extended is
-[switched off](#mods-switched-off-for-now).
+authors' permission, or fixes 3, 5, 11, 12, 16, 17, 18, 19, 25, 26, 27 and 29–34 left out.
 
 ## What each fix does
 
@@ -199,6 +202,12 @@ isn't shipped while Starbase Extended is
 | 26 | More Events Mod's Under the Blanket story picks its scientist with no check that the game lets them take a normal trait, so an autocracy's ruler or heir loses the trait its ending gives: Substance Abuser, Archaeologist or Adaptable. It also starts for Fallen Empires, on the worlds they own from the start | Copies of `mem_under_blanket.1` and `.2`, in an `events/` file whose name starts `!!_`. Each of `.2`'s 14 scientist picks gets the game's `can_leader_get_normal_trait_trigger`, the trigger its rule calls. `.1` starts only for `is_country_type = default`, as the game's Strange Worlds colony events do ([decision 40](../decisions.md)) |
 | 27 | Planetary Diversity's copy of the Aquatic trait predates 4.5.2, so the AI doesn't value it for species with Wet Climate Mods (`trait_cyborg_climate_adjustment_wet`), as the game's AI now does | A copy of Planetary Diversity's trait, in a `!!_` file, with the game's `ai_weight` in place of its own. Planetary Diversity's planet classes and checks stay. Only while its weight differs from the game's by that trait alone ([decision 42](../decisions.md)) |
 | 28 | Smarter Hyper Relays (shrimpAI) replaces the game's Hyper Relay with a copy from before 4.5.2. Its surveyed-system check lacks the game's clause for a system with your own waystation, so a Nomadic empire can't build one at its waystation until it has surveyed every planet there | A copy of shrimpAI's Hyper Relay, in a `zzzz_` file: megastructures go to the last file by name. Each custom tooltip in its `possible` gets the game's clauses it lacks, matched by fail text. Today that's the one waystation clause. shrimpAI's own changes, such as its wild space clauses and its AI weight, stay ([decision 45](../decisions.md)) |
+| 29 | Starbase Extended 3.0's Asteroid Mining checks for a `mining_manager` building, and its Space Foundry and Space Factory for `assembly_line_manufacturing`. Nothing defines either, so their bonuses never apply, and the game logs 5 errors each run | Copies of the three modules, in a `zz_` file: starbase modules go to the last file by name. Each check names Starbase Extended's own building of that kind: Mining Experts, which needs Asteroid Mining, and Chain Manufacturing, which boosts alloys and consumer goods ([decision 46](../decisions.md)). A name that's defined later is left alone |
+| 30 | Starbase Extended 3.0's starbase window, from July, replaces UI Overhaul Dynamic's 4.5 copy. It lacks the Orbital Ring → planet button (`open_planet`), the design name, the window's title and two lists' scrollbars, and the game logs 2 errors each run | Starbase Extended's `interface/zzz_sbx_3_0_starbase_view.gui`, emptied, so UI Overhaul Dynamic's windows are used again. Then a copy of UI Overhaul Dynamic's `starbase_view` window and its slot, in a `zzzz_` file that sorts after every file defining them. The slots take Starbase Extended's sizes: 34 px, 7 to a row, icons at 0.6, so all 21 module and building slots fit. Upgrade and Station Details swap places as in Starbase Extended, so Upgrade isn't just above Dismantle. Only while Starbase Extended's window lacks some of UI Overhaul Dynamic's elements. The swap is skipped if UI Overhaul Dynamic's header changes ([decision 47](../decisions.md)) |
+| 31 | Starbase Extended 3.0's starbase models are old copies of the game's. 180 of its 397 copies differ from 4.5's, and they win, so starbases lose 79 death explosions, 65 lights and 16 aquatic water surfaces. Its own lines ask for 8 hum sounds, 3 particle effects and 3 `.anim` files nothing defines, and an idle animation 7 synthetic meshes lack. Its larger sizes ask for attach points `part4`–`part7` that many meshes lack. About 30 log entries each run | Its 19 model files, rebuilt at their own paths. A model it copies is the game's 4.5 one, with Starbase Extended's own additions: its gun-slot attach points, and effects and sounds the game's model has none of. Where both have one, on the same node or in the same state, Starbase Extended's is the game's older one, so the game's stays. Its new Stronghold and HQ models on a Citadel's mesh are built on the game's Citadel. A sound, particle or animation nothing defines is left out. Each starbase model gets the attach points its size asks for and its mesh lacks, at its centre, as Starbase Extended places its gun slots. 50 game models need them too, in a `zz_` file that sorts last ([decision 48](../decisions.md)) |
+| 32 | Six of Starbase Extended 3.0's modules have two `potential` blocks, and its orbital ring hangar bay two `ai_weight` blocks: the game keeps one, so conditions are lost (6 errors). `financial_space_center`'s `potential` has `category = starbase_buildings`, which isn't a trigger (2). Ten buildings' `potential` scopes to the starbase's system, which an arkship's starbase lacks (3 in play). Its hangar bay predates 4.5: no hangars, energy upkeep for bio-ship empires | Starbase Extended's two module files and its buildings file, whole at their own paths, so the game never reads the duplicate blocks. Each object's checks are mended: the blocks merged into one, the `category` line taken out, `exists = solar_system` first. The hangar bay gets the game's two hangar sets, its tooltips, and its two upkeeps, food for bio-ship empires, in place of Starbase Extended's one, which is the game's for other empires. Its own cost, limit and platforms stay. A module fix 29 copies is left to it ([decision 49](../decisions.md)) |
+| 33 | Starbase Extended 3.0's orbital ring shield and armour modules name sections nothing defines, so they have no section (2 errors) | `SHIELD_ORBITAL_RING_SECTION` and `ARMOR_ORBITAL_RING_SECTION`, as copies of its ring anchorage section, as its starbase shield and armour modules use its anchorage. Each only while a module uses it and nothing defines it ([decision 50](../decisions.md)) |
+| 34 | Starbase Extended 3.0's 19 copies of the game's starbase sizes predate 4.5: their size and combat size are the old values, they have no map icon, the orbital rings lack `is_orbital_ring`, and the Ion Cannon can be built at a waystation or arkship | Copies of its sizes in a `zzzz_` file, with the game's 4.5 values for eight fields, and the game's construction conditions they lack. Its own hit points, armour, costs and slots stay. Its Stronghold and HQ take the Citadel's values. A variable its file uses but doesn't define takes the one value the other ship size files give it, as fix 3 does ([decision 51](../decisions.md)) |
 
 ### Notes
 
@@ -282,3 +291,26 @@ These weren't seen in game yet:
 - A Nomadic empire can build a Hyper Relay in a system where it has its own
   waystation and some planets aren't surveyed (fix 28). A system it has
   surveyed already worked without the fix.
+- A citadel's starbase window shows all 21 module slots and 21 building
+  slots, Upgrade sits bottom-left with the next level's name, and Station
+  Details top-right (fix 30). **Seen** on a Starport in the
+  [Starbase Extended back](../reports/2026-10-10-cold-steel-mix-starbase-extended-back.md)
+  run: every slot showed and nothing looked wrong. Still to see on a Citadel. An Orbital Ring's window has the button back to
+  its planet, and the log has no `open_planet` or `design_name`. Watch a
+  slot under construction: Starbase Extended's progress bar keeps its full
+  size in the smaller slot, so it may hang into the row below.
+- A destroyed starbase explodes, aquatic and toxoid starbases hum with the
+  game's sounds, and toxoid starbases' lights glow (fix 31). The log has no
+  `amb_aquatic_starbase_hum`, `amb_toxoid_starbase_hum`, `toxoid_01_ship_light_effect`,
+  `does not have an animated mesh`, `fallen_empire_0…_citadel_idle.anim` or
+  `has no attach point named part…`. Sections on the added attach points sit
+  at the starbase's centre, so look at a humanoid Starport for any that
+  stick out oddly.
+- A bio-ship empire's orbital ring hangar bay costs food, and its tooltip
+  lists the scout hangar (fix 32). An arkship's starbase lists its
+  buildings, and the log has no `solar_system` error from
+  `sbx_3_0_starbase_buildings.txt`, and no `Duplicate trigger` (fix 32).
+- An orbital ring's shield or armour module shows a section, and the log has
+  no `SHIELD_ORBITAL_RING_SECTION` (fix 33).
+- Starbases have their map counter icons, and the Ion Cannon can't be built
+  at a waystation (fix 34).

@@ -18,7 +18,14 @@ from dataclasses import dataclass, field
 from stellaris_patcher.paradox.game import Game
 from stellaris_patcher.paradox.localisation import keys, language
 from stellaris_patcher.paradox.script import Entry, Node, children, scan, value_of
-from stellaris_patcher.patchmod.layers import GAME, Layers, find_define, numbers, parse_file
+from stellaris_patcher.patchmod.layers import (
+    GAME,
+    LayerError,
+    Layers,
+    find_define,
+    numbers,
+    parse_file,
+)
 from stellaris_patcher.patchmod.write import BOM, mods_dir, winning_name, workshop_id
 
 NAME = "Cold Steel Mix patch"
@@ -38,6 +45,7 @@ ASCENSION_WORLDS = "workshop:3241119393"  # Planetary Diversity - Ascension Worl
 MORE_EVENTS = "workshop:727000451"
 MORE_ARCOLOGIES = "workshop:1732447147"  # Planetary Diversity - More Arcologies
 SHRIMPAI = "workshop:2815767345"  # Smarter Hyper Relays: Improved AI (shrimpAI)
+UI_OVERHAUL = "workshop:1623423360"  # UI Overhaul Dynamic
 
 
 class FixError(Exception):
@@ -51,7 +59,7 @@ class Outcome:
     files: dict[str, bytes] = field(default_factory=dict)
     notes: tuple[str, ...] = ()  # what it did, or parts it skipped
     left_out: str = ""  # why nothing was written, if so
-    mods: tuple[str, ...] = ()  # the mods it patches, by Cold Steel key
+    mods: tuple[str, ...] = ()  # the mods it patches, and once written those it NEEDS
 
 
 type Made = tuple[dict[str, bytes], list[str]]
@@ -83,7 +91,8 @@ def plan(layers: Layers) -> list[Outcome]:
         except FixError as why:
             outcomes.append(Outcome(number, title, left_out=str(why), mods=mods))
             continue
-        outcomes.append(Outcome(number, title, files, tuple(notes), mods=mods))
+        needs = mods + NEEDS.get(number, ())
+        outcomes.append(Outcome(number, title, files, tuple(notes), mods=needs))
     return outcomes
 
 
@@ -386,17 +395,7 @@ def fix_nsc_variables(layers: Layers) -> Made:
     missing = used - set(_variables(data)) - set(layers.defined("common/scripted_variables"))
     if not missing:
         raise FixError(f"{NSC_STARBASES} defines every variable it uses now.")
-    lines: list[str] = []
-    for name in sorted(missing):
-        values = {
-            _text(layers.read(layer, path), entry)
-            for layer, path in layers.ordered("common/ship_sizes")
-            for entry in [_variables(layers.read(layer, path)).get(name)]
-            if entry is not None
-        }
-        if len(values) != 1:
-            raise FixError(f"{name} has {len(values)} values in other ship sizes, not 1.")
-        lines.append(f"{name} = {values.pop()}\n")
+    lines = [f"{name} = {_ship_size_value(layers, name)}\n" for name in sorted(missing)]
     header = "# Defined here by the Cold Steel Mix patch: the game sets these per file.\n"
     body = data[len(BOM) :] if data.startswith(BOM) else data
     notes = [f"{NSC_STARBASES}: defined {', '.join(sorted(missing))}"]
@@ -1555,6 +1554,948 @@ def _line_end(data: bytes, entry: Entry, inside: Entry) -> int:
     return end - 1 if data[end - 1 : end] == b"\r" else end
 
 
+# 29. Starbase Extended's module bonuses check buildings nothing defines
+
+
+STARBASE_MODULES = "common/starbase_modules"
+STARBASE_BUILDINGS = "common/starbase_buildings"
+# Each missing building, to Starbase Extended's own building of its kind (decision 46).
+# Its Asteroid Mining checks mining_manager, and its Space Foundry and Space Factory
+# check assembly_line_manufacturing. Mining Experts needs Asteroid Mining, and Chain
+# Manufacturing boosts alloys and consumer goods.
+SBX_BUILDINGS = {
+    "mining_manager": "mining_experts",
+    "assembly_line_manufacturing": "chain_manufacturing",
+}
+_HAS_BUILDING = re.compile(rb"\bhas_starbase_building\s*=\s*(\w+)")
+
+
+def fix_sbx_bonus_buildings(layers: Layers) -> Made:
+    """Copies of Starbase Extended's modules whose bonuses check a building
+    nothing defines, checking its own building of that kind instead, in a file
+    that sorts last. A missing building that's defined now is left alone."""
+    buildings = layers.defined(STARBASE_BUILDINGS)
+    swaps: dict[bytes, bytes] = {}
+    skipped: list[str] = []
+    for old, new in SBX_BUILDINGS.items():
+        if old in buildings:
+            skipped.append(f"{old} is defined now.")
+        elif new not in buildings:
+            skipped.append(f"Nothing defines {new} now.")
+        else:
+            swaps[old.encode()] = new.encode()
+    if not swaps:
+        raise FixError(" ".join(skipped))
+    used: dict[bytes, tuple[str, bytes, Entry]] = {}  # the definition the game uses
+    for layer, path in layers.ordered(STARBASE_MODULES):
+        data = layers.read(layer, path)
+        for entry in scan(data):
+            if entry.block:
+                used[entry.key] = (layer, data, entry)
+    bodies: list[bytes] = []
+    header: dict[str, str] = {}
+    notes = [f"{why} Skipped." for why in skipped]
+    for key, (layer, data, entry) in used.items():
+        if layer != STARBASE_EXTENDED:
+            continue
+        found = [
+            m
+            for m in _HAS_BUILDING.finditer(data, entry.start, entry.end)
+            if m[1] in swaps and b"#" not in data[data.rfind(b"\n", 0, m.start()) + 1 : m.start()]
+        ]
+        if not found:
+            continue
+        body = _mended(data, entry, [(m.start(1), m.end(1), swaps[m[1]]) for m in found])
+        variables = _copied_variables(layers, data, entry, body)
+        if any(header.get(name, value) != value for name, value in variables):
+            notes.append(f"{key.decode()} uses a variable another module defines differently.")
+            continue
+        header.update(variables)
+        bodies.append(body)
+        olds = sorted({m[1].decode() for m in found})
+        checks = ", ".join(f"{swaps[o.encode()].decode()} for {o}" for o in olds)
+        notes.append(f"{key.decode()}, from Starbase Extended: checks {checks}")
+    if not bodies:
+        names = " or ".join(o.decode() for o in swaps)
+        raise FixError(f"No Starbase Extended module in use checks {names} now.")
+    top = "".join(f"{name} = {value}\n" for name, value in sorted(header.items()))
+    text = ((top + "\n" if top else "").encode() + b"\n\n".join(bodies)).replace(b"\r\n", b"\n")
+    return {_last_file(layers, STARBASE_MODULES, "sbx_buildings"): text + b"\n"}, notes
+
+
+# 30. Starbase Extended's starbase window predates 4.5
+
+
+SBX_VIEW = "interface/zzz_sbx_3_0_starbase_view.gui"
+UIOD_VIEW = "interface/starbase_view.gui"
+VIEW = b"starbase_view"
+SLOT = b"starbase_view_current_component_grid_entry"  # one module or building slot
+SLOT_GRIDS = (b"modules_grid", b"buildings_grid")
+GRID_FIELDS = (b"slotSize", b"max_slots_horizontal")
+# Starbase Extended swaps Upgrade and Station Details, so Upgrade isn't just above
+# Dismantle (decision 47). The same swap in UI Overhaul Dynamic's header, worked out
+# against its 4.5.2 window. Each element by the box it's directly in, its type and
+# name: {field: (its value, ours)}.
+_BOX, _TEXT, _BUTTON = b"containerWindowType", b"instantTextBoxType", b"buttonType"
+BUTTON_SWAP: dict[tuple[bytes, bytes, bytes], dict[bytes, tuple[bytes, bytes]]] = {
+    (b"starbase_tab", _BOX, b"upgrade_info"): {
+        b"position": (b"{ x = -10 y = 40 }", b"{ x = 10 y = 75 }"),
+        b"orientation": (b"upper_right", b"upper_left"),
+        b"origo": (b"upper_right", b"upper_left"),
+    },
+    (b"upgrade_info", _TEXT, b"next_class_name"): {
+        b"position": (b"{ x = 0 y = 4 }", b"{ x = 44 y = 4 }"),
+        b"format": (b"right", b"left"),
+    },
+    (b"upgrade_info", _BUTTON, b"upgrade"): {
+        b"position": (b"{ x = -35 y = 4 }", b"{ x = 4 y = 4 }"),
+        b"orientation": (b"upper_right", b"upper_left"),
+    },
+    (b"class_info", _BUTTON, b"details"): {
+        b"position": (b"{ x = 4 y = -35 }", b"{ x = -45 y = 4 }"),
+        b"orientation": (b"lower_left", b"upper_right"),
+    },
+}
+EMPTIED = (
+    b"# Emptied by the Cold Steel Mix patch (fix 30): the game uses UI Overhaul Dynamic's\n"
+    b"# starbase window, with Starbase Extended's slot sizes, from the patch's own file.\n"
+)
+
+
+def fix_starbase_view(layers: Layers) -> Made:
+    """Starbase Extended's window file emptied, so UI Overhaul Dynamic's 4.5
+    windows are used again, and a copy of its starbase window and slot, in a
+    file that sorts last, with Starbase Extended's slot sizes and its swap of
+    Upgrade and Station Details. Only while Starbase Extended's window lacks
+    some of UI Overhaul Dynamic's elements."""
+    definers = _gui_definers(layers, (VIEW, SLOT))
+    if not definers or definers[-1] != (STARBASE_EXTENDED, SBX_VIEW):
+        raise FixError(f"{VIEW.decode()} doesn't come from Starbase Extended's {SBX_VIEW} now.")
+    _expect_winner(layers, UIOD_VIEW, UI_OVERHAUL, "UI Overhaul Dynamic")
+    sbx = layers.read(STARBASE_EXTENDED, SBX_VIEW)
+    sbx_view, sbx_slot = _gui_window(sbx, VIEW), _gui_window(sbx, SLOT)
+    data = layers.read(UI_OVERHAUL, UIOD_VIEW)
+    view, slot = _gui_window(data, VIEW), _gui_window(data, SLOT)
+    if sbx_view is None or sbx_slot is None or view is None or slot is None:
+        raise FixError(f"{SBX_VIEW} or {UIOD_VIEW} lacks {VIEW.decode()} or its slot now.")
+    missing = sorted(_gui_names(data, view) - _gui_names(sbx, sbx_view))
+    if not missing:
+        raise FixError(
+            f"Starbase Extended's {VIEW.decode()} has every element UI Overhaul's has now."
+        )
+    notes = [f"Starbase Extended's window lacks {', '.join(n.decode() for n in missing)}"]
+    edits: list[tuple[int, int, bytes]] = []
+    for grid in SLOT_GRIDS:
+        theirs = _gui_element(sbx, sbx_view, b"gridBoxType", grid)
+        ours = _gui_element(data, view, b"gridBoxType", grid)
+        for setting in GRID_FIELDS:
+            edits.append(_field_edit(data, ours, setting, _field_value(sbx, theirs, setting)))
+    try:
+        swap = _button_swap(data, view)
+        notes.append("Upgrade and Station Details swap places, as in Starbase Extended")
+    except FixError as why:
+        swap = []
+        notes.append(f"{why} The button swap is skipped.")
+    view_body = _mended(data, view, edits + swap)
+    slot_edits = [_field_edit(data, slot, b"size", _field_value(sbx, sbx_slot, b"size"))]
+    for theirs in children(sbx, sbx_slot):
+        scale = value_of(sbx, theirs, b"scale")
+        named = value_of(sbx, theirs, b"name")
+        if scale is None or named is None:
+            continue
+        ours = _gui_element(data, slot, theirs.key, named, deep=False)
+        if any(c.key == b"scale" for c in children(data, ours)):
+            slot_edits.append(_field_edit(data, ours, b"scale", scale))
+            continue
+        name_line = next(c for c in children(data, ours) if c.key == b"name")
+        slot_edits.append(
+            (name_line.end, name_line.end, b"\n" + _indent(data, name_line) + b"scale = " + scale)
+        )
+    slot_body = _mended(data, slot, slot_edits)
+    file_vars = _variables(data)
+    used = sorted({"@" + m.decode() for m in _VARIABLE.findall(view_body + slot_body)})
+    header = b"".join(
+        data[file_vars[n].start : file_vars[n].end] + b"\n" for n in used if n in file_vars
+    )
+    text = header + b"guiTypes = {\n\t" + view_body + b"\n\t" + slot_body + b"\n}\n"
+    rivals = [p.rpartition("/")[2] for _, p in definers]
+    file_name = winning_name(rivals, f"{TAIL}_starbase_view.gui", first=False)
+    if file_name is None:
+        raise FixError(f"No file name sorts after the other files with {VIEW.decode()}.")
+    notes.append("Module and building slots take Starbase Extended's sizes")
+    return {SBX_VIEW: EMPTIED, f"interface/{file_name}": text.replace(b"\r\n", b"\n")}, notes
+
+
+def _button_swap(data: bytes, view: Entry) -> list[tuple[int, int, bytes]]:
+    """`BUTTON_SWAP`'s edits to `view`. FixError if a value it changes isn't
+    the one it was worked out against."""
+    edits: list[tuple[int, int, bytes]] = []
+    for (box, kind, name), fields in BUTTON_SWAP.items():
+        element = _gui_element(data, _gui_element(data, view, _BOX, box), kind, name, deep=False)
+        for key, (was, now) in fields.items():
+            found = next((c for c in children(data, element) if c.key == key), None)
+            if found is None or b" ".join(data[found.value : found.end].split()) != was:
+                raise FixError(f"{name.decode()}'s {key.decode()} has changed.")
+            edits.append((found.value, found.end, now))
+    return edits
+
+
+def _gui_definers(layers: Layers, names: Sequence[bytes]) -> list[tuple[str, str]]:
+    """Each (layer, path) whose file defines a top-level window in `names`, in
+    the order the game reads them: the last wins."""
+    return [
+        (layer, path)
+        for layer, path in layers.ordered("interface", ".gui")
+        if any(_gui_window(layers.read(layer, path), name) for name in names)
+    ]
+
+
+def _gui_window(data: bytes, name: bytes) -> Entry | None:
+    return next(
+        (
+            w
+            for types in scan(data)
+            if types.key == b"guiTypes"
+            for w in children(data, types)
+            if w.block and value_of(data, w, b"name") == name
+        ),
+        None,
+    )
+
+
+def _gui_names(data: bytes, window: Entry) -> set[bytes]:
+    return {n for b in _blocks(data, window) if (n := value_of(data, b, b"name")) is not None}
+
+
+def _gui_element(data: bytes, window: Entry, kind: bytes, name: bytes, deep: bool = True) -> Entry:
+    """The one element of type `kind` named `name` inside `window`: at any depth,
+    or only directly inside it."""
+    inside = _blocks(data, window) if deep else children(data, window)
+    found = [e for e in inside if e.key == kind and value_of(data, e, b"name") == name]
+    if len(found) != 1:
+        raise FixError(
+            f"{window.key.decode()} has {len(found)} {kind.decode()} {name.decode()} now."
+        )
+    return found[0]
+
+
+def _field_value(data: bytes, element: Entry, field: bytes) -> bytes:
+    found = next((c for c in children(data, element) if c.key == field), None)
+    if found is None:
+        raise FixError(f"An element has no {field.decode()} now.")
+    return data[found.value : found.end]
+
+
+def _field_edit(data: bytes, element: Entry, field: bytes, value: bytes) -> tuple[int, int, bytes]:
+    found = next((c for c in children(data, element) if c.key == field), None)
+    if found is None:
+        raise FixError(f"An element has no {field.decode()} now.")
+    return found.value, found.end, value
+
+
+# 31. Starbase Extended's starbase models are old copies of the game's
+
+
+SBX_MODELS = "gfx/models/ships/starbases"
+_SOUND = re.compile(rb'\bsoundeffect\s*=\s*"?(\w+)')
+_PARTICLE = re.compile(rb'\bparticle\s*=\s*"?(\w+)')
+_NODE = re.compile(rb'\bnode\s*=\s*"?(\w+)')
+_SOUND_NAME = re.compile(rb'\bsoundeffect\s*=\s*\{\s*name\s*=\s*"?(\w+)')
+_PARTICLE_NAME = re.compile(rb'\bpdxparticle\s*=\s*\{\s*name\s*=\s*"?(\w+)')
+_MESH_OBJECT = re.compile(rb"(?<!\[)\[([A-Za-z_]\w*)\x00")
+_MESH_LOCATOR = re.compile(rb"(?<!\[)\[\[([A-Za-z_]\w*)\x00")
+# SBX's new tiers sound like the game's tier they grow from.
+NEW_TIERS = {b"stronghold": b"citadel", b"headquarters": b"citadel"}
+
+
+@dataclass
+class _Models:
+    """What the game resolves for a starbase model, by name."""
+
+    game: dict[bytes, tuple[bytes, Entry]]  # the game's own entities
+    game_vars: dict[bytes, dict[str, Entry]]  # each game file's variables, by its data
+    sounds: set[bytes]
+    particles: set[bytes]
+    meshes: dict[bytes, tuple[str, set[bytes]]]  # mesh -> its file, its animation ids
+    slots: dict[str, set[bytes]]  # Starbase Extended's starbase sizes -> locators asked for
+    others: set[bytes]  # entities a mod other than Starbase Extended defines
+    dropped: dict[str, int] = field(default_factory=dict)  # what was left out, by kind
+    older: dict[str, int] = field(default_factory=dict)  # the game's older lines, left out
+    attached: int = 0  # attach points added
+
+
+def fix_starbase_models(layers: Layers) -> Made:
+    """Starbase Extended's model files, rebuilt at their own paths. Each copy of
+    a game model is the game's 4.5 one with Starbase Extended's own additions
+    that resolve: attach points, lights and sounds. References that don't
+    resolve are left out, and a sound its new tiers lack comes from the
+    Citadel's. Every starbase model gets the attach points Starbase Extended's
+    sizes ask for and its mesh lacks, at its centre: game models in a file of
+    their own that sorts last."""
+    paths = [p for p in layers.paths(STARBASE_EXTENDED, SBX_MODELS, ".asset")]
+    paths = [p for p in paths if layers.winner(p) == STARBASE_EXTENDED]
+    if not paths:
+        raise FixError(f"No {SBX_MODELS} file comes from Starbase Extended now.")
+    models = _models(layers)
+    files: dict[str, bytes] = {}
+    rebuilt = 0
+    sbx_names: set[bytes] = set()
+    for path in paths:
+        text, entities, changed, names = _rebuild_models(layers, models, path)
+        sbx_names |= names
+        rebuilt += entities
+        if changed:
+            files[path] = text
+    copies: list[bytes] = []
+    header: dict[str, bytes] = {}
+    for name, (data, entry) in sorted(models.game.items()):
+        if name in sbx_names or name in models.others:
+            continue
+        edits = _attach_points(layers, models, data, entry)
+        if edits:
+            copies.append(_mended(data, entry, edits))
+            header.update(_used_vars(models, data, copies[-1]))
+    if copies:
+        rivals = [p.rpartition("/")[2] for _, p in layers.ordered(SBX_MODELS, ".asset")]
+        file_name = winning_name(rivals, f"{TAIL}_attach_points.asset", first=False)
+        if file_name is None:
+            raise FixError(f"No file name sorts after the other {SBX_MODELS} files.")
+        top = b"".join(f"{k} = ".encode() + v + b"\n" for k, v in sorted(header.items()))
+        text = (top + b"\n" if top else b"") + b"\n\n".join(copies) + b"\n"
+        files[f"{SBX_MODELS}/{file_name}"] = text.replace(b"\r\n", b"\n")
+    if not files:
+        raise FixError("Starbase Extended's models match the game's and resolve every name now.")
+    left = ", ".join(f"{n} {kind}" for kind, n in sorted(models.dropped.items()))
+    older = ", ".join(f"{n} {kind}" for kind, n in sorted(models.older.items()))
+    notes = [
+        f"{rebuilt} of Starbase Extended's models rebuilt, from the game's where it copies one",
+        f"Left out, as nothing defines them: {left or 'nothing'}",
+        f"Left out, as the game's model has its own: {older or 'nothing'}",
+        f"{models.attached} attach points added. "
+        f"{len(copies)} game models are copied to get theirs",
+    ]
+    return files, notes
+
+
+def _models(layers: Layers) -> _Models:
+    game: dict[bytes, tuple[bytes, Entry]] = {}
+    game_vars: dict[bytes, dict[str, Entry]] = {}
+    for path in layers.paths(GAME, "gfx/models", ".asset"):
+        data = layers.read(GAME, path)
+        for entry in scan(data):
+            name = value_of(data, entry, b"name") if entry.key == b"entity" else None
+            if name is not None:
+                game.setdefault(name, (data, entry))
+    sounds: set[bytes] = set()
+    for layer, path in layers.files("sound", ".asset").values():
+        sounds.update(_SOUND_NAME.findall(layers.read(layer, path)))
+    particles: set[bytes] = set()
+    meshes: dict[bytes, tuple[str, set[bytes]]] = {}
+    for layer, path in layers.files("gfx", ".gfx").values():
+        data = layers.read(layer, path)
+        particles.update(_PARTICLE_NAME.findall(data))
+        if b"pdxmesh" not in data:
+            continue
+        for types in scan(data):
+            for mesh in children(data, types):
+                name, file = value_of(data, mesh, b"name"), value_of(data, mesh, b"file")
+                if mesh.key != b"pdxmesh" or name is None or file is None:
+                    continue
+                ids = {
+                    value_of(data, a, b"id") or b""
+                    for a in children(data, mesh)
+                    if a.key == b"animation"
+                }
+                meshes[name] = (file.decode(), ids)
+    sizes: dict[str, tuple[str, bytes, Entry]] = {}
+    for layer, path in layers.ordered("common/ship_sizes"):
+        data = layers.read(layer, path)
+        for entry in scan(data):
+            if entry.block:
+                sizes[entry.key.decode()] = (layer, data, entry)
+    slots: dict[str, set[bytes]] = {}
+    for size, (layer, data, entry) in sizes.items():
+        found = next((c for c in children(data, entry) if c.key == b"section_slots"), None)
+        if layer == STARBASE_EXTENDED and found is not None:
+            slots[size] = {v for s in children(data, found) if (v := value_of(data, s, b"locator"))}
+    others: set[bytes] = set()
+    for mod in [m.key for m in layers.layers[1:] if m.key != STARBASE_EXTENDED]:
+        for path in layers.paths(mod, "gfx/models", ".asset"):
+            data = layers.read(mod, path)
+            others.update(
+                n for e in scan(data) if e.key == b"entity" and (n := value_of(data, e, b"name"))
+            )
+    return _Models(game, game_vars, sounds, particles, meshes, slots, others)
+
+
+def _rebuild_models(
+    layers: Layers, models: _Models, path: str
+) -> tuple[bytes, int, bool, set[bytes]]:
+    """One of Starbase Extended's model files, rebuilt: its text, how many of
+    its entities changed, whether the file did, and the entities it defines."""
+    data = layers.read(STARBASE_EXTENDED, path)
+    folder = path.rpartition("/")[0]
+    header: dict[str, bytes] = {}
+    bodies: list[bytes] = []
+    names: set[bytes] = set()
+    changed = 0
+    dropped = False
+    for entry in scan(data):
+        if entry.key.startswith(b"@") and not entry.block:
+            header[entry.key.decode()] = data[entry.value : entry.end]
+        elif entry.key == b"animation" and entry.block:
+            file = (value_of(data, entry, b"file") or b"").decode()
+            if not any(layers.has(layer.key, f"{folder}/{file}") for layer in layers.layers):
+                _count(models, "animation files")
+                dropped = True
+                continue
+            bodies.append(data[entry.start : entry.end])
+        elif entry.key == b"entity" and entry.block:
+            name = value_of(data, entry, b"name") or b""
+            names.add(name)
+            body, game_data = _rebuilt_entity(layers, models, data, entry, name)
+            if b"".join(_COMMENT.sub(b"", body).split()) != _clause(data, entry):
+                changed += 1
+            if game_data is not None:
+                for key, value in _used_vars(models, game_data, body).items():
+                    if header.setdefault(key, value).split() != value.split():
+                        raise FixError(f"{path} defines {key} unlike the game's file.")
+            bodies.append(body)
+        else:
+            bodies.append(data[entry.start : entry.end])
+    top = b"".join(f"{k} = ".encode() + v.strip() + b"\n" for k, v in header.items())
+    text = (top + b"\n" if top else b"") + b"\n\n".join(bodies) + b"\n"
+    return text.replace(b"\r\n", b"\n"), changed, bool(changed) or dropped, names
+
+
+def _rebuilt_entity(
+    layers: Layers, models: _Models, data: bytes, entry: Entry, name: bytes
+) -> tuple[bytes, bytes | None]:
+    """The entity's new text, and the game file it's built on, if any. A new
+    tier's model on the same mesh as the game's tier it grows from is built on
+    that one, keeping its own name."""
+    found = models.game.get(name)
+    tier = next((name.replace(n, old) for n, old in NEW_TIERS.items() if n in name), b"")
+    if found is None and tier in models.game and _mesh(*models.game[tier]) == _mesh(data, entry):
+        found = models.game[tier]
+    if found is None:
+        sounds_from = models.game.get(tier)
+        edits = _merge_block(models, _mesh(data, entry), data, entry, None, sounds_from)
+        edits += _attach_points(layers, models, data, entry, edits)
+        return _mended(data, entry, edits), None
+    game_data, game_entry = found
+    mesh = _mesh(game_data, game_entry) or _mesh(data, entry)
+    edits = _merge_block(models, mesh, game_data, game_entry, (data, entry), None)
+    edits += _attach_points(layers, models, game_data, game_entry, edits, (data, entry), name)
+    return _mended(game_data, game_entry, edits), game_data
+
+
+def _mesh(data: bytes, entity: Entry) -> bytes:
+    return value_of(data, entity, b"pdxmesh") or b""
+
+
+def _merge_block(
+    models: _Models,
+    mesh: bytes,
+    data: bytes,
+    block: Entry,
+    extra: tuple[bytes, Entry] | None,
+    sounds_from: tuple[bytes, Entry] | None,
+) -> list[tuple[int, int, bytes]]:
+    """Edits to `block`, the game's entity or one of its states (or Starbase
+    Extended's own, when `extra` is None). `extra`'s children that resolve and
+    `block` lacks are added, and its own values replace `block`'s. But its
+    effects on a node `block`'s effects use, and its sounds where `block` has
+    some, are the game's older ones: the game's stay. Children of `block` that
+    don't resolve are left out. A state that loses its sounds gets
+    `sounds_from`'s, from the same state."""
+    edits: list[tuple[int, int, bytes]] = []
+    own = children(data, block)
+    for child in own:
+        if kind := _broken(models, mesh, data, child):
+            _count(models, kind)
+            edits.append(_drop(data, child))
+        elif child.key == b"state" and child.block and extra is None:
+            twin = _twin(sounds_from, child, data) if sounds_from else None
+            edits += _merge_block(models, mesh, data, child, None, None)
+            if twin is not None and _lost_sounds(models, mesh, data, child):
+                twin_data, twin_state = twin
+                edits += _added(
+                    data,
+                    child,
+                    [twin_data[e.start : e.end] for e in _start_events(twin_data, twin_state)],
+                )
+    if extra is None:
+        return edits
+    extra_data, extra_block = extra
+    added: list[bytes] = []
+    nodes = {n for c in own if c.key == b"event" for n in _NODE.findall(data[c.start : c.end])}
+    sounds = any(c.key == b"start_event" for c in own)
+    for child in children(extra_data, extra_block):
+        if kind := _broken(models, mesh, extra_data, child):
+            _count(models, kind)
+            continue
+        match = _match(data, own, extra_data, child)
+        text = extra_data[child.start : child.end]
+        if match is not None and _clause(data, match) == _clause(extra_data, child):
+            continue
+        if child.key == b"event" and nodes.intersection(_NODE.findall(text)):
+            models.older["effects"] = models.older.get("effects", 0) + 1
+        elif child.key == b"start_event" and sounds:
+            models.older["sounds"] = models.older.get("sounds", 0) + 1
+        elif match is None or child.key in (b"event", b"start_event"):
+            added.append(_mended_child(models, mesh, extra_data, child))
+        elif child.key == b"state" and child.block:
+            edits += _merge_block(models, mesh, data, match, (extra_data, child), None)
+        else:
+            edits.append((match.start, match.end, text))
+    return edits + _added(data, block, added)
+
+
+def _mended_child(models: _Models, mesh: bytes, data: bytes, child: Entry) -> bytes:
+    """`child`'s text, a block without the children inside it that don't resolve."""
+    if not child.block:
+        return data[child.start : child.end]
+    return _mended(data, child, _merge_block(models, mesh, data, child, None, None))
+
+
+def _twin(
+    sounds_from: tuple[bytes, Entry], state: Entry, data: bytes
+) -> tuple[bytes, Entry] | None:
+    twin_data, twin_entity = sounds_from
+    name = value_of(data, state, b"name")
+    for child in children(twin_data, twin_entity):
+        if child.key == b"state" and value_of(twin_data, child, b"name") == name:
+            return twin_data, child
+    return None
+
+
+def _start_events(data: bytes, state: Entry) -> list[Entry]:
+    return [c for c in children(data, state) if c.key == b"start_event" and c.block]
+
+
+def _lost_sounds(models: _Models, mesh: bytes, data: bytes, state: Entry) -> bool:
+    """`state` has sounds, and none of them resolve."""
+    found = [e for e in _start_events(data, state) if _SOUND.search(data[e.start : e.end])]
+    return bool(found) and all(_broken(models, mesh, data, e) == "sounds" for e in found)
+
+
+def _match(data: bytes, own: list[Entry], extra_data: bytes, child: Entry) -> Entry | None:
+    """`child`'s counterpart among `own`: by key and name for a named block,
+    by key for a value, by text for any other block."""
+    name = value_of(extra_data, child, b"name") if child.block else None
+    for mine in own:
+        if mine.key != child.key or mine.block != child.block:
+            continue
+        if not child.block or (name is not None and value_of(data, mine, b"name") == name):
+            return mine
+        if name is None and _clause(data, mine) == _clause(extra_data, child):
+            return mine
+    return None
+
+
+def _broken(models: _Models, mesh: bytes, data: bytes, child: Entry) -> str:
+    """What `child` asks for that nothing defines: "sounds", "particles" or
+    "mesh animations", or "" if it all resolves."""
+    text = data[child.start : child.end]
+    if child.block and child.key in (b"event", b"start_event"):
+        if any(s not in models.sounds for s in _SOUND.findall(text)):
+            return "sounds"
+        if any(p not in models.particles for p in _PARTICLE.findall(text)):
+            return "particles"
+        return ""
+    ids = models.meshes.get(mesh, ("", set()))[1]
+    if (
+        child.key == b"animation"
+        and not child.block
+        and text.split(b"=", 1)[1].strip(b' \t"') not in ids
+    ):
+        return "mesh animations"
+    return ""
+
+
+def _count(models: _Models, kind: str) -> None:
+    models.dropped[kind] = models.dropped.get(kind, 0) + 1
+
+
+def _drop(data: bytes, child: Entry) -> tuple[int, int, bytes]:
+    """An edit that takes `child` out, with its line if it has one to itself."""
+    start = data.rfind(b"\n", 0, child.start) + 1
+    end = data.find(b"\n", child.end)
+    if data[start : child.start].strip() or (end != -1 and data[child.end : end].strip(b" \t\r")):
+        return child.start, child.end, b""
+    return start, len(data) if end == -1 else end + 1, b""
+
+
+def _added(data: bytes, block: Entry, texts: list[bytes]) -> list[tuple[int, int, bytes]]:
+    """An edit that adds `texts`, a line each, at the end of `block`."""
+    if not texts:
+        return []
+    close = block.end - 1
+    line = data.rfind(b"\n", 0, close) + 1
+    if data[line:close].strip():  # the closing brace shares its line
+        return [(close, close, b" " + b" ".join(texts) + b" ")]
+    # A child on a line of its own shows the indent. Otherwise, one more than the block's line.
+    own_line = (_indent(data, c) for c in children(data, block) if not _indent(data, c).strip())
+    block_line = _indent(data, block)
+    indent = next(own_line, block_line[: len(block_line) - len(block_line.lstrip())] + b"\t")
+    return [(line, line, b"".join(indent + t + b"\n" for t in texts))]
+
+
+def _attach_points(
+    layers: Layers,
+    models: _Models,
+    data: bytes,
+    entity: Entry,
+    edits: Sequence[tuple[int, int, bytes]] = (),
+    extra: tuple[bytes, Entry] | None = None,
+    named: bytes = b"",
+) -> list[tuple[int, int, bytes]]:
+    """An edit that adds, at the model's centre, each locator Starbase
+    Extended's size for this model asks for that its mesh and entity lack.
+    `named` is the model's name, if not `entity`'s own."""
+    name = (named or value_of(data, entity, b"name") or b"").decode()
+    size = next((s for s in models.slots if name.endswith(f"_{s}_entity")), None)
+    mesh = models.meshes.get(_mesh(data, entity))
+    if size is None or mesh is None:
+        return []
+    have = {b"root", *_mesh_locators(layers, mesh[0])}
+    texts = [data[e.start : e.end] for e in children(data, entity)] + [t for _, _, t in edits]
+    if extra is not None:
+        texts.append(extra[0][extra[1].start : extra[1].end])
+    for text in texts:
+        have.update(re.findall(rb'locator\s*=\s*\{\s*name\s*=\s*"?(\w+)', text))
+    missing = sorted(models.slots[size] - have, key=lambda n: (len(n), n))
+    models.attached += len(missing)
+    lines = [b'locator = { name = "' + n + b'" position = { 0 0 0 } }' for n in missing]
+    return _added(data, entity, lines)
+
+
+def _mesh_locators(layers: Layers, path: str) -> set[bytes]:
+    """The locators in a binary .mesh file: the `[[name` objects in its `[locator` object."""
+    try:
+        data = layers.read(layers.winner(path), path)
+    except LayerError:
+        return set()
+    starts = [(m.start(), m[1]) for m in _MESH_OBJECT.finditer(data)]
+    for i, (start, name) in enumerate(starts):
+        if name == b"locator":
+            end = starts[i + 1][0] if i + 1 < len(starts) else len(data)
+            return set(_MESH_LOCATOR.findall(data, start, end))
+    return set()
+
+
+def _used_vars(models: _Models, data: bytes, body: bytes) -> dict[str, bytes]:
+    """The variables of the game file `data` that `body` uses, with their values."""
+    if data not in models.game_vars:  # only a few files are copied from
+        models.game_vars[data] = _variables(data)
+    file_vars = models.game_vars[data]
+    used = {"@" + m.decode() for m in _VARIABLE.findall(_COMMENT.sub(b"", body))}
+    return {n: data[e.value : e.end].strip() for n, e in file_vars.items() if n in used}
+
+
+# 32. Starbase Extended's modules and buildings: duplicate blocks, broken checks, its hangar bay
+
+
+SINGLE_BLOCKS = (b"potential", b"ai_weight")  # the game keeps one of each
+HANGAR_BAY = "orbital_ring_hangar_bay"
+# 4.5's lines Starbase Extended's copy of the hangar bay lacks: its hangars, by the
+# kind of ships an empire uses, and its tooltips.
+HANGAR_LINES = (
+    b"triggered_component_set",
+    b"show_component_tooltips",
+    b"custom_tooltip_with_modifiers",
+    b"show_tech_unlock_if",
+)
+_SYSTEM_SCOPE = re.compile(rb"\bsolar_system\s*=\s*\{")
+_SYSTEM_EXISTS = re.compile(rb"\bexists\s*=\s*solar_system\b")
+
+
+def fix_sbx_checks(layers: Layers) -> Made:
+    """Starbase Extended's module and building files, whole at their own paths,
+    with each object's checks mended: a second `potential` or `ai_weight`
+    merged into the first, a `category` line taken out of a `potential`, and
+    `exists = solar_system` before a `potential` scopes to the system, which
+    an arkship's starbase lacks. Its hangar bay gets 4.5's hangars, bio-ship
+    upkeep and tooltips. Whole files, so the game never reads the duplicate
+    blocks (item 35). A module fix 29 copies is left to it."""
+    files: dict[str, bytes] = {}
+    notes: list[str] = []
+    for folder in (STARBASE_MODULES, STARBASE_BUILDINGS):
+        for path in layers.paths(STARBASE_EXTENDED, folder):
+            if layers.winner(path) != STARBASE_EXTENDED:
+                continue
+            data = layers.read(STARBASE_EXTENDED, path)
+            edits: list[tuple[int, int, bytes]] = []
+            for entry in scan(data):
+                if not entry.block:
+                    continue
+                if any(old.encode() in data[entry.start : entry.end] for old in SBX_BUILDINGS):
+                    notes.append(f"{entry.key.decode()} is copied by fix 29. Skipped.")
+                    continue
+                mends, done = _check_edits(data, entry)
+                if entry.key.decode() == HANGAR_BAY:
+                    more, hangar = _hangar_edits(layers, data, entry)
+                    mends += more
+                    done += hangar
+                if mends:
+                    edits += mends
+                    notes.append(f"{entry.key.decode()}: {', '.join(done)}")
+            if edits:
+                files[path] = _edit(data, edits).replace(b"\r\n", b"\n")
+    if not files:
+        raise FixError("Starbase Extended's modules and buildings have no checks to mend now.")
+    return files, notes
+
+
+def _used_definitions(layers: Layers, folder: str) -> dict[bytes, tuple[str, bytes, Entry]]:
+    """Each object in a folder where the last definition by file name wins, as the game uses it."""
+    used: dict[bytes, tuple[str, bytes, Entry]] = {}
+    for layer, path in layers.ordered(folder):
+        data = layers.read(layer, path)
+        for entry in scan(data):
+            if entry.block:
+                used[entry.key] = (layer, data, entry)
+    return used
+
+
+def _check_edits(data: bytes, entry: Entry) -> tuple[list[tuple[int, int, bytes]], list[str]]:
+    """The edits that mend one object's checks, and what each did."""
+    edits: list[tuple[int, int, bytes]] = []
+    done: list[str] = []
+    for key in SINGLE_BLOCKS:
+        blocks = [c for c in children(data, entry) if c.key == key and c.block]
+        if not blocks:
+            continue
+        first, rest = blocks[0], blocks[1:]
+        weights = {value_of(data, b, b"weight") for b in blocks} - {None}
+        if len(weights) > 1:
+            done.append(f"keeps its {len(blocks)} {key.decode()} blocks, whose weights differ")
+            continue
+        moved: list[bytes] = []
+        stray = [c for c in children(data, first) if c.key == b"category"]
+        for block in rest:
+            for child in children(data, block):
+                if child.key == b"category" and key == b"potential":
+                    stray.append(child)
+                elif child.key != b"weight":
+                    moved.append(data[child.start : child.end])
+            edits.append(_drop(data, block))
+        if rest:
+            done.append(f"merges its {len(blocks)} {key.decode()} blocks")
+        if key != b"potential":
+            edits += _added(data, first, moved)
+            continue
+        edits += [_drop(data, c) for c in stray if c.start > first.start and c.end < first.end]
+        if stray:
+            done.append("drops `category` from its potential, which isn't a trigger")
+        checks = b"".join(data[b.start : b.end] for b in blocks)
+        if _SYSTEM_SCOPE.search(checks) and not _SYSTEM_EXISTS.search(checks):
+            at = first.inside[0]
+            edits.append((at, at, b" exists = solar_system"))
+            done.append("checks the starbase has a system first")
+        edits += _added(data, first, moved)
+    return edits, done
+
+
+def _hangar_edits(
+    layers: Layers, data: bytes, entry: Entry
+) -> tuple[list[tuple[int, int, bytes]], list[str]]:
+    """The game's 4.5 lines Starbase Extended's hangar bay lacks, and its bio-ship
+    upkeep: the game's upkeeps in place of Starbase Extended's, when its one
+    upkeep is the game's for other empires."""
+    game_data, game_entry = _game_entry(layers, STARBASE_MODULES, HANGAR_BAY)
+    theirs = children(game_data, game_entry)
+    mine = {c.key for c in children(data, entry)}
+    lacked = [c for c in theirs if c.key in HANGAR_LINES and c.key not in mine]
+    edits = _added(data, entry, [game_data[c.start : c.end] for c in lacked])
+    names = sorted({c.key.decode() for c in lacked})
+    done = [f"gets the game's {', '.join(names)}"] if names else []
+    resources = next((c for c in children(data, entry) if c.key == b"resources"), None)
+    game_resources = next((c for c in theirs if c.key == b"resources"), None)
+    if resources is None or game_resources is None:
+        return edits, done
+    upkeeps = [c for c in children(data, resources) if c.key == b"upkeep"]
+    game_upkeeps = [c for c in children(game_data, game_resources) if c.key == b"upkeep"]
+    untriggered = [u for u in upkeeps if not any(c.key == b"trigger" for c in children(data, u))]
+    plain = [
+        b"".join(_clause(game_data, c) for c in children(game_data, u) if c.key != b"trigger")
+        for u in game_upkeeps
+    ]
+    if len(upkeeps) == 1 and len(untriggered) == 1 and len(game_upkeeps) > 1:
+        body = b"".join(_clause(data, c) for c in children(data, upkeeps[0]))
+        if body in plain:
+            text = b"\n\t\t".join(game_data[u.start : u.end] for u in game_upkeeps)
+            edits.append((upkeeps[0].start, upkeeps[0].end, text))
+            done.append("costs the game's upkeep, food for bio-ship empires")
+    return edits, done
+
+
+# 33. Starbase Extended's orbital ring shield and armour modules have no sections
+
+
+SECTION_TEMPLATES = "common/section_templates"
+# Each section its modules name and nothing defines, to the one to copy: its ring
+# anchorage section, as its starbase shield and armour modules use its anchorage.
+RING_SECTIONS = {
+    b"SHIELD_ORBITAL_RING_SECTION": b"ANCHORAGE_ORBITAL_RING_SECTION",
+    b"ARMOR_ORBITAL_RING_SECTION": b"ANCHORAGE_ORBITAL_RING_SECTION",
+}
+
+
+def fix_ring_sections(layers: Layers) -> Made:
+    """Each section in RING_SECTIONS a module uses and nothing defines, as a copy
+    of Starbase Extended's ring anchorage section under its own key."""
+    templates: dict[bytes, tuple[bytes, Entry]] = {}
+    for layer, path in layers.ordered(SECTION_TEMPLATES):
+        data = layers.read(layer, path)
+        for entry in scan(data):
+            key = value_of(data, entry, b"key") if entry.block else None
+            if key is not None:
+                templates.setdefault(key, (data, entry))  # the first definition wins
+    used = {
+        value_of(data, entry, b"section") or b""
+        for _, data, entry in _used_definitions(layers, STARBASE_MODULES).values()
+    }
+    bodies: list[bytes] = []
+    notes: list[str] = []
+    for missing, model in RING_SECTIONS.items():
+        if missing in templates or missing not in used or model not in templates:
+            continue
+        data, entry = templates[model]
+        found = next(c for c in children(data, entry) if c.key == b"key")
+        body = _mended(data, entry, [(found.value, found.end, b'"' + missing + b'"')])
+        bodies.append(body.replace(b"\r\n", b"\n"))
+        notes.append(f"{missing.decode()}, as a copy of {model.decode()}")
+    if not bodies:
+        raise FixError("Every orbital ring section a module uses is defined now.")
+    return {
+        _first_file(layers, SECTION_TEMPLATES, "ring_sections"): b"\n\n".join(bodies) + b"\n"
+    }, notes
+
+
+# 34. Starbase Extended's starbase sizes predate 4.5
+
+
+SHIP_SIZES = "common/ship_sizes"
+# Values 4.5 changed or added on every starbase size: how big each counts for, its map
+# icon, and the flags the game reads. Starbase Extended's own balance (hit points,
+# armour, costs, slots) stays. Its swarm and marauder sizes, which it doesn't
+# rebalance, differ from the game's in these alone.
+SIZE_FIELDS = (
+    b"size_multiplier",
+    b"combat_size_multiplier",
+    b"fleet_slot_size",
+    b"map_counter_icon",
+    b"is_orbital_ring",
+    b"flip_control_on_disable",
+)
+# The game's conditions for building a size, such as 4.5's "not at a waystation or an
+# arkship" on the Ion Cannon. Those Starbase Extended's copy lacks are added.
+CONSTRUCTION = b"potential_construction"
+# Starbase Extended's sizes above the Citadel take the Citadel's values.
+NEW_SIZES = {
+    b"starbase_stronghold": "starbase_citadel",
+    b"starbase_headquarters": "starbase_citadel",
+}
+
+
+def fix_starbase_sizes(layers: Layers) -> Made:
+    """Copies of Starbase Extended's starbase sizes with the game's 4.5 values for
+    SIZE_FIELDS, in a file that sorts last. Its new sizes take the Citadel's."""
+    bodies: list[bytes] = []
+    header: dict[str, str] = {}
+    changed: list[str] = []
+    for key, (layer, data, entry) in _used_definitions(layers, SHIP_SIZES).items():
+        if layer != STARBASE_EXTENDED:
+            continue
+        try:
+            game_data, game_entry = _game_entry(
+                layers, SHIP_SIZES, NEW_SIZES.get(key, key.decode())
+            )
+        except FixError:
+            continue
+        game_vars = _variables(game_data)
+        edits: list[tuple[int, int, bytes]] = []
+        added: list[bytes] = []
+        for field_name in SIZE_FIELDS:
+            want = next((c for c in children(game_data, game_entry) if c.key == field_name), None)
+            if want is None or want.block:
+                continue
+            value = game_data[want.value : want.end].strip()
+            if value.startswith(b"@") and value.decode() in game_vars:
+                value = game_data[
+                    game_vars[value.decode()].value : game_vars[value.decode()].end
+                ].strip()
+            have = next((c for c in children(data, entry) if c.key == field_name), None)
+            if have is None:
+                added.append(field_name + b" = " + value)
+            elif data[have.value : have.end].strip() != value:
+                edits.append((have.value, have.end, value))
+        if key not in NEW_SIZES:
+            edits += _construction_edits(data, entry, game_data, game_entry)
+        if not edits and not added:
+            continue
+        body = _mended(data, entry, edits + _added(data, entry, added))
+        for name, number in _size_variables(layers, data, entry, body):
+            if header.setdefault(name, number) != number:
+                raise FixError(f"{name} has two values in Starbase Extended's sizes.")
+        bodies.append(body)
+        changed.append(key.decode())
+    if not bodies:
+        raise FixError("Starbase Extended's starbase sizes have the game's 4.5 values now.")
+    top = "".join(f"{n} = {v}\n" for n, v in sorted(header.items()))
+    text = ((top + "\n" if top else "").encode() + b"\n\n".join(bodies)).replace(b"\r\n", b"\n")
+    note = (
+        f"{len(changed)} sizes get the game's 4.5 values and construction conditions, "
+        "the new tiers the Citadel's values"
+    )
+    return {_last_file(layers, SHIP_SIZES, "starbase_sizes"): text + b"\n"}, [note]
+
+
+def _construction_edits(
+    data: bytes, entry: Entry, game_data: bytes, game_entry: Entry
+) -> list[tuple[int, int, bytes]]:
+    """An edit adding the game's construction conditions Starbase Extended's size lacks."""
+    mine = next((c for c in children(data, entry) if c.key == CONSTRUCTION and c.block), None)
+    theirs = next((c for c in children(game_data, game_entry) if c.key == CONSTRUCTION), None)
+    if mine is None or theirs is None or not theirs.block:
+        return []
+    have = {_clause(data, c) for c in children(data, mine)}
+    lacked = [c for c in children(game_data, theirs) if _clause(game_data, c) not in have]
+    return _added(data, mine, [game_data[c.start : c.end] for c in lacked])
+
+
+def _size_variables(
+    layers: Layers, data: bytes, entry: Entry, body: bytes
+) -> list[tuple[str, str]]:
+    """The variables `body`, a copy of a ship size, uses, with their values: from
+    its own file, or the one value the other ship size files give it."""
+    file_vars = _variables(data)
+    shared = layers.defined("common/scripted_variables")
+    found: list[tuple[str, str]] = []
+    for name in sorted({"@" + m.decode() for m in _VARIABLE.findall(_COMMENT.sub(b"", body))}):
+        if name in file_vars:
+            found.append((name, _text(data, file_vars[name])))
+        elif name not in shared:
+            found.append((name, _ship_size_value(layers, name)))
+    return found
+
+
+def _ship_size_value(layers: Layers, name: str) -> str:
+    """The one value the ship size files give a variable. The game sets these per file."""
+    values = {
+        _text(data, entry)
+        for layer, path in layers.ordered(SHIP_SIZES)
+        for data in [layers.read(layer, path)]
+        for entry in [_variables(data).get(name)]
+        if entry is not None
+    }
+    if len(values) != 1:
+        raise FixError(f"{name} has {len(values)} values in other ship sizes, not 1.")
+    return values.pop()
+
+
 # The playset's problems the patch leaves to the mods' authors, for the Workshop
 # page. Each is a mod's own bug, too big to copy or soon to be fixed upstream.
 # Drop a line once its mod has fixed it.
@@ -1567,10 +2508,15 @@ FIX_GROUPS: tuple[tuple[str, tuple[int, ...]], ...] = (
     ("Species and traits", (18, 19, 27)),
     ("Events and stories", (6, 11, 12, 26)),
     ("Galaxy and systems", (5, 17, 28)),
-    ("Ships and starbases", (2, 3, 15, 16)),
+    ("Ships and starbases", (2, 3, 15, 16, 29, 30, 31, 32, 33, 34)),
     ("Graphics and camera", (1, 4)),
     ("Text and translations", (7, 10, 25)),
 )
+
+
+# Mods a fix's written files need loaded before the patch, beyond those it patches:
+# fix 30 ships UI Overhaul Dynamic's window. They join the patch's dependencies.
+NEEDS: dict[int, tuple[str, ...]] = {30: (UI_OVERHAUL,)}
 
 
 # Each fix: its row in the report, what it does for the player (shown on the Workshop
@@ -1714,5 +2660,57 @@ FIXES: tuple[tuple[int, str, Callable[[Layers], Made], tuple[str, ...]], ...] = 
         ),
         fix_hyper_relay,
         (SHRIMPAI,),
+    ),
+    (
+        29,
+        (
+            "Starbase Extended's Asteroid Mining, Space Foundry and Space Factory get their "
+            "bonuses from Mining Experts and Chain Manufacturing"
+        ),
+        fix_sbx_bonus_buildings,
+        (STARBASE_EXTENDED,),
+    ),
+    (
+        30,
+        (
+            "Starbase Extended's starbase window is UI Overhaul Dynamic's 4.5 window again, "
+            "with room for every slot, and Upgrade away from Dismantle"
+        ),
+        fix_starbase_view,
+        (STARBASE_EXTENDED,),
+    ),
+    (
+        31,
+        (
+            "Starbases explode, light up and sound as in 4.5 with Starbase Extended, and every "
+            "starbase model has the attach points its sections need"
+        ),
+        fix_starbase_models,
+        (STARBASE_EXTENDED,),
+    ),
+    (
+        32,
+        (
+            "Starbase Extended's modules and buildings keep all their conditions, its buildings "
+            "work at arkships, and its orbital ring hangar bay has 4.5's hangars and bio-ship "
+            "upkeep"
+        ),
+        fix_sbx_checks,
+        (STARBASE_EXTENDED,),
+    ),
+    (
+        33,
+        "Starbase Extended's orbital ring shield and armour modules have a section",
+        fix_ring_sections,
+        (STARBASE_EXTENDED,),
+    ),
+    (
+        34,
+        (
+            "Starbase Extended's starbase sizes count, and show on the map, as 4.5's do. "
+            "Its Stronghold and HQ as the Citadel"
+        ),
+        fix_starbase_sizes,
+        (STARBASE_EXTENDED,),
     ),
 )

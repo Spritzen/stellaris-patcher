@@ -1157,6 +1157,568 @@ def test_fix_28_is_left_out_once_shrimpai_has_the_games_clauses(game: Game) -> N
         cold_steel_mix.fix_hyper_relay(_relay(game, RELAY.replace("WAYSTATION", WAYSTATION)))
 
 
+# Fix 29: Starbase Extended's module bonuses and the buildings nothing defines
+
+SBX_MODULES = "common/starbase_modules/sbx_3_0_starbase_modules.txt"
+SBX_BUILDINGS = "common/starbase_buildings/sbx_3_0_starbase_buildings.txt"
+SBX_MINING = """asteroid_mining = {\r
+\tresources = {\r
+\t\tproduces = { minerals = 10 }\r
+\t\tproduces = { trigger = { has_starbase_building = mining_manager } minerals = 2 }\r
+\t\t# produces = { trigger = { has_starbase_building = mining_manager } }\r
+\t}\r
+}\r
+"""
+SBX_FOUNDRY = """space_foundry = {
+\tresources = {
+\t\tcost = { alloys = @foundry_cost }
+\t\tproduces = { trigger = { has_starbase_building = assembly_line_manufacturing } alloys = 1 }
+\t\tupkeep = { trigger = { has_starbase_building = assembly_line_manufacturing } energy = 1 }
+\t}
+}
+"""
+SBX_GUNS = "gun_battery = { potential = { has_starbase_building = crew_quarters } }\n"
+SBX_BUILDING_LIST = "mining_experts = { }\nchain_manufacturing = { }\n"
+SBX_MODULES_COPY = "common/starbase_modules/zz_stellaris_patcher_cold_steel_mix_sbx_buildings.txt"
+
+
+def _sbx_modules(game: Game, buildings: str = SBX_BUILDING_LIST, **later: str) -> Layers:
+    modules = "@foundry_cost = 75\n" + SBX_MINING + SBX_FOUNDRY + SBX_GUNS
+    mods = {
+        GAME: {"common/starbase_buildings/00_starbase_buildings.txt": "crew_quarters = { }\n"},
+        cold_steel_mix.STARBASE_EXTENDED: {SBX_MODULES: modules, SBX_BUILDINGS: buildings},
+    }
+    if later:
+        mods["workshop:9"] = {f"common/starbase_modules/{n}.txt": t for n, t in later.items()}
+    return _layers(game, mods)
+
+
+def test_fix_29_points_the_bonuses_at_starbase_extendeds_own_buildings(game: Game) -> None:
+    files, notes = cold_steel_mix.fix_sbx_bonus_buildings(_sbx_modules(game))
+    copy = files[SBX_MODULES_COPY]
+    assert copy.startswith(b"@foundry_cost = 75\n\nasteroid_mining = {\n")
+    assert copy.count(b"has_starbase_building = mining_experts }") == 1
+    assert b"# produces = { trigger = { has_starbase_building = mining_manager } }" in copy
+    assert copy.count(b"has_starbase_building = chain_manufacturing }") == 2
+    assert b"assembly_line" not in copy and b"gun_battery" not in copy and b"\r" not in copy
+    assert notes == [
+        "asteroid_mining, from Starbase Extended: checks mining_experts for mining_manager",
+        "space_foundry, from Starbase Extended: checks chain_manufacturing for "
+        "assembly_line_manufacturing",
+    ]
+    assert check_files(files) == []
+
+
+def test_fix_29_leaves_a_module_another_mod_replaces(game: Game) -> None:
+    layers = _sbx_modules(game, zzz_other="space_foundry = { }\n")
+    files, notes = cold_steel_mix.fix_sbx_bonus_buildings(layers)
+    assert b"space_foundry" not in files[SBX_MODULES_COPY.replace("zz_", "zzzz_")]
+    assert len(notes) == 1
+
+
+def test_fix_29_skips_a_missing_building_once_its_defined(game: Game) -> None:
+    buildings = SBX_BUILDING_LIST + "mining_manager = { }\n"
+    files, notes = cold_steel_mix.fix_sbx_bonus_buildings(_sbx_modules(game, buildings))
+    assert b"asteroid_mining" not in files[SBX_MODULES_COPY]
+    assert notes[0] == "mining_manager is defined now. Skipped."
+
+
+def test_fix_29_is_left_out_once_every_building_is_defined(game: Game) -> None:
+    buildings = SBX_BUILDING_LIST + "mining_manager = { }\nassembly_line_manufacturing = { }\n"
+    with pytest.raises(FixError, match="mining_manager is defined now"):
+        cold_steel_mix.fix_sbx_bonus_buildings(_sbx_modules(game, buildings))
+
+
+def test_fix_29_is_left_out_once_no_module_checks_them(game: Game) -> None:
+    layers = _sbx_modules(game, zzz_other="asteroid_mining = { }\nspace_foundry = { }\n")
+    with pytest.raises(FixError, match="checks mining_manager or assembly_line_manufacturing"):
+        cold_steel_mix.fix_sbx_bonus_buildings(layers)
+
+
+# Fix 30: Starbase Extended's starbase window
+
+VIEW_GUI = """@list_width = 430\r
+@unused = 1\r
+guiTypes = {\r
+\tcontainerWindowType = {\r
+\t\tname = "starbase_view"\r
+\t\tcontainerWindowType = {\r
+\t\t\tname = "starbase_tab"\r
+\t\t\tcontainerWindowType = {\r
+\t\t\t\tname = "class_info"\r
+\t\t\t\tbackground = { name = "class_info" spriteType = "GFX_dark" }\r
+\t\t\t\tbuttonType = { name = "details" position = { x = 4 y = -35 } orientation = lower_left }\r
+\t\t\t\tbuttonType = { name = "dismantle" position = { x = -35 y = 39 } }\r
+\t\t\t}\r
+\t\t\tcontainerWindowType = {\r
+\t\t\t\tname = "upgrade_info"\r
+\t\t\t\tposition = { x = -10 y = 40 }\r
+\t\t\t\torientation = upper_right\r
+\t\t\t\torigo = upper_right\r
+\t\t\t\tinstantTextBoxType = {\r
+\t\t\t\t\tname = "next_class_name" position = { x = 0 y = 4 } format = right\r
+\t\t\t\t}\r
+\t\t\t\tbuttonType = { name = "upgrade" position = UPGRADE orientation = upper_right }\r
+\t\t\t}\r
+\t\t\tcontainerWindowType = {\r
+\t\t\t\tname = "capacity_info"\r
+\t\t\t\tbuttonType = { name = "upgrade" position = { x = 1 y = 1 } }\r
+\t\t\t}\r
+\t\t\tgridBoxType = { name = "modules_grid" slotSize = SLOT max_slots_horizontal = ROW }\r
+\t\t\tgridBoxType = { name = "buildings_grid" slotSize = SLOT max_slots_horizontal = ROW }\r
+\t\t\tbuttonType = { name = "open_planet" size = { x = @list_width y = 1 } }\r
+\t\t}\r
+\t}\r
+\tcontainerWindowType = {\r
+\t\tname = "starbase_view_current_component_grid_entry"\r
+\t\tsize = SLOT\r
+\t\ticonType = {\r
+\t\t\tname = "icon"SCALE\r
+\t\t\tspriteType = "GFX_spaceport_modules"\r
+\t\t}\r
+\t\ticonType = { name = "progressbar" position = { x = 3 y = 42 } }\r
+\t}\r
+\tcontainerWindowType = { name = "starbase_side_view" }\r
+}\r
+"""
+UIOD_GUI = (
+    VIEW_GUI.replace("SLOT", "{ width = 60 height = 60 }").replace("ROW", "5").replace("SCALE", "")
+)
+SBX_FULL = (
+    VIEW_GUI.replace("SLOT", "{ width = 34 height = 34 }")
+    .replace("ROW", "7")
+    .replace("SCALE", "\r\n\t\t\tscale = 0.6 # smaller")
+    .replace("UPGRADE", "{ x = 9 y = 40 }")
+)
+SBX_GUI = SBX_FULL.replace(
+    '\t\t\tbuttonType = { name = "open_planet" size = { x = @list_width y = 1 } }\r\n', ""
+)
+VIEW_COPY = "interface/zzzz_stellaris_patcher_cold_steel_mix_starbase_view.gui"
+
+
+def _views(game: Game, uiod: str = UIOD_GUI, sbx: str = SBX_GUI) -> Layers:
+    return _layers(
+        game,
+        {
+            cold_steel_mix.UI_OVERHAUL: {
+                "interface/starbase_view.gui": uiod.replace("UPGRADE", "{ x = -35 y = 4 }"),
+                "interface/Ω_bottom.gui": "guiTypes = { containerWindowType = { name = x } }\n",
+            },
+            cold_steel_mix.STARBASE_EXTENDED: {cold_steel_mix.SBX_VIEW: sbx},
+        },
+    )
+
+
+def test_fix_30_ships_ui_overhauls_window_with_starbase_extendeds_slots(game: Game) -> None:
+    files, notes = cold_steel_mix.fix_starbase_view(_views(game))
+    assert files[cold_steel_mix.SBX_VIEW] == cold_steel_mix.EMPTIED
+    view = files[VIEW_COPY]
+    assert view.startswith(b"@list_width = 430\nguiTypes = {\n\tcontainerWindowType = {")
+    assert view.count(b"slotSize = { width = 34 height = 34 } max_slots_horizontal = 7") == 2
+    assert b'name = "icon"\n\t\t\tscale = 0.6\n\t\t\tspriteType' in view
+    assert b'name = "details" position = { x = -45 y = 4 } orientation = upper_right' in view
+    assert b'name = "upgrade" position = { x = 4 y = 4 } orientation = upper_left' in view
+    assert b'name = "upgrade" position = { x = 1 y = 1 }' in view  # the other upgrade button
+    assert b"position = { x = 10 y = 75 }\n\t\t\t\torientation = upper_left" in view
+    assert b"starbase_side_view" not in view and b"\r" not in view
+    assert notes == [
+        "Starbase Extended's window lacks open_planet",
+        "Upgrade and Station Details swap places, as in Starbase Extended",
+        "Module and building slots take Starbase Extended's sizes",
+    ]
+    assert check_files(files) == []
+
+
+def test_fix_30_skips_the_button_swap_once_ui_overhauls_header_changes(game: Game) -> None:
+    uiod = UIOD_GUI.replace("format = right", "format = center")
+    files, notes = cold_steel_mix.fix_starbase_view(_views(game, uiod=uiod))
+    assert b'name = "details" position = { x = 4 y = -35 }' in files[VIEW_COPY]
+    assert b"max_slots_horizontal = 7" in files[VIEW_COPY]
+    assert notes[1] == "next_class_name's format has changed. The button swap is skipped."
+
+
+def test_fix_30_is_left_out_once_starbase_extendeds_window_has_ui_overhauls_elements(
+    game: Game,
+) -> None:
+    with pytest.raises(FixError, match="has every element UI Overhaul's has now"):
+        cold_steel_mix.fix_starbase_view(_views(game, sbx=SBX_FULL))
+
+
+# Fix 31: Starbase Extended's starbase models
+
+STARBASES = "gfx/models/ships/starbases"
+SBX_ASSET = f"{STARBASES}/_starbase_entities_SBX_3_0_x.asset"
+GAME_ENTITIES = """@flowmap_speed = 0.17
+@unused = 2
+entity = {
+\tname = "humanoid_01_starbase_starport_entity"
+\tpdxmesh = "port_mesh"
+\tcull_radius = 14
+\tstate = { name = "idle" state_time = 5 }
+\tstate = { name = "death" looping = no
+\t\tevent = { time = 1.7 node = "root" particle = "boom" sound = { soundeffect = "explode" } }
+\t}
+}
+entity = {
+\tname = "aquatic_01_starbase_citadel_section_entity"
+\tpdxmesh = "sea_mesh"
+\tuv_animation_speed = @flowmap_speed
+\tstate = { name = "idle" state_time = 5
+\t\tevent = { time = 0 node = "light_locator_01" particle = "sea_light" }
+\t\tstart_event = { sound = { soundeffect = "sea_idle" } }
+\t}
+}
+entity = {
+\tname = "toxoid_01_starbase_citadel_entity"
+\tpdxmesh = "tox_mesh"
+\tstate = { name = "death" looping = no
+\t\tevent = { time = 1.7 node = "root" particle = "boom" }
+\t}
+}
+entity = {
+\tname = "avian_01_starbase_starport_entity"
+\tpdxmesh = "port_mesh"
+}
+"""
+SBX_ENTITIES = """@flowmap_speed = 0.17\r
+entity = {\r
+\tname = "humanoid_01_starbase_starport_entity"\r
+\tpdxmesh = "port_mesh"\r
+\tlocator = { name = "medium_gun_01" position = { 0 0 0 } }\r
+}\r
+entity = {
+\tname = "aquatic_01_starbase_citadel_section_entity"
+\tpdxmesh = "sea_mesh"
+\tstate = { name = "idle" state_time = 5
+\t\tevent = { time = 0 node = "light_locator_01" particle = "boom" }
+\t\tevent = { time = 0 node = "extra_node" particle = "sea_light" }
+\t\tevent = { time = 0 node = "engine" particle = "sea_core" }
+\t\tstart_event = { sound = { soundeffect = "old_hum" } }
+\t\tstart_event = { sound = { soundeffect = "amb_sea_hum" } }
+\t}
+}
+entity = {
+\tname = "toxoid_01_starbase_stronghold_entity"
+\tpdxmesh = "tox_mesh"
+\tlocator = { name = "medium_gun_02" position = { 0 0 0 } }
+}
+entity = {
+\tname = "synthetics_01_starbase_stronghold_entity"
+\tpdxmesh = "syn_mesh"
+\tstate = { name = "idle" animation = "idle" state_time = 2 }
+}
+animation = { name = "fe_idle_animation" file = "fe_idle.anim" }
+animation = { name = "tox_idle_animation" file = "tox_idle.anim" }
+"""
+MESHES = """objectTypes = {
+\tpdxmesh = { name = "port_mesh" file = "gfx/models/ships/starbases/port.mesh" }
+\tpdxmesh = { name = "sea_mesh" file = "gfx/models/ships/starbases/sea.mesh" }
+\tpdxmesh = { name = "tox_mesh" file = "gfx/models/ships/starbases/tox.mesh" }
+\tpdxmesh = { name = "syn_mesh" file = "gfx/models/ships/starbases/syn.mesh" }
+}
+"""
+PARTICLES = (
+    'objectTypes = { pdxparticle = { name = "boom" } pdxparticle = { name = "sea_light" } }\n'
+)
+SOUNDS = "soundeffect = { name = explode }\nsoundeffect = { name = sea_idle }\n"
+SOUNDS += "soundeffect = { name = old_hum }\n"
+SLOTS = """starbase_starport = {
+\tsection_slots = { "core" = { locator = "part1" } "1" = { locator = "part4" } }
+}
+"""
+ATTACH_COPY = f"{STARBASES}/zz_stellaris_patcher_cold_steel_mix_attach_points.asset"
+
+
+def _mesh(*locators: str) -> bytes:
+    """A binary .mesh with these locators, as the game writes them."""
+    head = b"@@b@!\x08pdxasseti\x02\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00[locator\x00"
+    point = b"!\x01pf\x03\x00\x00\x00" + bytes(12) + b"!\x01qf\x04\x00\x00\x00" + bytes(16)
+    return head + b"".join(b"[[" + n.encode() + b"\x00" + point for n in locators)
+
+
+def _starbase_models(game: Game, sbx: str = SBX_ENTITIES, slots: str = SLOTS) -> Layers:
+    layers = _layers(
+        game,
+        {
+            GAME: {
+                f"{STARBASES}/_starbase_entities.asset": GAME_ENTITIES,
+                f"{STARBASES}/_starbase_meshes.gfx": MESHES,
+                f"{STARBASES}/tox_idle.anim": "",
+                "gfx/particles/_particles.gfx": PARTICLES,
+                "sound/sounds.asset": SOUNDS,
+            },
+            cold_steel_mix.STARBASE_EXTENDED: {
+                SBX_ASSET: sbx,
+                "common/ship_sizes/sbx_3_0_starbases.txt": slots,
+            },
+        },
+    )
+    for name in ("port", "sea", "tox", "syn"):
+        (game.install_dir / STARBASES / f"{name}.mesh").write_bytes(_mesh("part1", "part2"))
+    return layers
+
+
+def _entity(data: bytes, name: str) -> bytes:
+    entry = next(e for e in scan(data) if value_of(data, e, b"name") == name.encode())
+    return data[entry.start : entry.end]
+
+
+def test_fix_31_builds_starbase_extendeds_models_on_the_games(game: Game) -> None:
+    files, notes = cold_steel_mix.fix_starbase_models(_starbase_models(game))
+    models = files[SBX_ASSET]
+    assert models.startswith(b"@flowmap_speed = 0.17\n\nentity = {") and b"\r" not in models
+    port = _entity(models, "humanoid_01_starbase_starport_entity")
+    assert b'particle = "boom"' in port and b"cull_radius = 14" in port  # the game's 4.5 lines
+    assert b'"medium_gun_01"' in port  # Starbase Extended's own
+    assert b'locator = { name = "part4" position = { 0 0 0 } }' in port
+    assert b'"part1" position' not in port  # the mesh has it
+    sea = _entity(models, "aquatic_01_starbase_citadel_section_entity")
+    assert b"uv_animation_speed = @flowmap_speed" in sea and b'"sea_idle"' in sea
+    assert b'node = "extra_node"' in sea  # a node the game's model doesn't use
+    assert b'particle = "boom"' not in sea  # the game's own effect on that node stays
+    assert b"old_hum" not in sea and b"amb_sea_hum" not in sea and b"sea_core" not in sea
+    tox = _entity(models, "toxoid_01_starbase_stronghold_entity")
+    assert b'particle = "boom"' in tox and b'"medium_gun_02"' in tox  # built on the citadel
+    assert b'animation = "idle"' not in _entity(models, "synthetics_01_starbase_stronghold_entity")
+    assert b"fe_idle" not in models and b"tox_idle.anim" in models
+    attach = files[ATTACH_COPY]
+    assert attach.startswith(b'entity = {\n\tname = "avian_01_starbase_starport_entity"')
+    assert b'locator = { name = "part4" position = { 0 0 0 } }' in attach
+    assert notes == [
+        "4 of Starbase Extended's models rebuilt, from the game's where it copies one",
+        "Left out, as nothing defines them: 1 animation files, 1 mesh animations, "
+        "1 particles, 1 sounds",
+        "Left out, as the game's model has its own: 1 effects, 1 sounds",
+        "2 attach points added. 1 game models are copied to get theirs",
+    ]
+    assert check_files(files) == []
+
+
+def test_fix_31_is_left_out_once_the_models_match_the_games(game: Game) -> None:
+    same = GAME_ENTITIES.replace("@unused = 2\n", "")
+    layers = _starbase_models(game, sbx=same, slots=SLOTS.replace("part4", "part2"))
+    with pytest.raises(FixError, match="match the game's and resolve every name now"):
+        cold_steel_mix.fix_starbase_models(layers)
+
+
+# Fix 32: Starbase Extended's module and building checks
+
+GAME_HANGAR = """orbital_ring_hangar_bay = {
+\tresources = {
+\t\tupkeep = { trigger = { owner? = { country_uses_bio_ships = no } } energy = 1 }
+\t\tupkeep = { trigger = { owner? = { country_uses_bio_ships = yes } } food = 1 }
+\t}
+\ttriggered_component_set = { component_set = SCOUT_HANGAR_1 }
+\tshow_component_tooltips = yes
+}
+"""
+SBX_MODULES_TEXT = """orbital_ring_hangar_bay = {
+\tresources = {
+\t\tcost = { alloys = 50 }
+\t\tupkeep = { energy = 1 }
+\t}
+\tai_weight = {
+\t\tweight = 100
+\t\tmodifier = { factor = 0.5 }
+\t}
+\tai_weight = {
+\t\tweight = 100
+\t\tmodifier = { factor = 2 }
+\t}
+}
+gun_battery = {
+\tpotential = {
+\t\thas_starbase_size >= starbase_starport
+\t}
+\tpotential = { count_starbase_modules = { type = gun_battery count < 5 } }
+}
+asteroid_mining = {
+\tresources = { produces = { trigger = { has_starbase_building = mining_manager } } }
+}
+pd_battery = { potential = { exists = owner } }
+"""
+SBX_BUILDINGS_TEXT = """research_computers = {
+\tpotential = { solar_system = { any_system_planet = { is_owned_by = from } } }
+}
+financial_space_center = {
+\tpotential = {
+\t\tcategory = starbase_buildings
+\t\thas_starbase_size >= starbase_starhold
+\t}
+}
+crew_quarters = { potential = { exists = solar_system solar_system = { } } }
+"""
+
+
+def _sbx_checks(
+    game: Game, modules: str = SBX_MODULES_TEXT, buildings: str = SBX_BUILDINGS_TEXT
+) -> Layers:
+    return _layers(
+        game,
+        {
+            GAME: {"common/starbase_modules/01_orbital_ring_weapon_modules.txt": GAME_HANGAR},
+            cold_steel_mix.STARBASE_EXTENDED: {SBX_MODULES: modules, SBX_BUILDINGS: buildings},
+        },
+    )
+
+
+def test_fix_32_mends_starbase_extendeds_files_whole(game: Game) -> None:
+    files, notes = cold_steel_mix.fix_sbx_checks(_sbx_checks(game))
+    assert set(files) == {SBX_MODULES, SBX_BUILDINGS}  # at its own paths, so its files are gone
+    modules = files[SBX_MODULES]
+    hangar = _entity_text(modules, b"orbital_ring_hangar_bay")
+    assert hangar.count(b"ai_weight") == 1 and hangar.count(b"weight = 100") == 1
+    assert b"factor = 0.5" in hangar and b"factor = 2" in hangar
+    assert b"food = 1" in hangar and b"cost = { alloys = 50 }" in hangar
+    assert b"SCOUT_HANGAR_1" in hangar and b"show_component_tooltips = yes" in hangar
+    guns = _entity_text(modules, b"gun_battery")
+    assert guns.count(b"potential") == 1 and b"count < 5" in guns
+    assert b"mining_manager" in _entity_text(modules, b"asteroid_mining")  # left to fix 29
+    assert (
+        _entity_text(modules, b"pd_battery") == b"pd_battery = { potential = { exists = owner } }"
+    )
+    buildings = files[SBX_BUILDINGS]
+    assert b"potential = { exists = solar_system solar_system = {" in buildings
+    assert b"category" not in _entity_text(buildings, b"financial_space_center")
+    crew = b"crew_quarters = { potential = { exists = solar_system solar_system = { } } }"
+    assert _entity_text(buildings, b"crew_quarters") == crew  # it checks for the system already
+    assert notes == [
+        "orbital_ring_hangar_bay: merges its 2 ai_weight blocks, gets the game's "
+        "show_component_tooltips, triggered_component_set, costs the game's upkeep, food for "
+        "bio-ship empires",
+        "gun_battery: merges its 2 potential blocks",
+        "asteroid_mining is copied by fix 29. Skipped.",
+        "research_computers: checks the starbase has a system first",
+        "financial_space_center: drops `category` from its potential, which isn't a trigger",
+    ]
+    assert check_files(files) == []
+
+
+def test_fix_32_is_left_out_once_the_checks_are_mended(game: Game) -> None:
+    layers = _sbx_checks(
+        game, modules="pd_battery = { potential = { exists = owner } }\n", buildings=""
+    )
+    with pytest.raises(FixError, match="no checks to mend now"):
+        cold_steel_mix.fix_sbx_checks(layers)
+
+
+def _entity_text(data: bytes, key: bytes) -> bytes:
+    entry = next(e for e in scan(data) if e.key == key)
+    return data[entry.start : entry.end]
+
+
+# Fix 33: Starbase Extended's orbital ring shield and armour sections
+
+RING_TEMPLATES = """ship_section_template = {
+\tkey = "ANCHORAGE_ORBITAL_RING_SECTION"
+\tship_size = orbital_ring_tier_1
+\tentity = "orbital_ring_anchorage_section_entity"
+}
+"""
+RING_MODULES = 'orbital_ring_shield_module = { section = "SHIELD_ORBITAL_RING_SECTION" }\n'
+
+
+def _ring_sections(game: Game, templates: str = RING_TEMPLATES) -> Layers:
+    return _layers(
+        game,
+        {
+            cold_steel_mix.STARBASE_EXTENDED: {
+                "common/section_templates/!!!_sbx_3_0_orbital_ring_sections.txt": templates,
+                SBX_MODULES: RING_MODULES,
+            }
+        },
+    )
+
+
+def test_fix_33_defines_a_used_ring_section_as_the_anchorages(game: Game) -> None:
+    files, notes = cold_steel_mix.fix_ring_sections(_ring_sections(game))
+    (sections,) = files.values()
+    assert b'key = "SHIELD_ORBITAL_RING_SECTION"' in sections
+    assert b"orbital_ring_anchorage_section_entity" in sections
+    assert b"ARMOR" not in sections  # no module uses it
+    assert notes == ["SHIELD_ORBITAL_RING_SECTION, as a copy of ANCHORAGE_ORBITAL_RING_SECTION"]
+    assert check_files(files) == []
+
+
+def test_fix_33_is_left_out_once_the_section_is_defined(game: Game) -> None:
+    defined = RING_TEMPLATES + RING_TEMPLATES.replace("ANCHORAGE", "SHIELD")
+    with pytest.raises(FixError, match="is defined now"):
+        cold_steel_mix.fix_ring_sections(_ring_sections(game, defined))
+
+
+# Fix 34: Starbase Extended's starbase sizes
+
+GAME_SIZES = """@citadel_size = 100
+starbase_citadel = {
+\tsize_multiplier = @citadel_size
+\tcombat_size_multiplier = 100
+\tmap_counter_icon = ship_counter_128
+}
+ion_cannon = {
+\tfleet_slot_size = 40
+\tpotential_construction = {
+\t\tis_scope_type = starbase
+\t\tis_arkship_starbase = no
+\t}
+}
+"""
+SBX_SIZES = """@build_block_radius_starbase = 20
+starbase_citadel = {
+\tmax_hitpoints = 240000
+\tsize_multiplier = 4
+\tcombat_size_multiplier = 50
+}
+ion_cannon = {
+\tfleet_slot_size = 8
+\tpotential_construction = {
+\t\tis_scope_type = starbase
+\t}
+}
+"""
+NSC_SIZES = (
+    "starbase_stronghold = {\n\tsize_multiplier = 4\n\tradius = @build_block_radius_starbase\n}\n"
+)
+SIZES_COPY = "common/ship_sizes/zz_stellaris_patcher_cold_steel_mix_starbase_sizes.txt"
+
+
+def _sizes(game: Game, sbx: str = SBX_SIZES, nsc: str = NSC_SIZES) -> Layers:
+    return _layers(
+        game,
+        {
+            GAME: {"common/ship_sizes/00_starbases.txt": GAME_SIZES},
+            cold_steel_mix.STARBASE_EXTENDED: {
+                "common/ship_sizes/sbx_3_0_starbases.txt": sbx,
+                cold_steel_mix.NSC_STARBASES: nsc,
+            },
+        },
+    )
+
+
+def test_fix_34_gives_starbase_extendeds_sizes_the_games_values(game: Game) -> None:
+    files, notes = cold_steel_mix.fix_starbase_sizes(_sizes(game))
+    sizes = files[SIZES_COPY]
+    assert sizes.startswith(b"@build_block_radius_starbase = 20\n\n")
+    citadel = _entity_text(sizes, b"starbase_citadel")
+    assert b"size_multiplier = 100" in citadel and b"combat_size_multiplier = 100" in citadel
+    assert b"map_counter_icon = ship_counter_128" in citadel
+    assert b"max_hitpoints = 240000" in citadel  # Starbase Extended's own
+    stronghold = _entity_text(sizes, b"starbase_stronghold")
+    assert b"size_multiplier = 100" in stronghold and b"ship_counter_128" in stronghold
+    ion = _entity_text(sizes, b"ion_cannon")
+    assert b"fleet_slot_size = 40" in ion and b"is_arkship_starbase = no" in ion
+    assert notes == [
+        "3 sizes get the game's 4.5 values and construction conditions, the new tiers the "
+        "Citadel's values"
+    ]
+    assert check_files(files) == []
+
+
+def test_fix_34_is_left_out_once_the_sizes_have_the_games_values(game: Game) -> None:
+    same = GAME_SIZES.replace("@citadel_size", "100").replace("@100 = 100\n", "")
+    with pytest.raises(FixError, match=r"have the game's 4\.5 values now"):
+        cold_steel_mix.fix_starbase_sizes(_sizes(game, sbx=same, nsc=""))
+
+
 # Mods out of the playset
 
 
@@ -1173,6 +1735,18 @@ def test_a_fix_is_left_out_while_its_mods_are_out_of_the_playset(
     three, seven = cold_steel_mix.plan(_layers(game, {real_space: {"a.txt": "a"}}))
     assert three.left_out == f"The playset has none of its mods now: {starbase}."
     assert seven.files == {"a.txt": b"a"}  # one of its mods is enough
+
+
+def test_a_written_fix_also_needs_the_mods_its_files_come_from(
+    game: Game, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    made: cold_steel_mix.Made = ({"a.txt": b"a"}, [])
+    starbase, ui = cold_steel_mix.STARBASE_EXTENDED, cold_steel_mix.UI_OVERHAUL
+    monkeypatch.setattr(cold_steel_mix, "FIXES", ((30, "Thirty", lambda _: made, (starbase,)),))
+    (thirty,) = cold_steel_mix.plan(_layers(game, {ui: {"a.txt": "a"}}))
+    assert thirty.left_out.startswith("The playset has none of its mods now")
+    (thirty,) = cold_steel_mix.plan(_layers(game, {ui: {"a.txt": "a"}, starbase: {"b.txt": "b"}}))
+    assert thirty.mods == (starbase, ui)
 
 
 def test_own_keys_include_the_workshop_copy_once_uploaded(
