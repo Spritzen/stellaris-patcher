@@ -89,11 +89,11 @@ This is how the project is developed
 ([.devcontainer/](.devcontainer/), [decision 5](docs/decisions.md)).
 
 1. **Run Stellaris and Cold Steel once on the host**, so their folders exist.
-2. **Open the folder in VS Code** and (F1) choose **Rebuild and Reopen in Container**. The
+2. **Open the folder in VS Code** and (F1) choose **Rebuild and Reopen in
+   Container**. After the first time, **Reopen in Container** is enough. The
    container is Arch Linux. Every package comes from pacman, so there's no
    venv and nothing to `pip install` ([decision 2](docs/decisions.md)).
-   You only need to rebuild once and then you can just select **Reopen in Container**.
-4. **Read the post-create output.** It installs Claude Code, takes one-time
+3. **Read the post-create output.** It installs Claude Code, takes one-time
    backups of the launcher's database and Cold Steel's playsets, and checks
    each mount. A red ✗ names what's missing.
 
@@ -153,10 +153,10 @@ Each fix prints `ok` with what it did, or `left out` with the reason:
      ENTER_SYSTEM_ZOOM_STEP: System Scale's 7
 6. A More Events Mod anomaly recognises Planetary Diversity's ocean worlds again: ok
      is_pd_planet_for_aqua_trait calls pd_is_planet_for_aqua_trait
-2. The Starlit Starbase design gets 12 of its 13 guns in Starbase Extended's citadel: left out
-     The playset has none of its mods now: workshop:3250900527.
+7. Missing names and tooltips: left out
+     Every key has text now, or nothing uses it.
 
-13 files. Nothing written: pass --write.
+68 files. Nothing written: pass --write.
 ```
 
 Read every `left out` line. It usually means an update fixed the problem, or
@@ -309,7 +309,7 @@ and empty the rest:
 | | `PLAYSET`: your playset's name |
 | | `TAIL`: the end of every file name it ships, so its files are easy to spot |
 | | The mod constants (`SYSTEM_SCALE = "workshop:1887282318"` …): your mods |
-| | `FIXES`, `FIX_GROUPS`, `LEFT_TO_AUTHORS`: empty to start |
+| | `FIXES`, `FIX_GROUPS`, `LEFT_TO_AUTHORS`, `NEEDS`: empty to start |
 
 Then point [\_\_main\_\_.py](src/stellaris_patcher/__main__.py) at it. It
 names `cold_steel_mix` in `_playset()`, `_check_update()` and

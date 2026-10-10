@@ -1,6 +1,6 @@
-"""Backups made before every write to a Paradox file (decision 6).
+"""Backups made before every write to a file that isn't ours (decision 6).
 
-    backup_file(db_path, backup_dir)   # raises OSError: then don't write
+    backup_file(path, backup_dir)   # raises OSError: then don't write
 
 Each backup is a dated copy in `backup_dir`, and the newest `KEEP` copies of
 each file are kept.

@@ -1,19 +1,9 @@
 # Cold Steel Mix patch
 
-**A mod named "Cold Steel Mix patch" that fixes 19 problems in the Cold
-Steel Mix playset.** They're fixes 1–7 from the
-[third run's report](../reports/2026-10-03-cold-steel-mix-errors-run-3.md#what-a-patch-mod-could-fix),
-fix 10 from the
-[long-session report](../reports/2026-10-04-cold-steel-mix-long-session.md#what-to-do-next),
-fixes 11 and 12 from the
-[new-galaxy report](../reports/2026-10-05-cold-steel-mix-new-galaxy.md#what-to-do-next),
-and fixes 15–19, 27 and 28 from the
-[4.5.2 first-run report](../reports/2026-10-07-cold-steel-mix-4.5.2-first-run.md#what-to-do-next),
-fix 25 from the localisation errors Cold Steel lists for the playset,
-and fix 26 from the
-[Ascension Worlds report](../reports/2026-10-09-cold-steel-mix-ascension-worlds-back.md#what-to-do-next).
-Problems it leaves to the mods' authors are listed on its Workshop page
-([Left to the authors](#left-to-the-authors)).
+**A mod named "Cold Steel Mix patch" that fixes 26 problems in the Cold
+Steel Mix playset.** [What each fix does](#what-each-fix-does) lists them.
+Most were proposed in a [report](../README.md#reports). Problems it leaves to the mods' authors are listed on its
+Workshop page ([Left to the authors](#left-to-the-authors)).
 The code is [cold_steel_mix.py](../../src/stellaris_patcher/patchmod/cold_steel_mix.py).
 
 ## Build it
@@ -48,17 +38,12 @@ an update changes a fix's cause, that fix is left out and the reason printed.
 The other fixes are still written. A fix is left out too when none of the mods
 it patches is switched on in the playset.
 
-## Mods switched off for now
+## Switching a mod off
 
-**No mod is switched off now.** Starbase Extended 3.0 and shrimpAI were
-switched off until they updated for 4.5.2 ([decision 35](../decisions.md)).
-shrimpAI came back on 10 October with fix 28. Starbase Extended came back the
-same day with fixes 29–34, as its author isn't updating
-([decisions 46–51](../decisions.md),
-[report](../reports/2026-10-10-cold-steel-mix-starbase-extended-back.md)).
-
-A mod switched off stays in the playset, so it's one switch from coming
-back. Its fixes are left out while it's off. To bring one back:
+**No mod is switched off now.** A mod that breaks after a game update can
+be switched off in Cold Steel's playset, not removed
+([decision 35](../decisions.md)). It keeps its place, so it's one switch
+from coming back. Its fixes are left out while it's off. To bring one back:
 
 1. Switch it on in Cold Steel's Cold Steel Mix playset, in the same place.
 2. [Build the patch](#build-it). Its fixes come back if the update still
@@ -140,9 +125,6 @@ written by hand, one line per problem.
 - Add a line when a report leaves a problem to a mod's author.
 - Drop it once the mod fixes it. The [update check](../update-check.md) shows
   when one of these mods changes.
-
-Its last line, item 18, became fix 18 on 10 October.
-
 - Not listed, as too small to matter
   ([decision 41](../decisions.md)): More Events Mod's Lost Emperor story
   sometimes can't place its system
@@ -158,6 +140,7 @@ Its last line, item 18, became fix 18 on 10 October.
 | The three `.asset` files | The game's files, with Real Space - System Scale's sizes |
 | `events/!!_stellaris_patcher_cold_steel_mix_ziaskehorn.txt` | One of More Events Mod's events, with two lines moved |
 | `events/!!_stellaris_patcher_cold_steel_mix_stuck_in_glacier.txt` | One of More Events Mod's events, with one word changed |
+| `localisation/replace/stellaris_patcher_cold_steel_mix_l_english.yml` | Three of Planetary Diversity's and Ascension Worlds' necro world tooltips, with one call changed in each |
 | `common/component_templates/mutation_weapon_components.csv` | Real Space - Ships in Scaling's whole file, with one range changed |
 | `common/solar_system_initializers/!!_stellaris_patcher_cold_steel_mix_supercomputer.txt` | One of Real Space 4.0's systems, with one flag removed |
 | `common/traits/!!_stellaris_patcher_cold_steel_mix_lithoid_budding.txt` | Lithoid Budding from Ascension Worlds, or from Planetary Diversity while Ascension Worlds is off, with one line added |
@@ -168,6 +151,7 @@ Its last line, item 18, became fix 18 on 10 October.
 | `events/!!_stellaris_patcher_cold_steel_mix_under_blanket.txt` | Two of More Events Mod's events, with 15 lines added |
 | `common/traits/!!_stellaris_patcher_cold_steel_mix_trait_categories.txt` | 15 traits from Planetary Diversity, Ascension Worlds and More Events Mod, with one word changed in each |
 | `common/traits/!!_stellaris_patcher_cold_steel_mix_aquatic.txt` | Planetary Diversity's Aquatic trait, with the game's AI weight |
+| `common/megastructures/zzzz_stellaris_patcher_cold_steel_mix_hyper_relay.txt` | shrimpAI's Hyper Relay, with the game's waystation clause added |
 | `common/starbase_modules/zz_stellaris_patcher_cold_steel_mix_sbx_buildings.txt` | Three of Starbase Extended 3.0's modules, with one building name changed in each check |
 | `interface/zzzz_stellaris_patcher_cold_steel_mix_starbase_view.gui` | UI Overhaul Dynamic's starbase window and slot, with Starbase Extended's slot sizes and nine header values changed |
 | 19 `gfx/models/ships/starbases/_starbase_entities_SBX_3_0_…` files | Starbase Extended 3.0's whole files, rebuilt: its copies of the game's models are the game's, with its attach points added |
@@ -178,7 +162,7 @@ Its last line, item 18, became fix 18 on 10 October.
 | `localisation/english/replace/stellaris_patcher_cold_steel_mix_specimens_l_english.yml` | Six of More Events Mod's specimen descriptions, with a planet's name swapped for a few words in each |
 
 The game's own files are fine to ship in a mod. The others need their
-authors' permission, or fixes 3, 5, 11, 12, 16, 17, 18, 19, 25, 26, 27, 29–34 and 36 left out.
+authors' permission, or fixes 3, 5, 10–12, 16–19, 25–34 and 36 left out.
 
 ## What each fix does
 
@@ -213,25 +197,23 @@ authors' permission, or fixes 3, 5, 11, 12, 16, 17, 18, 19, 25, 26, 27, 29–34 
 
 ### Notes
 
-- **Fix 2 gets back three guns, not four.** The report says Starbase
-  Extended's slots go up to `_20`. They stop at `_12`.
-- **Fix 5 matches stars by name, not as the report guessed.** The game's
-  `sol_neighbor_t2` is Procyon, so it becomes Real Space's
-  `procyon_mediumsector`, not Sirius. Before copying, the fix checks that
-  both systems have the same `name`.
+- **Fix 2 gets back three guns, not four.** Starbase Extended's slots stop
+  at `_12`, not `_20` as the third run's report says.
+- **Fix 5 matches stars by name.** The game's `sol_neighbor_t2` is Procyon,
+  so it becomes Real Space's `procyon_mediumsector`, not Sirius. Before
+  copying, the fix checks that both systems have the same `name`.
 - A fix that ships a whole file only does so while that file still comes
   from the expected mod or the game. Otherwise it could undo another mod's
   newer copy. Fixes 11 and 12 do the same for one event: More Events Mod's
   copy must be the one the game uses.
-- **Fixes 11 and 12 copy the whole event**, and the game then has two events
-  with one id. More Events Mod's copy is still loaded, but never used.
-  Fixes 17 and 19 do the same for one system, one trait and one rule.
+- **Fixes 11, 12 and 26 copy whole events**, and the game then has two
+  events with one id. More Events Mod's copy is still loaded, but never
+  used. Fixes 17, 18, 19, 27 and 28 do the same for a system, traits, a
+  rule and a megastructure.
 - **Fix 15 doesn't name More Events Mod.** It defines every old shield upkeep
   name any component uses and nothing defines.
-- **Fix 18 copies 15 traits from three mods for a one-word change each.**
-  It was left to the authors until 10 October
-  ([decision 43](../decisions.md)). The report counted 18 traits: three of
-  More Events Mod's six are commented out.
+- **Fix 18 copies 15 traits, not 18.** Three of More Events Mod's six are
+  commented out ([decision 43](../decisions.md)).
 
 ## Check in game
 
@@ -297,8 +279,8 @@ These weren't seen in game yet:
   slots, Upgrade sits bottom-left with the next level's name, and Station
   Details top-right (fix 30). **Seen** on a Starport in the
   [Starbase Extended back](../reports/2026-10-10-cold-steel-mix-starbase-extended-back.md)
-  run: every slot showed and nothing looked wrong. Still to see on a Citadel. An Orbital Ring's window has the button back to
-  its planet, and the log has no `open_planet` or `design_name`. Watch a
+  run: every slot showed and nothing looked wrong. Still to see on a
+  Citadel. An Orbital Ring's window has the button back to its planet, and the log has no `open_planet` or `design_name`. Watch a
   slot under construction: Starbase Extended's progress bar keeps its full
   size in the smaller slot, so it may hang into the row below.
 - A destroyed starbase explodes, aquatic and toxoid starbases hum with the
