@@ -93,14 +93,19 @@ next upload
   "Species and traits": `FIX_GROUPS` in
   [cold_steel_mix.py](../../src/stellaris_patcher/patchmod/cold_steel_mix.py).
   A fix in no group is listed last, under "Other".
-- The Cold Steel Mix collection's background is drawn by
-  [collection_background.py](../../tools/collection_background.py): the
-  patch icon and name on the left, Tron-style lines on the right. Render it
-  to `mods/cold_steel_mix_collection.png`:
+- The Cold Steel Mix collection's two images are drawn by
+  [collection_background.py](../../tools/collection_background.py). The
+  background has the patch icon and name on the left, Tron-style lines on the
+  right. The branding image, the square one Steam shows in search, has the
+  icon and name above the same grid floor, large enough to read at 195 px.
+  Render them to `mods/`:
 
   ```sh
   python3 tools/collection_background.py /tmp/bg.svg
   rsvg-convert -w 1920 -h 1080 /tmp/bg.svg -o ~/.local/share/stellaris-patcher/mods/cold_steel_mix_collection.png
+  python3 tools/collection_background.py --square /tmp/brand.svg
+  rsvg-convert -w 1024 -h 1024 /tmp/brand.svg -o ~/.local/share/stellaris-patcher/mods/cold_steel_mix_collection_branding.png
+  rsvg-convert -w 195 -h 195 /tmp/brand.svg -o ~/.local/share/stellaris-patcher/mods/cold_steel_mix_collection_branding_195.png
   ```
 
 - Upload it from the Paradox launcher. The launcher saves the Workshop id in

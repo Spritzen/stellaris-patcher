@@ -1,9 +1,17 @@
-"""Draws the Cold Steel Mix collection background: the patch icon and the
-playset's name on the left, Tron-style lines on the right, and a fade between
-them along a forward diagonal through the middle.
+"""Draws the Cold Steel Mix collection's two images.
+
+The background: the patch icon and the playset's name on the left,
+Tron-style lines on the right, and a fade between them along a forward
+diagonal through the middle.
 
     python3 tools/collection_background.py out.svg
     rsvg-convert -w 1920 -h 1080 out.svg -o out.png
+
+The branding image, the square one Steam shows in search: the icon and the
+name above the same grid floor.
+
+    python3 tools/collection_background.py --square out.svg
+    rsvg-convert -w 1024 -h 1024 out.svg -o out.png
 
 The letters are drawn as lines, not set in a font, so it renders the same
 anywhere, the dev container included, which has no fonts.
@@ -12,10 +20,10 @@ anywhere, the dev container included, which has no fonts.
 import random
 import re
 import sys
+from dataclasses import dataclass
 from itertools import pairwise
 from pathlib import Path
 
-W, H = 1920, 1080
 ICON = Path(__file__).parent.parent / "src/stellaris_patcher/data/patch-icon.svg"
 
 EMERALD = "#5fe0a0"
@@ -26,12 +34,6 @@ CYAN = "#7fd8ff"
 
 # The fade: across a "/" line through the middle, `FADE` px each side of it.
 FADE = 150
-
-# The grid floor: horizon, vanishing point, and how far apart its lines are at
-# the bottom edge (depth 1).
-HORIZON = 640
-VANISH = 1450
-SPACING = 150
 
 # Letters on a 6 x 8 grid, as SVG path data: squared, with cut corners.
 LETTERS = {
@@ -46,6 +48,37 @@ LETTERS = {
     "I": "M1.5 0H4.5M3 0V8M1.5 8H4.5",
     "X": "M0 0L6 8M6 0L0 8",
 }
+
+# Circuit traces running in from the top right corner, each ending in a node:
+# a start and its turns, in px left of the right edge and down from the top.
+TRACES = [
+    ((0, 70), [(130, 70), (170, 110), (270, 110)]),
+    ((0, 120), [(90, 120), (130, 160), (200, 160)]),
+    ((220, 0), [(220, 40), (260, 80), (360, 80)]),
+    ((0, 200), [(40, 200), (70, 230)]),
+    ((320, 0), [(320, 26), (350, 56), (440, 56)]),
+]
+
+
+@dataclass(frozen=True)
+class Frame:
+    """An image's size and its grid floor: horizon, vanishing point, and how
+    far apart the floor's lines are at the bottom edge (depth 1)."""
+
+    w: int
+    h: int
+    horizon: float
+    vanish: float
+    spacing: float = 150
+
+    def floor(self, u: float, z: float) -> tuple[float, float]:
+        """A point on the grid floor: `u` grid lines right of the vanishing
+        point, at depth `z` (1 is the bottom edge)."""
+        return self.vanish + u * self.spacing / z, self.horizon + (self.h - self.horizon) / z
+
+
+BANNER = Frame(1920, 1080, horizon=640, vanish=1450)
+SQUARE = Frame(1080, 1080, horizon=740, vanish=540)
 
 
 def word(text: str, x: float, y: float, size: float, gap: float = 2.6) -> str:
@@ -62,6 +95,22 @@ def word(text: str, x: float, y: float, size: float, gap: float = 2.6) -> str:
     return "".join(paths)
 
 
+def name(x: float, y: float, size: float, line: float, stroke: float) -> str:
+    """The playset's name on three lines, COLD and STEEL in steel and MIX in
+    emerald, with a rule after MIX. Needs the `steel` gradient and `glow`."""
+    rule_y = y + 2 * line + size / 2
+    return f"""<g fill="none" stroke="url(#steel)" stroke-width="{stroke}" stroke-linecap="square" stroke-linejoin="miter">
+    {word("COLD", x, y, size)}
+    {word("STEEL", x, y + line, size)}
+  </g>
+  <g fill="none" stroke="{EMERALD}" stroke-width="{stroke}" stroke-linecap="square" stroke-linejoin="miter" filter="url(#glow)">
+    {word("MIX", x, y + 2 * line, size)}
+  </g>
+  <line x1="{x + 3 * (6 + 2.6) * size / 8 + 10:.0f}" y1="{rule_y:.0f}"
+        x2="{x + 5 * (6 + 2.6) * size / 8 - 2.6 * size / 8:.0f}" y2="{rule_y:.0f}"
+        stroke="{EMERALD_DEEP}" stroke-width="3" opacity="0.8"/>"""
+
+
 def icon(x: float, y: float, size: float) -> str:
     """The patch icon, placed and sized, with its ids prefixed so they can't
     clash with ours."""
@@ -72,34 +121,28 @@ def icon(x: float, y: float, size: float) -> str:
     return f'<g transform="translate({x} {y}) scale({size / 256:.4f})">{inner}</g>'
 
 
-def floor(u: float, z: float) -> tuple[float, float]:
-    """A point on the grid floor: `u` grid lines right of the vanishing point,
-    at depth `z` (1 is the bottom edge)."""
-    return VANISH + u * SPACING / z, HORIZON + (H - HORIZON) / z
-
-
-def grid() -> str:
+def grid(f: Frame) -> str:
     lines = []
     for u in range(-18, 14):
-        bx, by = floor(u, 1)
+        bx, by = f.floor(u, 1)
         # Extend each line past the bottom edge, so none ends in view.
-        ex, ey = VANISH + (bx - VANISH) * 1.2, HORIZON + (by - HORIZON) * 1.2
-        lines.append(f'<line x1="{VANISH}" y1="{HORIZON}" x2="{ex:.1f}" y2="{ey:.1f}"/>')
+        ex, ey = f.vanish + (bx - f.vanish) * 1.2, f.horizon + (by - f.horizon) * 1.2
+        lines.append(f'<line x1="{f.vanish}" y1="{f.horizon}" x2="{ex:.1f}" y2="{ey:.1f}"/>')
     z = 0.8
     while z < 60:
-        _, y = floor(0, z)
-        lines.append(f'<line x1="0" y1="{y:.1f}" x2="{W}" y2="{y:.1f}"/>')
+        _, y = f.floor(0, z)
+        lines.append(f'<line x1="0" y1="{y:.1f}" x2="{f.w}" y2="{y:.1f}"/>')
         z *= 1.28
     return "".join(lines)
 
 
-def trail(steps: list[tuple[float, float]], colour: str, wall: float = 70) -> str:
+def trail(f: Frame, steps: list[tuple[float, float]], colour: str, wall: float = 70) -> str:
     """A light cycle's trail along the grid: its wall of light, its glowing
     line and the cycle at its head."""
-    points = [floor(u, z) for u, z in steps]
+    points = [f.floor(u, z) for u, z in steps]
     walls = []
     for (u1, z1), (u2, z2) in pairwise(steps):
-        (x1, y1), (x2, y2) = floor(u1, z1), floor(u2, z2)
+        (x1, y1), (x2, y2) = f.floor(u1, z1), f.floor(u2, z2)
         walls.append(
             f'<polygon points="{x1:.1f},{y1:.1f} {x2:.1f},{y2:.1f} '
             f'{x2:.1f},{y2 - wall / z2:.1f} {x1:.1f},{y1 - wall / z1:.1f}"/>'
@@ -148,83 +191,59 @@ def disc(cx: float, cy: float, r: float) -> str:
     </g>"""
 
 
-def skyline(rng: random.Random) -> str:
+def skyline(f: Frame, rng: random.Random, start: float) -> str:
     towers = []
-    x = 980.0
-    while x < W:
+    x = start
+    while x < f.w:
         w = rng.uniform(26, 70)
         h = rng.choice((rng.uniform(16, 50), rng.uniform(40, 110)))
-        towers.append(f'<rect x="{x:.1f}" y="{HORIZON - h:.1f}" width="{w:.1f}" height="{h:.1f}"/>')
+        towers.append(
+            f'<rect x="{x:.1f}" y="{f.horizon - h:.1f}" width="{w:.1f}" height="{h:.1f}"/>'
+        )
         if h > 60 and rng.random() < 0.5:
             towers.append(
-                f'<line x1="{x + 6:.1f}" y1="{HORIZON - h + 10:.1f}" x2="{x + w - 6:.1f}"'
-                f' y2="{HORIZON - h + 10:.1f}"/>'
+                f'<line x1="{x + 6:.1f}" y1="{f.horizon - h + 10:.1f}" x2="{x + w - 6:.1f}"'
+                f' y2="{f.horizon - h + 10:.1f}"/>'
             )
         x += w + rng.uniform(4, 30)
     return "".join(towers)
 
 
-def circuits() -> str:
-    """Traces running in from the top right edge, each ending in a node."""
-    traces = [
-        ((W, 70), [(1790, 70), (1750, 110), (1650, 110)]),
-        ((W, 120), [(1830, 120), (1790, 160), (1720, 160)]),
-        ((1700, 0), [(1700, 40), (1660, 80), (1560, 80)]),
-        ((W, 200), [(1880, 200), (1850, 230)]),
-        ((1600, 0), [(1600, 26), (1570, 56), (1480, 56)]),
-        ((W, 960), [(1860, 960), (1830, 930), (1830, 860)]),
-    ]
+def circuits(f: Frame, traces: list[tuple[tuple[int, int], list[tuple[int, int]]]]) -> str:
+    """`traces` placed against the right edge."""
     out = []
-    for start, points in traces:
-        path = " ".join(f"{x},{y}" for x, y in [start, *points])
+    for (sx, sy), turns in traces:
+        points = [(f.w - x, y) for x, y in [(sx, sy), *turns]]
+        path = " ".join(f"{x},{y}" for x, y in points)
         ex, ey = points[-1]
         out.append(f'<polyline points="{path}"/><circle cx="{ex}" cy="{ey}" r="5" fill="#081019"/>')
     return "".join(out)
 
 
-def stars(rng: random.Random) -> str:
+def stars(f: Frame, rng: random.Random, count: int = 170) -> str:
     out = []
-    for _ in range(170):
-        x, y = rng.uniform(0, W), rng.uniform(0, H)
+    for _ in range(count):
+        x, y = rng.uniform(0, f.w), rng.uniform(0, f.h)
         r, o = rng.uniform(0.5, 1.8), rng.uniform(0.15, 0.75)
         out.append(f'<circle cx="{x:.0f}" cy="{y:.0f}" r="{r:.1f}" opacity="{o:.2f}"/>')
     return "".join(out)
 
 
-def background() -> str:
-    rng = random.Random(1010586431)
-    mid_x, mid_y = W / 2, H / 2
-    d = FADE / 2**0.5  # along both axes: the fade runs at right angles to the "/"
-    logo_x, logo_y, logo = 120, 230, 320
-    text_x, size, line = 480, 82, 108
-    return f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}">
-  <!-- Made by tools/collection_background.py. Change that, not this. -->
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+def shared_defs(f: Frame) -> str:
+    """The sky, the floor and the filters, the same in both images."""
+    return f"""<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#1c2838"/>
       <stop offset="1" stop-color="#05080d"/>
     </linearGradient>
-    <radialGradient id="frost" gradientUnits="userSpaceOnUse" cx="{logo_x + logo / 2 + 200}" cy="{logo_y + logo / 2}" r="760">
-      <stop offset="0" stop-color="{FROST}" stop-opacity="0.22"/>
-      <stop offset="1" stop-color="{FROST}" stop-opacity="0"/>
-    </radialGradient>
     <radialGradient id="vignette" cx="0.5" cy="0.5" r="0.75">
       <stop offset="0.6" stop-color="#000" stop-opacity="0"/>
       <stop offset="1" stop-color="#000" stop-opacity="0.55"/>
     </radialGradient>
-    <linearGradient id="fade" gradientUnits="userSpaceOnUse" x1="{mid_x - d:.1f}" y1="{mid_y - d:.1f}" x2="{mid_x + d:.1f}" y2="{mid_y + d:.1f}">
-      <stop offset="0" stop-color="#000"/>
-      <stop offset="0.5" stop-color="#777"/>
-      <stop offset="1" stop-color="#fff"/>
-    </linearGradient>
-    <mask id="right" maskUnits="userSpaceOnUse" x="0" y="0" width="{W}" height="{H}">
-      <rect width="{W}" height="{H}" fill="url(#fade)"/>
-    </mask>
-    <linearGradient id="floor" gradientUnits="userSpaceOnUse" x1="0" y1="{HORIZON}" x2="0" y2="{H}">
+    <linearGradient id="floor" gradientUnits="userSpaceOnUse" x1="0" y1="{f.horizon}" x2="0" y2="{f.h}">
       <stop offset="0" stop-color="#0b1d18"/>
       <stop offset="1" stop-color="#04070b"/>
     </linearGradient>
-    <linearGradient id="gridline" gradientUnits="userSpaceOnUse" x1="0" y1="{HORIZON}" x2="0" y2="{H}">
+    <linearGradient id="gridline" gradientUnits="userSpaceOnUse" x1="0" y1="{f.horizon}" x2="0" y2="{f.h}">
       <stop offset="0" stop-color="{EMERALD}" stop-opacity="0.1"/>
       <stop offset="0.35" stop-color="{EMERALD}" stop-opacity="0.45"/>
       <stop offset="1" stop-color="{EMERALD}" stop-opacity="0.8"/>
@@ -233,10 +252,6 @@ def background() -> str:
       <stop offset="0" stop-color="{EMERALD}" stop-opacity="0"/>
       <stop offset="0.5" stop-color="{EMERALD}" stop-opacity="0.45"/>
       <stop offset="1" stop-color="{EMERALD}" stop-opacity="0"/>
-    </linearGradient>
-    <linearGradient id="steel" gradientUnits="userSpaceOnUse" x1="0" y1="{logo_y}" x2="0" y2="{logo_y + line + size}">
-      <stop offset="0" stop-color="#eef4fa"/>
-      <stop offset="1" stop-color="#8fa3b8"/>
     </linearGradient>
     <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
       <feGaussianBlur stdDeviation="5" result="b"/>
@@ -248,43 +263,111 @@ def background() -> str:
     <filter id="soft" x="-10%" y="-10%" width="120%" height="120%">
       <feGaussianBlur stdDeviation="1.6" result="b"/>
       <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
+    </filter>"""
+
+
+def steel_and_frost(top: float, bottom: float, cx: float, cy: float, r: float) -> str:
+    """The name's steel gradient, from `top` to `bottom`, and the frost glow
+    behind the icon and name."""
+    return f"""<linearGradient id="steel" gradientUnits="userSpaceOnUse" x1="0" y1="{top}" x2="0" y2="{bottom}">
+      <stop offset="0" stop-color="#eef4fa"/>
+      <stop offset="1" stop-color="#8fa3b8"/>
+    </linearGradient>
+    <radialGradient id="frost" gradientUnits="userSpaceOnUse" cx="{cx}" cy="{cy}" r="{r}">
+      <stop offset="0" stop-color="{FROST}" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="{FROST}" stop-opacity="0"/>
+    </radialGradient>"""
+
+
+def floor_scene(f: Frame) -> str:
+    """The grid floor and its glowing horizon."""
+    return f"""<rect x="0" y="{f.horizon}" width="{f.w}" height="{f.h - f.horizon}" fill="url(#floor)"/>
+    <g stroke="url(#gridline)" stroke-width="1.6" filter="url(#soft)">{grid(f)}</g>
+    <rect x="0" y="{f.horizon - 60}" width="{f.w}" height="120" fill="url(#horizon)"/>
+    <line x1="0" y1="{f.horizon}" x2="{f.w}" y2="{f.horizon}" stroke="{MINT}" stroke-width="2" filter="url(#glow)"/>"""
+
+
+def background() -> str:
+    f = BANNER
+    rng = random.Random(1010586431)
+    mid_x, mid_y = f.w / 2, f.h / 2
+    d = FADE / 2**0.5  # along both axes: the fade runs at right angles to the "/"
+    logo_x, logo_y, logo = 120, 230, 320
+    text_x, size, line = 480, 82, 108
+    bottom_trace = [((0, 960), [(60, 960), (90, 930), (90, 860)])]
+    return f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {f.w} {f.h}" width="{f.w}" height="{f.h}">
+  <!-- Made by tools/collection_background.py. Change that, not this. -->
+  <defs>
+    {shared_defs(f)}
+    {steel_and_frost(logo_y, logo_y + line + size, logo_x + logo / 2 + 200, logo_y + logo / 2, 760)}
+    <linearGradient id="fade" gradientUnits="userSpaceOnUse" x1="{mid_x - d:.1f}" y1="{mid_y - d:.1f}" x2="{mid_x + d:.1f}" y2="{mid_y + d:.1f}">
+      <stop offset="0" stop-color="#000"/>
+      <stop offset="0.5" stop-color="#777"/>
+      <stop offset="1" stop-color="#fff"/>
+    </linearGradient>
+    <mask id="right" maskUnits="userSpaceOnUse" x="0" y="0" width="{f.w}" height="{f.h}">
+      <rect width="{f.w}" height="{f.h}" fill="url(#fade)"/>
+    </mask>
   </defs>
 
-  <rect width="{W}" height="{H}" fill="url(#bg)"/>
-  <g fill="#cfe2f5">{stars(rng)}</g>
+  <rect width="{f.w}" height="{f.h}" fill="url(#bg)"/>
+  <g fill="#cfe2f5">{stars(f, rng)}</g>
 
   <!-- the right: Tron-style lines, faded in across the diagonal -->
   <g mask="url(#right)">
-    <g fill="none" stroke="{FROST}" stroke-width="2" opacity="0.45">{circuits()}</g>
+    <g fill="none" stroke="{FROST}" stroke-width="2" opacity="0.45">{circuits(f, TRACES + bottom_trace)}</g>
     {disc(1590, 330, 165)}
-    <g fill="#070d13" stroke="{EMERALD}" stroke-width="1.5" stroke-opacity="0.45">{skyline(rng)}</g>
-    <rect x="0" y="{HORIZON}" width="{W}" height="{H - HORIZON}" fill="url(#floor)"/>
-    <g stroke="url(#gridline)" stroke-width="1.6" filter="url(#soft)">{grid()}</g>
-    <rect x="0" y="{HORIZON - 60}" width="{W}" height="120" fill="url(#horizon)"/>
-    <line x1="0" y1="{HORIZON}" x2="{W}" y2="{HORIZON}" stroke="{MINT}" stroke-width="2" filter="url(#glow)"/>
-    {trail([(-3.0, 0.8), (-3.0, 2.2), (2.0, 2.2), (2.0, 5.5), (5.0, 5.5)], EMERALD)}
-    {trail([(6.5, 0.8), (6.5, 1.5), (4.0, 1.5), (4.0, 3.2)], CYAN)}
+    <g fill="#070d13" stroke="{EMERALD}" stroke-width="1.5" stroke-opacity="0.45">{skyline(f, rng, 980)}</g>
+    {floor_scene(f)}
+    {trail(f, [(-3.0, 0.8), (-3.0, 2.2), (2.0, 2.2), (2.0, 5.5), (5.0, 5.5)], EMERALD)}
+    {trail(f, [(6.5, 0.8), (6.5, 1.5), (4.0, 1.5), (4.0, 3.2)], CYAN)}
   </g>
 
   <!-- the left: the icon and the playset's name -->
-  <rect width="{W}" height="{H}" fill="url(#frost)"/>
+  <rect width="{f.w}" height="{f.h}" fill="url(#frost)"/>
   {icon(logo_x, logo_y, logo)}
-  <g fill="none" stroke="url(#steel)" stroke-width="9" stroke-linecap="square" stroke-linejoin="miter">
-    {word("COLD", text_x, logo_y + 18, size)}
-    {word("STEEL", text_x, logo_y + 18 + line, size)}
-  </g>
-  <g fill="none" stroke="{EMERALD}" stroke-width="9" stroke-linecap="square" stroke-linejoin="miter" filter="url(#glow)">
-    {word("MIX", text_x, logo_y + 18 + 2 * line, size)}
-  </g>
-  <line x1="{text_x + 3 * (6 + 2.6) * size / 8 + 10:.0f}" y1="{logo_y + 18 + 2 * line + size / 2:.0f}"
-        x2="{text_x + 5 * (6 + 2.6) * size / 8 - 2.6 * size / 8:.0f}" y2="{logo_y + 18 + 2 * line + size / 2:.0f}"
-        stroke="{EMERALD_DEEP}" stroke-width="3" opacity="0.8"/>
+  {name(text_x, logo_y + 18, size, line, 9)}
 
-  <rect width="{W}" height="{H}" fill="url(#vignette)"/>
+  <rect width="{f.w}" height="{f.h}" fill="url(#vignette)"/>
+</svg>
+"""
+
+
+def branding() -> str:
+    """The square image: the icon and name larger, so they still read at the
+    195 px Steam shows in search, above the grid floor."""
+    f = SQUARE
+    rng = random.Random(1010586431)
+    logo_x, logo_y, logo = 82, 214, 336
+    text_x, size, line = 456, 104, 136
+    top = logo_y + logo / 2 - (2 * line + size) / 2
+    return f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {f.w} {f.h}" width="{f.w}" height="{f.h}">
+  <!-- Made by tools/collection_background.py. Change that, not this. -->
+  <defs>
+    {shared_defs(f)}
+    {steel_and_frost(top - 18, top + line + size, f.w / 2, logo_y + logo / 2, 620)}
+  </defs>
+
+  <rect width="{f.w}" height="{f.h}" fill="url(#bg)"/>
+  <g fill="#cfe2f5">{stars(f, rng, 110)}</g>
+
+  <g fill="none" stroke="{FROST}" stroke-width="2" opacity="0.45">{circuits(f, TRACES[::2])}</g>
+  <g fill="#070d13" stroke="{EMERALD}" stroke-width="1.5" stroke-opacity="0.45">{skyline(f, rng, 0)}</g>
+  {floor_scene(f)}
+  {trail(f, [(-2.0, 0.8), (-2.0, 2.0), (1.0, 2.0), (1.0, 4.5), (3.0, 4.5)], EMERALD)}
+  {trail(f, [(3.5, 0.8), (3.5, 1.4), (2.0, 1.4), (2.0, 2.8)], CYAN)}
+
+  <rect width="{f.w}" height="{f.h}" fill="url(#frost)"/>
+  {icon(logo_x, logo_y, logo)}
+  {name(text_x, top, size, line, 11)}
+
+  <rect width="{f.w}" height="{f.h}" fill="url(#vignette)"/>
 </svg>
 """
 
 
 if __name__ == "__main__":
-    Path(sys.argv[1]).write_text(background(), "utf-8")
+    if sys.argv[1] == "--square":
+        Path(sys.argv[2]).write_text(branding(), "utf-8")
+    else:
+        Path(sys.argv[1]).write_text(background(), "utf-8")
