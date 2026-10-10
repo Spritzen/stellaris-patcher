@@ -46,6 +46,7 @@ MORE_EVENTS = "workshop:727000451"
 MORE_ARCOLOGIES = "workshop:1732447147"  # Planetary Diversity - More Arcologies
 SHRIMPAI = "workshop:2815767345"  # Smarter Hyper Relays: Improved AI (shrimpAI)
 UI_OVERHAUL = "workshop:1623423360"  # UI Overhaul Dynamic
+STELLAR_AI = "workshop:3610149307"
 
 
 class FixError(Exception):
@@ -2546,6 +2547,64 @@ def fix_specimen_places(layers: Layers) -> Made:
     return {path: BOM + b"l_english:\n" + body.encode()}, notes
 
 
+# 37. Stellar AI's Archaeostudies Faculty drops More Arcologies' Archeotech Preserve
+
+
+BUILDINGS = "common/buildings"
+FACULTY = "building_archaeostudies_faculty"
+
+
+def fix_faculty(layers: Layers) -> Made:
+    """A copy of Stellar AI's faculty, in a file that sorts last, with each
+    block More Arcologies changed from the game's. Only while Stellar AI's
+    copy of that block is still the game's, so neither mod's change is lost."""
+    found = _last_definition(layers, BUILDINGS, FACULTY)
+    if found is None or found[0] != STELLAR_AI:
+        raise FixError(f"{FACULTY} doesn't come from Stellar AI now.")
+    _, data, entry = found
+    theirs = _layer_definition(layers, MORE_ARCOLOGIES, BUILDINGS, FACULTY)
+    if theirs is None:
+        raise FixError(f"More Arcologies has no {FACULTY} now.")
+    ma_data, ma_entry = theirs
+    game_data, game_entry = _game_entry(layers, BUILDINGS, FACULTY)
+    game = children(game_data, game_entry)
+    ours, ma = children(data, entry), children(ma_data, ma_entry)
+    keys = [c.key for c in game]
+    if [c.key for c in ours] != keys or [c.key for c in ma] != keys:
+        raise FixError(f"{FACULTY}'s copies don't have the game's blocks in its order now.")
+    edits: list[tuple[int, int, bytes]] = []
+    taken: list[str] = []
+    for own, arcology, original in zip(ours, ma, game, strict=True):
+        if _clause(ma_data, arcology) == _clause(game_data, original):
+            continue
+        if _clause(data, own) != _clause(game_data, original):
+            block = own.key.decode()
+            raise FixError(f"Stellar AI and More Arcologies both change {FACULTY}'s {block}.")
+        edits.append((own.start, own.end, ma_data[arcology.start : arcology.end]))
+        taken.append(own.key.decode())
+    if not edits:
+        raise FixError(f"More Arcologies' {FACULTY} is the game's now.")
+    body = _mended(data, entry, edits)
+    path = _last_file(layers, BUILDINGS, "faculty")
+    note = f"{FACULTY}, from Stellar AI: gets More Arcologies' {', '.join(taken)}"
+    return {path: _copy(layers, data, entry, body)}, [note]
+
+
+def _layer_definition(
+    layers: Layers, layer: str, folder: str, key: str
+) -> tuple[bytes, Entry] | None:
+    """`layer`'s last definition of `key` in `folder`, in the files the game reads."""
+    found: tuple[bytes, Entry] | None = None
+    for owner, path in layers.ordered(folder):
+        if owner != layer:
+            continue
+        data = layers.read(owner, path)
+        for entry in scan(data):
+            if entry.key == key.encode() and entry.block:
+                found = (data, entry)
+    return found
+
+
 # The playset's problems the patch leaves to the mods' authors, for the Workshop
 # page. Each is a mod's own bug, too big to copy or soon to be fixed upstream.
 # Drop a line once its mod has fixed it.
@@ -2556,6 +2615,7 @@ LEFT_TO_AUTHORS: tuple[str, ...] = ()
 # A fix in none of them is listed last, under "Other".
 FIX_GROUPS: tuple[tuple[str, tuple[int, ...]], ...] = (
     ("Species and traits", (18, 19, 27)),
+    ("Planets and buildings", (37,)),
     ("Events and stories", (6, 11, 12, 26)),
     ("Galaxy and systems", (5, 17, 28)),
     ("Ships and starbases", (2, 3, 15, 16, 29, 30, 31, 32, 33, 34)),
@@ -2771,5 +2831,14 @@ FIXES: tuple[tuple[int, str, Callable[[Layers], Made], tuple[str, ...]], ...] = 
         ),
         fix_specimen_places,
         (MORE_EVENTS,),
+    ),
+    (
+        37,
+        (
+            "The Archaeostudies Faculty gets its Relic World bonuses on More Arcologies' "
+            "Archeotech Preserve planets, with Stellar AI"
+        ),
+        fix_faculty,
+        (STELLAR_AI, MORE_ARCOLOGIES),
     ),
 )
