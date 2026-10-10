@@ -2496,6 +2496,56 @@ def _ship_size_value(layers: Layers, name: str) -> str:
     return values.pop()
 
 
+# 36. More Events Mod's specimen texts name a planet the Grand Archive can't reach
+
+
+# A specimen keeps one target for its text, EVENT_TARGET_0. With the event's own
+# `specimen = …` line, that's the event's scope: the science ship, not the planet
+# at From.From. So each line swaps the planet's name for a few words about it.
+SPECIMEN_PLACES = {
+    "mem_laser_rifle_desc_details": (
+        "found on [From.From.GetName], a lifeless planetoid",
+        "found on a lifeless planetoid",
+    ),
+    "mem_mecha_desc_short": (
+        "found on [From.From.GetName]",
+        "found on a world of long-dead civilizations",
+    ),
+    "mem_psionic_debris_desc_short": ("found on [From.From.GetName]", "found among alien ruins"),
+    "mem_datacore_desc_short": (
+        "within a satellite orbiting [From.From.From.GetName]",
+        "within an ancient satellite",
+    ),
+    "mem_lichen_sample_desc_short": ("found on [From.From.GetName]", "found on a living asteroid"),
+    "mem_holo_projector_desc_short": (
+        "in orbit of [From.From.GetName]",
+        "in orbit of a disguised planet",
+    ),
+}
+
+
+def fix_specimen_places(layers: Layers) -> Made:
+    """A replace/ file, as fix 10's. Each line is the winning text with only the
+    name swapped, so a reworded line is skipped, not overwritten."""
+    texts, replaced = _english_texts(layers)
+    lines: dict[str, str] = {}
+    notes: list[str] = []
+    for key, (old, new) in SPECIMEN_PLACES.items():
+        if key in replaced:
+            raise FixError(f"{key} is in a replace/ file now. Check it again.")
+        found = texts.get(key)
+        if not found or old not in found[0][1]:
+            notes.append(f"{key}: doesn't say {old!r} now. Skipped.")
+            continue
+        lines[key] = found[0][1].replace(old, new)
+        notes.append(f"{key}: {new!r}")
+    if not lines:
+        raise FixError("No specimen text names its planet through From now.")
+    body = "".join(f' {k}:0 "{v}"\n' for k, v in lines.items())
+    path = f"localisation/english/replace/{TAIL}_specimens_l_english.yml"
+    return {path: BOM + b"l_english:\n" + body.encode()}, notes
+
+
 # The playset's problems the patch leaves to the mods' authors, for the Workshop
 # page. Each is a mod's own bug, too big to copy or soon to be fixed upstream.
 # Drop a line once its mod has fixed it.
@@ -2510,7 +2560,7 @@ FIX_GROUPS: tuple[tuple[str, tuple[int, ...]], ...] = (
     ("Galaxy and systems", (5, 17, 28)),
     ("Ships and starbases", (2, 3, 15, 16, 29, 30, 31, 32, 33, 34)),
     ("Graphics and camera", (1, 4)),
-    ("Text and translations", (7, 10, 25)),
+    ("Text and translations", (7, 10, 25, 36)),
 )
 
 
@@ -2712,5 +2762,14 @@ FIXES: tuple[tuple[int, str, Callable[[Layers], Made], tuple[str, ...]], ...] = 
         ),
         fix_starbase_sizes,
         (STARBASE_EXTENDED,),
+    ),
+    (
+        36,
+        (
+            "More Events Mod's specimens in the Grand Archive say where they were found, "
+            "in place of a blank planet name"
+        ),
+        fix_specimen_places,
+        (MORE_EVENTS,),
     ),
 )

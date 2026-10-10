@@ -175,9 +175,10 @@ Its last line, item 18, became fix 18 on 10 October.
 | `common/starbase_modules/sbx_3_0_orbital_ring_modules.txt`, `common/starbase_modules/sbx_3_0_starbase_modules.txt` and `common/starbase_buildings/sbx_3_0_starbase_buildings.txt` | Starbase Extended 3.0's whole files, with 7 modules' and 10 buildings' checks mended, and the game's 4.5 hangar lines in its hangar bay |
 | `common/section_templates/!!!!_stellaris_patcher_cold_steel_mix_ring_sections.txt` | Starbase Extended 3.0's ring anchorage section, twice, under two new keys |
 | `common/ship_sizes/zzzz_stellaris_patcher_cold_steel_mix_starbase_sizes.txt` | 21 of Starbase Extended 3.0's starbase sizes, with the game's 4.5 values for eight fields |
+| `localisation/english/replace/stellaris_patcher_cold_steel_mix_specimens_l_english.yml` | Six of More Events Mod's specimen descriptions, with a planet's name swapped for a few words in each |
 
 The game's own files are fine to ship in a mod. The others need their
-authors' permission, or fixes 3, 5, 11, 12, 16, 17, 18, 19, 25, 26, 27 and 29–34 left out.
+authors' permission, or fixes 3, 5, 11, 12, 16, 17, 18, 19, 25, 26, 27, 29–34 and 36 left out.
 
 ## What each fix does
 
@@ -208,6 +209,7 @@ authors' permission, or fixes 3, 5, 11, 12, 16, 17, 18, 19, 25, 26, 27 and 29–
 | 32 | Six of Starbase Extended 3.0's modules have two `potential` blocks, and its orbital ring hangar bay two `ai_weight` blocks: the game keeps one, so conditions are lost (6 errors). `financial_space_center`'s `potential` has `category = starbase_buildings`, which isn't a trigger (2). Ten buildings' `potential` scopes to the starbase's system, which an arkship's starbase lacks (3 in play). Its hangar bay predates 4.5: no hangars, energy upkeep for bio-ship empires | Starbase Extended's two module files and its buildings file, whole at their own paths, so the game never reads the duplicate blocks. Each object's checks are mended: the blocks merged into one, the `category` line taken out, `exists = solar_system` first. The hangar bay gets the game's two hangar sets, its tooltips, and its two upkeeps, food for bio-ship empires, in place of Starbase Extended's one, which is the game's for other empires. Its own cost, limit and platforms stay. A module fix 29 copies is left to it ([decision 49](../decisions.md)) |
 | 33 | Starbase Extended 3.0's orbital ring shield and armour modules name sections nothing defines, so they have no section (2 errors) | `SHIELD_ORBITAL_RING_SECTION` and `ARMOR_ORBITAL_RING_SECTION`, as copies of its ring anchorage section, as its starbase shield and armour modules use its anchorage. Each only while a module uses it and nothing defines it ([decision 50](../decisions.md)) |
 | 34 | Starbase Extended 3.0's 19 copies of the game's starbase sizes predate 4.5: their size and combat size are the old values, they have no map icon, the orbital rings lack `is_orbital_ring`, and the Ion Cannon can be built at a waystation or arkship | Copies of its sizes in a `zzzz_` file, with the game's 4.5 values for eight fields, and the game's construction conditions they lack. Its own hit points, armour, costs and slots stay. Its Stronghold and HQ take the Citadel's values. A variable its file uses but doesn't define takes the one value the other ship size files give it, as fix 3 does ([decision 51](../decisions.md)) |
+| 36 | Six of More Events Mod's specimen descriptions name a planet with `[From.From.GetName]` (`[From.From.From.GetName]` for the datacore). A specimen keeps only its event's scope, the science ship, so the name is blank in the Grand Archive and logs `Unknown promotion From` | A `localisation/english/replace/` file with the six lines, each the winning text with the name swapped for a few words: "a lifeless planetoid", "a world of long-dead civilizations", "alien ruins", "an ancient satellite", "a living asteroid", "a disguised planet". A line More Events Mod has reworded is skipped ([decision 52](../decisions.md)) |
 
 ### Notes
 
@@ -309,8 +311,13 @@ These weren't seen in game yet:
 - A bio-ship empire's orbital ring hangar bay costs food, and its tooltip
   lists the scout hangar (fix 32). An arkship's starbase lists its
   buildings, and the log has no `solar_system` error from
-  `sbx_3_0_starbase_buildings.txt`, and no `Duplicate trigger` (fix 32).
+  `sbx_3_0_starbase_buildings.txt`, and no `Duplicate trigger` (fix 32). The
+  log half was **seen** in the
+  [ten years](../reports/2026-10-10-cold-steel-mix-ten-years.md) run.
 - An orbital ring's shield or armour module shows a section, and the log has
   no `SHIELD_ORBITAL_RING_SECTION` (fix 33).
 - Starbases have their map counter icons, and the Ion Cannon can't be built
   at a waystation (fix 34).
+- A More Events Mod specimen in the Grand Archive, such as the Hologenerator
+  Unit, says where it was found, with no blank (fix 36). The log has no
+  `Unknown promotion From` for `From.From.GetName]`.

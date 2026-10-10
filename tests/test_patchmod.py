@@ -1719,6 +1719,35 @@ def test_fix_34_is_left_out_once_the_sizes_have_the_games_values(game: Game) -> 
         cold_steel_mix.fix_starbase_sizes(_sizes(game, sbx=same, nsc=""))
 
 
+# Fix 36: More Events Mod's specimen texts
+
+SPECIMENS = """﻿l_english:
+ mem_holo_projector: "Hologenerator Unit"
+ mem_holo_projector_desc_short: "A unit in orbit of [From.From.GetName], one of many"
+ mem_datacore_desc_short: "An archive found within a satellite"
+"""
+
+
+def test_fix_36_swaps_the_planets_name_for_words_about_it(game: Game) -> None:
+    more_events = cold_steel_mix.MORE_EVENTS
+    text = {"localisation/english/mem_specimens_l_english.yml": SPECIMENS}
+    files, notes = cold_steel_mix.fix_specimen_places(_layers(game, {more_events: text}))
+    assert files == {
+        "localisation/english/replace/stellaris_patcher_cold_steel_mix_specimens_l_english.yml": BOM
+        + b"l_english:\n"
+        + b' mem_holo_projector_desc_short:0 "A unit in orbit of a disguised planet, one of many"\n'
+    }
+    assert check_files(files) == []
+    assert any(n.startswith("mem_datacore_desc_short: doesn't say") for n in notes)
+
+
+def test_fix_36_is_left_out_once_no_text_names_a_planet_through_from(game: Game) -> None:
+    mended = SPECIMENS.replace("[From.From.GetName]", "a disguised planet")
+    text = {"localisation/english/mem_specimens_l_english.yml": mended}
+    with pytest.raises(FixError, match="No specimen text names its planet"):
+        cold_steel_mix.fix_specimen_places(_layers(game, {cold_steel_mix.MORE_EVENTS: text}))
+
+
 # Mods out of the playset
 
 
