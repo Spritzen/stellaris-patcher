@@ -1,8 +1,7 @@
 """Is the Paradox launcher or the game running? Read from /proc.
 
-The launcher keeps playsets in memory and writes them back, so writing its
-database while it runs would lose our change. The game reads `dlc_load.json`
-only as it starts.
+A patch mod is written only while both are closed. Inside the container
+host processes can't be seen, so this finds nothing there.
 """
 
 from pathlib import Path
