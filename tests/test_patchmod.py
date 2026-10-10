@@ -1097,6 +1097,66 @@ def test_fix_27_is_left_out_if_the_mods_weight_is_its_own(game: Game) -> None:
         cold_steel_mix.fix_aquatic(_aquatic(game, aquatic))
 
 
+# Fix 28: shrimpAI's Hyper Relay and the game's clause for Nomadic empires
+
+GAME_RELAY_FILE = "common/megastructures/14_hyper_relay.txt"
+SHRIMPAI_RELAY_FILE = "common/megastructures/zzz_shrimpai_hyper_relay_overwrite.txt"
+WAYSTATION = """
+\t\t\t\tany_starbase_in_system = {
+\t\t\t\t\tis_waystation_starbase = yes
+\t\t\t\t}"""
+RELAY = """hyper_relay = {\r
+\tresources = { cost = { alloys = @shrimpai_alloys_cost } }\r
+\tpossible = {\r
+\t\tcustom_tooltip = {\r
+\t\t\tfail_text = "requires_surveyed_system"\r
+\t\t\tOR = {\r
+\t\t\t\tshrimpai_is_starless = yes # OVERWRITE wild space support\r
+\t\t\t\tNOT = { any_system_planet = { is_surveyed = no } }WAYSTATION\r
+\t\t\t\tAND = { exists = starbase }\r
+\t\t\t}\r
+\t\t}\r
+\t}\r
+}\r
+"""
+RELAY_COPY = "common/megastructures/zzzz_stellaris_patcher_cold_steel_mix_hyper_relay.txt"
+
+
+def _relay(game: Game, shrimpai: str) -> Layers:
+    game_relay = RELAY.replace("\r", "").replace("@shrimpai_alloys_cost", "500")
+    return _layers(
+        game,
+        {
+            GAME: {
+                GAME_RELAY_FILE: game_relay.replace(
+                    "\t\t\t\tshrimpai_is_starless = yes # OVERWRITE wild space support\n", ""
+                ).replace("WAYSTATION", WAYSTATION)
+            },
+            cold_steel_mix.SHRIMPAI: {
+                SHRIMPAI_RELAY_FILE: shrimpai,
+                "common/scripted_variables/shrimpai.txt": "@shrimpai_alloys_cost = 500\n",
+            },
+        },
+    )
+
+
+def test_fix_28_adds_the_games_waystation_clause_and_keeps_shrimpais_own(game: Game) -> None:
+    files, notes = cold_steel_mix.fix_hyper_relay(_relay(game, RELAY.replace("WAYSTATION", "")))
+    relay = files[RELAY_COPY]
+    assert b"} }\n\t\t\t\tany_starbase_in_system = {\n\t\t\t\t\tis_waystation_starbase" in relay
+    assert b"shrimpai_is_starless = yes # OVERWRITE wild space support\n" in relay
+    assert b"@shrimpai_alloys_cost" in relay and b"\r" not in relay
+    assert notes == [
+        "hyper_relay, from shrimpAI: adds the game's clause to requires_surveyed_system"
+    ]
+    assert check_files(files) == []
+
+
+def test_fix_28_is_left_out_once_shrimpai_has_the_games_clauses(game: Game) -> None:
+    with pytest.raises(FixError, match="every clause the game's do now"):
+        cold_steel_mix.fix_hyper_relay(_relay(game, RELAY.replace("WAYSTATION", WAYSTATION)))
+
+
 # Mods out of the playset
 
 

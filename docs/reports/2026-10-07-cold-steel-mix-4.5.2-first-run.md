@@ -190,7 +190,9 @@ Steam rewrote their files without a new version.
 - **shrimpAI's Hyper Relay** has no clause for building it at your own
   waystation, which the game has. 4.5.2 says "Fixed Gateways, Hyper-Relays
   and the Grand Archive not being buildable by Nomadic empires in some
-  cases". It matters only to Nomad empires.
+  cases". It matters only to Nomad empires. **Done** on 10 October as
+  fix 28 ([patch](../patches/cold-steel-mix.md#what-each-fix-does)), with
+  shrimpAI back on. Not yet checked in game.
 - **Planetary Diversity's `trait_aquatic`** lacks one 4.5.2 AI change: "The
   AI now values the Aquatic trait on species that use the Wet Climate Mods
   planet preference." The player rule that goes with it isn't in the copy,

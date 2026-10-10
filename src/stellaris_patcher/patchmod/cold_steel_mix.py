@@ -37,6 +37,7 @@ PLANETARY_DIVERSITY = "workshop:819148835"
 ASCENSION_WORLDS = "workshop:3241119393"  # Planetary Diversity - Ascension Worlds
 MORE_EVENTS = "workshop:727000451"
 MORE_ARCOLOGIES = "workshop:1732447147"  # Planetary Diversity - More Arcologies
+SHRIMPAI = "workshop:2815767345"  # Smarter Hyper Relays: Improved AI (shrimpAI)
 
 
 class FixError(Exception):
@@ -1200,13 +1201,17 @@ def _terraform(layers: Layers) -> tuple[str, bytes, str]:
 
 
 def _game_rule(layers: Layers, rule: str) -> tuple[str, bytes, Entry] | None:
-    """The rule the game uses, the last definition by file name, with its layer
-    and the file it's in."""
+    return _last_definition(layers, GAME_RULES, rule)
+
+
+def _last_definition(layers: Layers, folder: str, key: str) -> tuple[str, bytes, Entry] | None:
+    """The definition the game uses in a folder where the last by file name
+    wins, with its layer and the file it's in."""
     found: tuple[str, bytes, Entry] | None = None
-    for layer, path in layers.ordered(GAME_RULES):
+    for layer, path in layers.ordered(folder):
         data = layers.read(layer, path)
         for entry in scan(data):
-            if entry.key == rule.encode() and entry.block:
+            if entry.key == key.encode() and entry.block:
                 found = (layer, data, entry)
     return found
 
@@ -1470,6 +1475,86 @@ def _ai_weight(data: bytes, entry: Entry) -> Entry:
     return found
 
 
+# 28. shrimpAI's Hyper Relay misses the game's 4.5.2 clause for Nomadic empires
+
+
+MEGASTRUCTURES = "common/megastructures"
+HYPER_RELAY = "hyper_relay"
+# 4.5.2: "Fixed Gateways, Hyper-Relays and the Grand Archive not being buildable by
+# Nomadic empires in some cases." The game's surveyed-system check lets an empire
+# build at its own waystation. shrimpAI's copy, from 4.5.1, doesn't.
+
+
+def fix_hyper_relay(layers: Layers) -> Made:
+    """A copy of shrimpAI's Hyper Relay, in a file that sorts last, with each
+    clause it lacks from the game's own `possible` checks: in each custom
+    tooltip's OR, matched by fail text. shrimpAI's own clauses stay."""
+    found = _last_definition(layers, MEGASTRUCTURES, HYPER_RELAY)
+    if found is None or found[0] != SHRIMPAI:
+        raise FixError(f"{HYPER_RELAY} doesn't come from shrimpAI now.")
+    _, data, entry = found
+    game_data, game_entry = _game_entry(layers, MEGASTRUCTURES, HYPER_RELAY)
+    theirs = _tooltip_ors(data, entry)
+    edits: list[tuple[int, int, bytes]] = []
+    added: list[str] = []
+    for text, game_or in _tooltip_ors(game_data, game_entry).items():
+        if text not in theirs:
+            continue
+        their_or = theirs[text]
+        have = {_clause(data, c) for c in children(data, their_or)}
+        anchor: Entry | None = None  # shrimpAI's copy of the game clause before it
+        for clause in children(game_data, game_or):
+            words = _clause(game_data, clause)
+            if words in have:
+                anchor = next(c for c in children(data, their_or) if _clause(data, c) == words)
+                continue
+            first = anchor or next(iter(children(data, their_or)), None)
+            at = _line_end(data, anchor, their_or) if anchor else their_or.inside[0]
+            indent = _indent(data, first) if first else b"\t"
+            edits.append((at, at, b"\n" + indent + game_data[clause.start : clause.end]))
+            added.append(text)
+    if not edits:
+        raise FixError(f"{HYPER_RELAY}'s checks have every clause the game's do now.")
+    body = _mended(data, entry, edits)
+    path = _last_file(layers, MEGASTRUCTURES, "hyper_relay")
+    tooltips = ", ".join(sorted(set(added)))
+    note = f"{HYPER_RELAY}, from shrimpAI: adds the game's clause to {tooltips}"
+    return {path: _copy(layers, data, entry, body)}, [note]
+
+
+def _tooltip_ors(data: bytes, entry: Entry) -> dict[str, Entry]:
+    """Each custom tooltip's OR in `entry`'s `possible`, at any depth, by fail text."""
+    possible = next((c for c in children(data, entry) if c.key == b"possible" and c.block), None)
+    if possible is None:
+        return {}
+    found: dict[str, Entry] = {}
+    for tooltip in _blocks(data, possible):
+        text = _fail_text(data, tooltip)
+        either = next((c for c in children(data, tooltip) if c.key == b"OR" and c.block), None)
+        if text and either is not None:
+            found[text] = either
+    return found
+
+
+def _clause(data: bytes, entry: Entry) -> bytes:
+    """`entry`'s text without comments or spacing, to compare two copies."""
+    return b"".join(_COMMENT.sub(b"", data[entry.start : entry.end]).split())
+
+
+def _indent(data: bytes, entry: Entry) -> bytes:
+    line = data.rfind(b"\n", 0, entry.start) + 1
+    return data[line : entry.start]
+
+
+def _line_end(data: bytes, entry: Entry, inside: Entry) -> int:
+    """The end of `entry`'s line, past any comment on it, or `entry`'s own end
+    when `inside` closes on that line."""
+    end = data.find(b"\n", entry.end)
+    if end == -1 or end > inside.inside[1]:
+        return entry.end
+    return end - 1 if data[end - 1 : end] == b"\r" else end
+
+
 # The playset's problems the patch leaves to the mods' authors, for the Workshop
 # page. Each is a mod's own bug, too big to copy or soon to be fixed upstream.
 # Drop a line once its mod has fixed it.
@@ -1481,7 +1566,7 @@ LEFT_TO_AUTHORS: tuple[str, ...] = ()
 FIX_GROUPS: tuple[tuple[str, tuple[int, ...]], ...] = (
     ("Species and traits", (18, 19, 27)),
     ("Events and stories", (6, 11, 12, 26)),
-    ("Galaxy and systems", (5, 17)),
+    ("Galaxy and systems", (5, 17, 28)),
     ("Ships and starbases", (2, 3, 15, 16)),
     ("Graphics and camera", (1, 4)),
     ("Text and translations", (7, 10, 25)),
@@ -1620,5 +1705,14 @@ FIXES: tuple[tuple[int, str, Callable[[Layers], Made], tuple[str, ...]], ...] = 
         ),
         fix_aquatic,
         (PLANETARY_DIVERSITY,),
+    ),
+    (
+        28,
+        (
+            "Nomadic empires can build a Hyper Relay at their own waystation before surveying "
+            "the whole system, as in 4.5.2, with Smarter Hyper Relays"
+        ),
+        fix_hyper_relay,
+        (SHRIMPAI,),
     ),
 )
