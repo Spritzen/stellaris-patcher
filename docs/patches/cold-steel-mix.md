@@ -167,9 +167,10 @@ written by hand, one line per problem.
 | `common/ship_sizes/zzzz_stellaris_patcher_cold_steel_mix_starbase_sizes.txt` | 21 of Starbase Extended 3.0's starbase sizes, with the game's 4.5 values for eight fields |
 | `localisation/english/replace/stellaris_patcher_cold_steel_mix_specimens_l_english.yml` | Six of More Events Mod's specimen descriptions, with a planet's name swapped for a few words in each |
 | `common/buildings/~~_stellaris_patcher_cold_steel_mix_faculty.txt` | Stellar AI's Archaeostudies Faculty, with More Arcologies' two Archeotech Preserve checks |
+| `common/inline_scripts/mem_ancestors_grudge/random_leader.txt` | More Events Mod's whole file, with 4 lines added |
 
 The game's own files are fine to ship in a mod. The others need their
-authors' permission, or fixes 3, 5, 10–12, 16–19, 25–34, 36 and 37 left out.
+authors' permission, or fixes 3, 5, 10–12, 16–19, 25–34 and 36–38 left out.
 
 ## What each fix does
 
@@ -202,6 +203,7 @@ authors' permission, or fixes 3, 5, 10–12, 16–19, 25–34, 36 and 37 left ou
 | 34 | Starbase Extended 3.0's 19 copies of the game's starbase sizes predate 4.5: their size and combat size are the old values, they have no map icon, the orbital rings lack `is_orbital_ring`, and the Ion Cannon can be built at a waystation or arkship | Copies of its sizes in a `zzzz_` file, with the game's 4.5 values for eight fields, and the game's construction conditions they lack. Its own hit points, armour, costs and slots stay. Its Stronghold and HQ take the Citadel's values. A variable its file uses but doesn't define takes the one value the other ship size files give it, as fix 3 does ([decision 51](../decisions.md)) |
 | 36 | Six of More Events Mod's specimen descriptions name a planet with `[From.From.GetName]` (`[From.From.From.GetName]` for the datacore). A specimen keeps only its event's scope, the science ship, so the name is blank in the Grand Archive and logs `Unknown promotion From` | A `localisation/english/replace/` file with the six lines, each the winning text with the name swapped for a few words: "a lifeless planetoid", "a world of long-dead civilizations", "alien ruins", "an ancient satellite", "a living asteroid", "a disguised planet". A line More Events Mod has reworded is skipped ([decision 52](../decisions.md)) |
 | 37 | Stellar AI and More Arcologies each replace the game's Archaeostudies Faculty, and Stellar AI's `~stellarai_…` file sorts after More Arcologies' `zzz_…` one. Stellar AI raises its AI weight. More Arcologies gives its Relic World bonuses, +0.25 minor artifacts per biologist and +25% archaeostudies research speed, to planets with its Archeotech Preserve zone, and that's lost | Stellar AI's faculty in a `~~_` file, with each block More Arcologies changed from the game's: its two Relic World checks, each an `OR` with the zone. Only while Stellar AI's copy of each such block is still the game's, so neither mod's change is lost ([decision 53](../decisions.md)) |
+| 38 | More Events Mod's Ancestors' Grudge picks the leader for a relic's trait with no check that the game lets them take a normal trait. In a gestalt empire it can pick a councilor, and the relic's owner gets no trait | More Events Mod's `common/inline_scripts/mem_ancestors_grudge/random_leader.txt`, whole at its own path: an inline script is replaced as a whole file, and the patch loads last. Each of its 4 picks, the relic planet's governor and `leader_1`–`3`, gets the game's `can_leader_get_normal_trait_trigger`, as fix 26's do ([decision 57](../decisions.md)). Event `mem_ancestors_grudge.45` always keeps a scrap or archeotech option, so the story still ends if no leader is left |
 
 ### Notes
 
@@ -317,4 +319,12 @@ These weren't seen in game yet:
   Preserve zone gives its biologists minor artifacts, and the empire's
   archaeostudies research speed from it is +50%, not +25% (fix 37). The log has a third duplicate
   object notice for `building_archaeostudies_faculty`, naming the patch's
-  file. That's the check that the patch's copy won.
+  file. That's the check that the patch's copy won. The log half was
+  **seen** in the
+  [thirty-two years](../reports/2026-10-11-cold-steel-mix-thirty-two-years.md#the-patchs-fixes)
+  run, in a save started before the fix.
+- A More Events Mod Ancestors' Grudge relic gives its leader the relic's
+  legendary trait, in a hive mind too (fix 38). The log has no
+  `rules_leader_cannot_get_normal_trait` for
+  `mem_ancestors_grudge_scripted_effects.txt`. The log has no notice for an
+  inline script, so it can't show which copy won.

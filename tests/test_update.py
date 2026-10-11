@@ -182,6 +182,9 @@ def test_the_build_status_names_our_patch_when_written_after_the_build(
     os.utime(patch / "common/buildings/fix.txt", (built - 60, built - 60))
     report = check.check(layers, game, None, [], record, patch=patch)
     assert "Nothing changed after it." in report.build
+    _put(patch, {"descriptor.mod": 'remote_file_id="1"\n', "thumbnail.png": "png"})
+    report = check.check(layers, game, None, [], record, patch=patch)
+    assert "Nothing changed after it." in report.build  # the build leaves those two out
     os.utime(patch / "common/buildings/fix.txt", (built + 60, built + 60))
     report = check.check(layers, game, None, [], record, patch=patch)
     assert "Changed after it: the patch. Rebuild it in Cold Steel." in report.build
