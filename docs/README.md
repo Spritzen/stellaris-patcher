@@ -12,6 +12,7 @@
 | [update-check.md](update-check.md) | What to do after a game or mod update: the check, the report, and what it can't tell |
 | [game-report.md](game-report.md) | What to do after a game run: reading the error log, tracing entries to mods, and the report |
 | [patch-notes.md](patch-notes.md) | Writing the Workshop patch notes for an upload, and recording it |
+| [doc-pass.md](doc-pass.md) | Checking every doc and code comment for stale entries, inconsistencies and history to cut |
 | [patches/cold-steel-mix-patch-notes.md](patches/cold-steel-mix-patch-notes.md) | Every Workshop upload of the Cold Steel Mix patch, with its notes and commit |
 
 Don't create a folder until it has something in it.

@@ -506,6 +506,8 @@ command, or describe the task and Claude picks the skill.
 | `/game-report` | You've played the playset. Reads the error log, traces each entry to its mod and writes a report. Say how long you played and anything that looked wrong |
 | `/add-fix` | You've agreed to a fix from a report. Adds it to the patch, with tests and docs |
 | `/build-patch` | Builds the patch mod and links it into the game. Then rebuild the playset in Cold Steel |
+| `/patch-notes` | You're about to upload the patch to the Workshop. Writes its notes from what changed since the last upload, and records the upload once you've done it |
+| `/doc-pass` | Checks every doc and code comment against the code, fixes what's stale or inconsistent, and cuts history while keeping the gotchas |
 | `/commit` | Commits on a branch, opens and merges a PR, goes back to `main`, and deletes the merged branches, locally and on GitHub |
 
 Claude asks you to close the game, the launcher and Cold Steel before
