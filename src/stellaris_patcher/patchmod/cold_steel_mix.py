@@ -1222,7 +1222,8 @@ def _fail_text(data: bytes, check: Entry) -> str:
     return (value_of(data, check, b"fail_text") or b"").decode().strip('"')
 
 
-# 25. Lines in Planetary Diversity's translations the game can't read
+# 25. Lines in Planetary Diversity's, Ascension Worlds' and More Arcologies'
+# translations the game can't read
 
 
 TEXT_MODS = {
@@ -2219,7 +2220,8 @@ def fix_sbx_checks(layers: Layers) -> Made:
     `exists = solar_system` before a `potential` scopes to the system, which
     an arkship's starbase lacks. Its hangar bay gets 4.5's hangars, bio-ship
     upkeep and tooltips. Whole files, so the game never reads the duplicate
-    blocks (item 35). A module fix 29 copies is left to it."""
+    blocks (item 35 of the Starbase Extended back report). A module fix 29
+    copies is left to it."""
     files: dict[str, bytes] = {}
     notes: list[str] = []
     for folder in (STARBASE_MODULES, STARBASE_BUILDINGS):

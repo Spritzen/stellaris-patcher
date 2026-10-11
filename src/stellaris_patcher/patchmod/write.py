@@ -41,8 +41,8 @@ def mods_dir() -> Path:
 def check_files(files: dict[str, bytes]) -> list[str]:
     """What's wrong with the files, in plain words. Empty if nothing.
 
-    One typo breaks a file in game, so every script
-    file must parse, and every localisation file must name its language.
+    One typo breaks a file in game, so every script file must parse, and
+    every localisation file must name its language.
     """
     problems: list[str] = []
     for path, data in files.items():

@@ -836,7 +836,7 @@ def test_fix_19_is_left_out_once_the_mods_copies_have_the_games_lines(game: Game
         cold_steel_mix.fix_ascension_worlds(_ascension_worlds(game, budding, rule))
 
 
-# Fix 25: broken lines in Planetary Diversity's translations
+# Fix 25: broken lines in the Planetary Diversity mods' translations
 
 PD_GERMAN = "localisation/german/pd_l_german.yml"
 ARCOLOGIES_GERMAN = "localisation/german/arcs_l_german.yml"
