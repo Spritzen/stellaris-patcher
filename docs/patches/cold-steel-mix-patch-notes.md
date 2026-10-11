@@ -16,6 +16,19 @@ them.
   again with Steam's Edit.
 - The history starts at the 4.5.2 update. Earlier uploads weren't copied.
 
+## 11 October 2026, 10:41
+
+Built from `1d0a3db`. The notes were added afterwards with Steam's Edit.
+
+```text
+2026.10.11
+
+More Events Mod's Ancestors' Grudge gives a relic's leader their trait.
+
+More Events Mod
+When an Ancestors' Grudge relic is used, the leader it picks gets the relic's legendary trait. It no longer picks a hive mind's or machine empire's councilor, or an autocracy's heir, who can't take the trait and so got nothing.
+```
+
 ## 11 October 2026, 00:47
 
 Built from `6ff00aa`. The notes were added afterwards with Steam's Edit.
