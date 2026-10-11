@@ -2651,6 +2651,57 @@ def fix_grudge_picks(layers: Layers) -> Made:
     return {GRUDGE_PICKS: _edit(data, edits).replace(b"\r\n", b"\n")}, [note]
 
 
+# 40. More Events Mod's Astral Tales offers an autocracy's ruler a trait the game won't give
+
+
+ASTRAL_RULER = "mem_astral_tales.8"  # a 33% chance of Substance Abuser for the ruler
+
+
+def fix_astral_ruler(layers: Layers) -> Made:
+    """A copy of the event, in a file that sorts first. The check before the
+    ruler's trait roll leaves out a ruler the game won't give a normal trait, so
+    the option offers no risk that can't happen."""
+    _check_normal_trait_rule(layers)
+    data, entry = _event_entry(layers, ASTRAL_RULER)
+    edits: list[tuple[int, int, bytes]] = []
+    for block in _blocks(data, entry):
+        inner = children(data, block)
+        limit = next((c for c in inner if c.key == b"limit" and c.block), None)
+        if limit is None or not any(_gives_ruler_trait(data, c) for c in inner):
+            continue
+        for ruler in children(data, limit):
+            checks = children(data, ruler)
+            if ruler.key != b"ruler" or not checks:
+                continue
+            if any(c.key == NORMAL_TRAIT_CHECK for c in checks):
+                continue
+            indent = data[data.rfind(b"\n", 0, checks[0].start) + 1 : checks[0].start]
+            at = ruler.inside[0]
+            edits.append((at, at, b"\n" + indent + NORMAL_TRAIT_CHECK + b" = yes"))
+    if not edits:
+        raise FixError(f"{ASTRAL_RULER} gives the ruler a trait only when they can take one now.")
+    namespace = ASTRAL_RULER.rpartition(".")[0]
+    body = _copy(layers, data, entry, _mended(data, entry, edits))
+    note = (
+        f"{ASTRAL_RULER}: the ruler's trait roll leaves out an autocracy's ruler, who "
+        f"can't take normal traits ({NORMAL_TRAIT})"
+    )
+    text = f"namespace = {namespace}\n\n".encode() + body
+    return {_first_file(layers, "events", "astral_tales"): text}, [note]
+
+
+def _gives_ruler_trait(data: bytes, entry: Entry) -> bool:
+    """`entry` has a `ruler = { … }` block, at any depth, that adds a trait."""
+    blocks = [entry, *_blocks(data, entry)] if entry.block else []
+    return any(
+        c.key == b"add_trait"
+        for ruler in blocks
+        if ruler.key == b"ruler"
+        for b in (ruler, *_blocks(data, ruler))
+        for c in children(data, b)
+    )
+
+
 # The playset's problems the patch leaves to the mods' authors, for the Workshop
 # page. Each is a mod's own bug, too big to copy or soon to be fixed upstream.
 # Drop a line once its mod has fixed it.
@@ -2662,7 +2713,7 @@ LEFT_TO_AUTHORS: tuple[str, ...] = ()
 FIX_GROUPS: tuple[tuple[str, tuple[int, ...]], ...] = (
     ("Species and traits", (18, 19, 27)),
     ("Planets and buildings", (37,)),
-    ("Events and stories", (6, 11, 12, 26, 38)),
+    ("Events and stories", (6, 11, 12, 26, 38, 40)),
     ("Galaxy and systems", (5, 17, 28)),
     ("Ships and starbases", (2, 3, 15, 16, 29, 30, 31, 32, 33, 34)),
     ("Graphics and camera", (1, 4)),
@@ -2894,6 +2945,15 @@ FIXES: tuple[tuple[int, str, Callable[[Layers], Made], tuple[str, ...]], ...] = 
             "longer picks a gestalt's councilor or an autocracy's heir"
         ),
         fix_grudge_picks,
+        (MORE_EVENTS,),
+    ),
+    (
+        40,
+        (
+            "More Events Mod's Astral Tales no longer offers an autocracy's ruler a chance "
+            "of Substance Abuser that the game won't give them"
+        ),
+        fix_astral_ruler,
         (MORE_EVENTS,),
     ),
 )

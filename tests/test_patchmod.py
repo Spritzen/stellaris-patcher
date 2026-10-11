@@ -1877,6 +1877,64 @@ def test_fix_38_is_left_out_once_the_game_rule_changes(game: Game) -> None:
         cold_steel_mix.fix_grudge_picks(layers)
 
 
+# Fix 40: More Events Mod's Astral Tales ruler trait
+
+ASTRAL = "events/mem_astral_tales.txt"
+ASTRAL_EVENTS = """namespace = mem_astral_tales\r
+country_event = {\r
+\tid = mem_astral_tales.8\r
+\toption = {\r
+\t\tname = mem_astral_tales.8.a\r
+\t\tif = {\r
+\t\t\tlimit = {\r
+\t\t\t\truler = {\r
+\t\t\t\t\tNOT = { has_trait = leader_trait_substance_abuser }\r
+\t\t\t\t}\r
+\t\t\t}\r
+\t\t\trandom_list = {\r
+\t\t\t\t33 = { ruler = { add_trait = { trait = leader_trait_substance_abuser } } }\r
+\t\t\t\t66 = {}\r
+\t\t\t}\r
+\t\t}\r
+\t\tadd_modifier = { modifier = mem_astral_tales_otherworldly_knowledge }\r
+\t}\r
+}\r
+country_event = {\r
+\tid = mem_astral_tales.9\r
+}\r
+"""
+
+
+def test_fix_40_rolls_the_rulers_trait_only_when_they_can_take_it(game: Game) -> None:
+    mem = cold_steel_mix.MORE_EVENTS
+    layers = _layers(game, {GAME: dict(NORMAL_TRAIT_RULE), mem: {ASTRAL: ASTRAL_EVENTS}})
+    files, notes = cold_steel_mix.fix_astral_ruler(layers)
+    [(path, data)] = files.items()
+    assert path.startswith("events/!") and path.endswith("_astral_tales.txt")  # first wins
+    assert data.startswith(b"namespace = mem_astral_tales\n\n")
+    assert b"\r" not in data
+    assert b"mem_astral_tales.9" not in data  # only the one event
+    check = b"\t\t\t\truler = {\n\t\t\t\t\tcan_leader_get_normal_trait_trigger = yes\n\t\t\t\t\tNOT"
+    assert check in data
+    assert data.count(b"can_leader_get_normal_trait_trigger") == 1
+    assert notes == [
+        "mem_astral_tales.8: the ruler's trait roll leaves out an autocracy's ruler, who "
+        "can't take normal traits (can_leader_get_normal_trait)"
+    ]
+    assert check_files(files) == []
+
+
+def test_fix_40_is_left_out_once_the_mod_checks_the_ruler(game: Game) -> None:
+    checked = ASTRAL_EVENTS.replace(
+        "NOT = { has_trait", "can_leader_get_normal_trait_trigger = yes NOT = { has_trait"
+    )
+    layers = _layers(
+        game, {GAME: dict(NORMAL_TRAIT_RULE), cold_steel_mix.MORE_EVENTS: {ASTRAL: checked}}
+    )
+    with pytest.raises(FixError, match="only when they can take one now"):
+        cold_steel_mix.fix_astral_ruler(layers)
+
+
 # Mods out of the playset
 
 
