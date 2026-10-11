@@ -70,7 +70,7 @@ The last run had Starbase Extended and shrimpAI switched off.
 | Duplicate objects | 210 | 303 | +93: 50 objects of Starbase Extended's that replace the game's, 42 of the patch's copies, and shrimpAI's Hyper Relay |
 | Duplicate entities | 30 | 480 | +450: the starbase models in the patch's 20 model files, which fix 31 writes at Starbase Extended's paths and in its attach point file |
 | Duplicate section templates | 0 | 23 | +23: Starbase Extended's copies of the game's starbase and orbital ring sections |
-| Duplicate events | 28 | 30 | +2: fix 26's `mem_under_blanket.1` and `.2`, naming More Events Mod's file, as [Check in game](../patches/cold-steel-mix.md#check-in-game) expects |
+| Duplicate events | 28 | 30 | +2: fix 26's `mem_under_blanket.1` and `.2`, naming More Events Mod's file, as [Check in game](../../../patches/cold-steel-mix.md#check-in-game) expects |
 | Duplicate variables | 12 | 12 | None |
 | Real Space's initializer | 1 | 1 | None |
 | **Total** | **281** | **849** | **+568** |
@@ -135,13 +135,13 @@ the sounds and particles, the animations and the attach points.
 
 Unchanged: `is_individual_machine` asks the Fallen Empire for
 `founder_species`, which it has none of. The game's own, as the
-[UNE five years report](2026-10-09-cold-steel-mix-une-five-years.md) explains.
+[UNE five years report](2026-10-09-une-five-years.md) explains.
 
 ## What to do next
 
 | # | Problem | Proposal |
 |---|---|---|
-| 35 | Starbase Extended's two module files still log 6 `Duplicate trigger` warnings, though fix 32's copies replace the six modules | **Done** on 10 October: fix 32 now ships both module files whole, at their own paths, and its buildings file too, so it works one way ([decision 49](../decisions.md)). Checked in game in the [ten years](2026-10-10-cold-steel-mix-ten-years.md) run: the warnings are gone. Was: change fix 32 to ship the two module files whole, as fix 31 does for the model files. Optional: the warnings are harmless |
+| 35 | Starbase Extended's two module files still log 6 `Duplicate trigger` warnings, though fix 32's copies replace the six modules | **Done** on 10 October: fix 32 now ships both module files whole, at their own paths, and its buildings file too, so it works one way ([decision 49](../../../decisions.md)). Checked in game in the [ten years](2026-10-10-ten-years.md) run: the warnings are gone. Was: change fix 32 to ship the two module files whole, as fix 31 does for the model files. Optional: the warnings are harmless |
 | 1 | Still unchecked in play | Starbase Extended's: a starbase's explosion and the aquatic and toxoid sounds (31), sections on the new attach points on a Starport (31), a bio-ship empire's hangar bay upkeep and an arkship's buildings (32), the ring shield and armour sections (33), the map icons and Ion Cannon (34), the Asteroid Mining and factory bonuses (29). Earlier: 11 and 12 firing, 15's upkeep, 16's fauna, 17's jump, 19's crater bonus and terraforming, 10's tooltip, 1's megastructures, 18's Unemployment Benefits, 27's AI choice, 28's Nomad Hyper Relay |
 | — | Fixes 29–34 aren't committed | Commit them, with this report |
 | — | The Workshop page | At the next upload, add Starbase Extended 3.0 and UI Overhaul Dynamic to its **Required items**, and ask their authors' permission for fixes 29–34 |
@@ -149,7 +149,7 @@ Unchanged: `is_individual_machine` asks the Fallen Empire for
 ## How this was worked out
 
 - Read `error.log` with our
-  [error_log.py](../../src/stellaris_patcher/paradox/error_log.py), and
+  [error_log.py](../../../../src/stellaris_patcher/paradox/error_log.py), and
   split it into resources not installed, override notices and problems, as
   the last report did.
 - Split the entries by time. The galaxy was made at 10:45:54 (`game.log`).
@@ -164,7 +164,7 @@ Unchanged: `is_individual_machine` asks the Fallen Empire for
 - Grouped the override notices by kind, and matched the duplicate entities
   against the names in Starbase Extended's and the patch's model files.
 - Unpacked the `2200.01.01` save into a scratch folder and read it with
-  [script.py](../../src/stellaris_patcher/paradox/script.py): the player's
+  [script.py](../../../../src/stellaris_patcher/paradox/script.py): the player's
   empire and ship culture, the galaxy settings, and each Starport's station
   and its ship culture.
 

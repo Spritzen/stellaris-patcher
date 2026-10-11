@@ -179,7 +179,7 @@ baseline. The Cold Steel build is the only change: it now has fix 21.
 ## How this was worked out
 
 - Read `error.log` with our
-  [error_log.py](../../src/stellaris_patcher/paradox/error_log.py).
+  [error_log.py](../../../../src/stellaris_patcher/paradox/error_log.py).
 - Split the entries by time. Loading lasted until the galaxy was made at
   22:11:19 (`game.log`). Game start lasted to 22:11:21. Play came after
   that. Grouped them by the source in the game's code, then by mod, the same
@@ -194,7 +194,7 @@ baseline. The Cold Steel build is the only change: it now has fix 21.
   the game's. Read the game's `nomad_country_initial_setup_effect`.
 - Ran the update check.
 - Unpacked the `2205.01.16` save into a scratch folder and read it with
-  [script.py](../../src/stellaris_patcher/paradox/script.py). Looked for the
+  [script.py](../../../../src/stellaris_patcher/paradox/script.py). Looked for the
   Surveillance Supercomputer system and every `sealed_system` flag, the
   Gundersen Research Society and its default, Lithoid Budding and the
   `d_lithoid_crater` deposit, Sol and its neighbour systems, and the galaxy

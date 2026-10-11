@@ -58,7 +58,7 @@ from coming back. Its fixes are left out while it's off. To bring one back:
 
 **Switching a mod off can put another mod's older copy back in use.** With
 Ascension Worlds off, Planetary Diversity's Lithoid Budding came back
-([three-mods-off report](../reports/2026-10-09-cold-steel-mix-three-mods-off.md#planetary-diversitys-lithoid-budding)).
+([three-mods-off report](../reports/cold-steel-mix/2026-10/2026-10-09-three-mods-off.md#planetary-diversitys-lithoid-budding)).
 After switching one off, run the [update check](../update-check.md) and read
 the copies it lists as new.
 
@@ -134,7 +134,7 @@ written by hand, one line per problem.
 - Not listed, as too small to matter
   ([decision 41](../decisions.md)): More Events Mod's Lost Emperor story
   sometimes can't place its system
-  ([pre-upload report](../reports/2026-10-07-cold-steel-mix-pre-upload.md#what-to-do-next),
+  ([pre-upload report](../reports/cold-steel-mix/2026-10/2026-10-07-pre-upload.md#what-to-do-next),
   item 20), and Dark UI has no dark versions of 4.5.2's new icons.
 
 **Ask the other authors first.** The patch ships work that isn't ours:
@@ -229,8 +229,8 @@ authors' permission, or fixes 3, 5, 10–12, 16–19, 25–34 and 36–38 left o
 ## Check in game
 
 **Fixes 1–7 cleared every log entry they aimed at**, in the
-[fourth run](../reports/2026-10-03-cold-steel-mix-errors-run-4.md) and, for
-fix 4, the [solid-background run](../reports/2026-10-03-cold-steel-mix-solid-background.md).
+[fourth run](../reports/cold-steel-mix/2026-10/2026-10-03-errors-run-4.md) and, for
+fix 4, the [solid-background run](../reports/cold-steel-mix/2026-10/2026-10-03-solid-background.md).
 Later runs found none back.
 
 **Fix 25 cleared every localisation error Cold Steel's health check listed**:
@@ -249,7 +249,7 @@ These weren't seen in game yet:
   [mem_scfe_ziaskehorn.1] already exists!` and the same for
   `mem_stuck_in_glacier.22`, naming More Events Mod's file. That's the check
   that the patch's copy won: the
-  [4.5.2 first run](../reports/2026-10-07-cold-steel-mix-4.5.2-first-run.md#the-patchs-fixes)
+  [4.5.2 first run](../reports/cold-steel-mix/2026-10/2026-10-07-4.5.2-first-run.md#the-patchs-fixes)
   had both. Both events are rare: the Ziaskehorn roll is 1 in 10 on a
   molten or volcanic survey after year 20, and the Iron Fist leader 1 in 4
   when the robot is brought online. A new save with the `discovered_ziaskehorn` flag should have the
@@ -257,7 +257,7 @@ These weren't seen in game yet:
 - A researched Progenitor shield shows an upkeep of energy and alloys in the
   ship designer (fix 15). At load, the log has no `Malformed token` for
   `@shield_*_t7_upkeep_*`: the
-  [pre-upload run](../reports/2026-10-07-cold-steel-mix-pre-upload.md#the-patchs-fixes)
+  [pre-upload run](../reports/cold-steel-mix/2026-10/2026-10-07-pre-upload.md#the-patchs-fixes)
   had none.
 - A Large Mega Bombard on space fauna fires in combat (fix 16).
 - A jump drive fleet can jump into the Surveillance Supercomputer system
@@ -265,7 +265,7 @@ These weren't seen in game yet:
   "surveillance_supercomputer_system" already exists`, naming Real Space's
   `special_system_initializers.txt`. That's the check that the patch's copy
   won, as for fixes 11 and 12. The
-  [pre-upload run](../reports/2026-10-07-cold-steel-mix-pre-upload.md#the-patchs-fixes)
+  [pre-upload run](../reports/cold-steel-mix/2026-10/2026-10-07-pre-upload.md#the-patchs-fixes)
   had it.
 - A lithoid species with Lithoid Budding on a Massive Crater gets the full
   bonus (fix 19). That traits go to the first file by name hasn't been
@@ -289,7 +289,7 @@ These weren't seen in game yet:
 - A citadel's starbase window shows all 21 module slots and 21 building
   slots, Upgrade sits bottom-left with the next level's name, and Station
   Details top-right (fix 30). **Seen** on a Starport in the
-  [Starbase Extended back](../reports/2026-10-10-cold-steel-mix-starbase-extended-back.md)
+  [Starbase Extended back](../reports/cold-steel-mix/2026-10/2026-10-10-starbase-extended-back.md)
   run: every slot showed and nothing looked wrong. Still to see on a
   Citadel. An Orbital Ring's window has the button back to its planet, and
   the log has no `open_planet` or `design_name`. Watch a slot under
@@ -307,7 +307,7 @@ These weren't seen in game yet:
   buildings, and the log has no `solar_system` error from
   `sbx_3_0_starbase_buildings.txt`, and no `Duplicate trigger` (fix 32). The
   log half was **seen** in the
-  [ten years](../reports/2026-10-10-cold-steel-mix-ten-years.md) run.
+  [ten years](../reports/cold-steel-mix/2026-10/2026-10-10-ten-years.md) run.
 - An orbital ring's shield or armour module shows a section, and the log has
   no `SHIELD_ORBITAL_RING_SECTION` (fix 33).
 - Starbases have their map counter icons, and the Ion Cannon can't be built
@@ -321,7 +321,7 @@ These weren't seen in game yet:
   object notice for `building_archaeostudies_faculty`, naming the patch's
   file. That's the check that the patch's copy won. The log half was
   **seen** in the
-  [thirty-two years](../reports/2026-10-11-cold-steel-mix-thirty-two-years.md#the-patchs-fixes)
+  [thirty-two years](../reports/cold-steel-mix/2026-10/2026-10-11-thirty-two-years.md#the-patchs-fixes)
   run, in a save started before the fix.
 - A More Events Mod Ancestors' Grudge relic gives its leader the relic's
   legendary trait, in a hive mind too (fix 38). The log has no

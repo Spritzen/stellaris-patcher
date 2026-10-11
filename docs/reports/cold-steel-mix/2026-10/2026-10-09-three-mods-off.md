@@ -2,7 +2,7 @@
 
 **A new galaxy, played four game months in about eleven minutes, to
 2 May 2200. It's the first run with Starbase Extended 3.0, Ascension Worlds
-and shrimpAI switched off ([decision 35](../decisions.md)). The patch held,
+and shrimpAI switched off ([decision 35](../../../decisions.md)). The patch held,
 play logged nothing, and the user saw nothing wrong. Problems fell from 112
 to 47. One thing came back: with Ascension Worlds off, Planetary Diversity's
 own Lithoid Budding is the one in use, and it has the same 4.5.2 gap fix 19
@@ -117,7 +117,7 @@ an error, and it depends on the galaxy. No earlier report has it.
 
 **The Massive Crater's budding bonus is split over the planet's pop groups
 again, as it was before 4.5.2.** It's row D of the
-[first 4.5.2 report](2026-10-07-cold-steel-mix-4.5.2-first-run.md#mod-copies-that-undo-a-fix),
+[first 4.5.2 report](2026-10-07-4.5.2-first-run.md#mod-copies-that-undo-a-fix),
 now from Planetary Diversity instead of Ascension Worlds.
 
 - **Both mods ship a whole `common/traits/04_species_traits.txt`.** The same
@@ -137,7 +137,7 @@ as new, because they're in use now:
 | Objects | What differs from the game's | Effect |
 |---|---|---|
 | `trait_lithoid_budding` | The missing line above. Its `colony?` checks are written as `exists = planet`, which means the same | The crater bonus is split, as above |
-| `trait_cybernetic`, `trait_lithoid_gaseous_byproducts`, `trait_lithoid_scintillating`, `trait_lithoid_volatile_excretions`, `trait_plantoid_phototrophic`, `trait_plantoid_radiotrophic` | `planet_pops`, not 4.5.2's `planet_pops_traits` | Item 18, already [left to the authors](../patches/cold-steel-mix.md#left-to-the-authors). These six came from Ascension Worlds' copy before; now from Planetary Diversity's, which the item already names |
+| `trait_cybernetic`, `trait_lithoid_gaseous_byproducts`, `trait_lithoid_scintillating`, `trait_lithoid_volatile_excretions`, `trait_plantoid_phototrophic`, `trait_plantoid_radiotrophic` | `planet_pops`, not 4.5.2's `planet_pops_traits` | Item 18, already [left to the authors](../../../patches/cold-steel-mix.md#left-to-the-authors). These six came from Ascension Worlds' copy before; now from Planetary Diversity's, which the item already names |
 | `trait_plantoid_bloomed`, `trait_plantoid_radiotrophic`, `trait_survivor`, `toxoids.1` | Planetary Diversity's own planet classes added to the game's checks | Planetary Diversity's own work. Nothing of the game's is missing |
 | `trait_resilient` | One line moved | None |
 
@@ -163,15 +163,15 @@ The update check found no game file it undoes.
 
 | # | Problem | Proposal |
 |---|---|---|
-| 21 | Planetary Diversity's Lithoid Budding splits the Massive Crater bonus, now that Ascension Worlds is off | **Done** on 9 October ([patch](../patches/cold-steel-mix.md#what-each-fix-does), [decision 37](../decisions.md)). Not yet checked in game. Was: Widen fix 19's budding half to whichever mod's copy is in use, Planetary Diversity's or Ascension Worlds'. Same method: a copy of the one trait with the game's line added, in the `!!_` traits file. Fix 19 then lists Planetary Diversity too, so it's written while either is on. It ships one Planetary Diversity trait, so add it to the Whose work table. The terraforming half stays tied to Ascension Worlds |
-| 22 | The [switched-off section](../patches/cold-steel-mix.md#switching-a-mod-off) doesn't say a switched-off mod can uncover another mod's older copy | **Done** on 9 October, in the [patch doc](../patches/cold-steel-mix.md#switching-a-mod-off). Was: Add one line: switching a mod off can put another mod's copy back in use, so run the update check and read its "new" copies, as this report did |
+| 21 | Planetary Diversity's Lithoid Budding splits the Massive Crater bonus, now that Ascension Worlds is off | **Done** on 9 October ([patch](../../../patches/cold-steel-mix.md#what-each-fix-does), [decision 37](../../../decisions.md)). Not yet checked in game. Was: Widen fix 19's budding half to whichever mod's copy is in use, Planetary Diversity's or Ascension Worlds'. Same method: a copy of the one trait with the game's line added, in the `!!_` traits file. Fix 19 then lists Planetary Diversity too, so it's written while either is on. It ships one Planetary Diversity trait, so add it to the Whose work table. The terraforming half stays tied to Ascension Worlds |
+| 22 | The [switched-off section](../../../patches/cold-steel-mix.md#switching-a-mod-off) doesn't say a switched-off mod can uncover another mod's older copy | **Done** on 9 October, in the [patch doc](../../../patches/cold-steel-mix.md#switching-a-mod-off). Was: Add one line: switching a mod off can put another mod's copy back in use, so run the update check and read its "new" copies, as this report did |
 | 18 | Trait resources on `planet_pops` | Unchanged. The same six traits, now from Planetary Diversity alone. Left to the authors |
 | 1 | Still unchecked in play | Fixes 11 and 12 firing, 15's upkeep in the ship designer, 16's fauna in combat, 17's jump (its system is in this galaxy), 10's tooltip, 1's megastructures and storms |
 
 ## How this was worked out
 
 - Read `error.log` with our
-  [error_log.py](../../src/stellaris_patcher/paradox/error_log.py).
+  [error_log.py](../../../../src/stellaris_patcher/paradox/error_log.py).
 - Split the entries by time. Loading lasted until the galaxy was made at
   21:37:33 (`game.log`). Game start lasted to 21:37:45. Play came after
   that. Grouped them by the source in the game's code, then by mod, the same

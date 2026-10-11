@@ -22,7 +22,7 @@ mends it.**
   traits. Harmless, and mended by fix 26. See [During play](#during-play).
 - **Back: More Events Mod's Lost Emperor story couldn't place its system.**
   It's item 20, already
-  [left to the author](../patches/cold-steel-mix.md#left-to-the-authors).
+  [left to the author](../../../patches/cold-steel-mix.md#left-to-the-authors).
 - **The United Nations of Earth start logged nothing this time.** Its 4
   entries in the last run came from Real Space's Vela system, not from Sol,
   and this galaxy has no Vela. See [Loading](#loading).
@@ -108,7 +108,7 @@ isn't in this galaxy, so its 4 entries aren't either. The last report's
 finding stands otherwise: the entries are the game's own and harmless.
 
 **The Lost Emperor story couldn't place its system, as in the
-[pre-upload run](2026-10-07-cold-steel-mix-pre-upload.md#more-events-mod-2).**
+[pre-upload run](2026-10-07-pre-upload.md#more-events-mod-2).**
 At 23:46:02, `test_spawn_neochadamus` logged:
 
 ```
@@ -165,7 +165,7 @@ Unable to add trait for [reason] rules_leader_cannot_get_normal_trait [at]  file
   negative trait. Two other endings give Archaeologist or Adaptable, both
   normal traits, so a player's ruler or heir would miss a reward.
 - **Fix 26 mends it, and keeps Fallen Empires out of the story**
-  ([decision 40](../decisions.md)). Its scientist picks now call the game's
+  ([decision 40](../../../decisions.md)). Its scientist picks now call the game's
   `can_leader_get_normal_trait_trigger`, and it starts only for normal
   empires. The game's Strange Worlds colony events check the same.
 - **Earlier runs didn't have it.** The story is a small roll on each
@@ -176,7 +176,7 @@ Unable to add trait for [reason] rules_leader_cannot_get_normal_trait [at]  file
 **Only Ascension Worlds.** Today's update check found no game file changes.
 It lists Ascension Worlds as new, because the last accept was made while it
 was off, and 15 of its copies of game files as unreviewed. The
-[first 4.5.2 run](2026-10-07-cold-steel-mix-4.5.2-first-run.md) read them
+[first 4.5.2 run](2026-10-07-4.5.2-first-run.md) read them
 all on 7 October, and Ascension Worlds hasn't updated since 22 September:
 
 | Copies | What they are |
@@ -186,21 +186,21 @@ all on 7 October, and Ascension Worlds hasn't updated since 22 September:
 | `trait_psionic`, `trait_latent_psionic`, `trait_survivor`, `trait_resilient`, `flooded_habitat`, `crisis.7225`, `toxoids.1` | Ascension Worlds' own work: an inline script, its own planet classes, its own flooded world modifier, a shrouded planet event and a line moved. Nothing of the game's is missing |
 
 The check was accepted after this report, so the next one skips these
-([decision 30](../decisions.md)).
+([decision 30](../../../decisions.md)).
 
 ## What to do next
 
 | # | Problem | Proposal |
 |---|---|---|
-| 26 | More Events Mod's Under the Blanket story can pick an autocracy's ruler or heir, and the game then refuses Substance Abuser, Archaeologist or Adaptable. It also starts for Fallen Empires | **Done** on 9 October, with the Fallen Empire check ([patch](../patches/cold-steel-mix.md#what-each-fix-does), [decision 40](../decisions.md)). Not yet checked in game. Was: No fix. It's More Events Mod's own and harmless |
+| 26 | More Events Mod's Under the Blanket story can pick an autocracy's ruler or heir, and the game then refuses Substance Abuser, Archaeologist or Adaptable. It also starts for Fallen Empires | **Done** on 9 October, with the Fallen Empire check ([patch](../../../patches/cold-steel-mix.md#what-each-fix-does), [decision 40](../../../decisions.md)). Not yet checked in game. Was: No fix. It's More Events Mod's own and harmless |
 | 20 | More Events Mod's Lost Emperor story can fail to place its system | Unchanged. Left to the author |
-| 23 | The game's United Nations of Earth start logs 4 entries for the Gundersen Research Society | Unchanged, no fix. The [last report](2026-10-09-cold-steel-mix-une-five-years.md#the-united-nations-of-earth-start) names Sol as its source. It's Vela (`une_vela_system`) |
+| 23 | The game's United Nations of Earth start logs 4 entries for the Gundersen Research Society | Unchanged, no fix. The [last report](2026-10-09-une-five-years.md#the-united-nations-of-earth-start) names Sol as its source. It's Vela (`une_vela_system`) |
 | 1 | Still unchecked in play | Fixes 11 and 12 firing, 15's upkeep in the ship designer, 16's fauna in combat, 17's jump, 19's crater bonus and terraforming, 10's tooltip, 1's megastructures and storms. Fix 25 needs a game in German, Russian, Polish, Japanese, Korean or one of Ascension Worlds' languages |
 
 ## How this was worked out
 
 - Read `error.log` with our
-  [error_log.py](../../src/stellaris_patcher/paradox/error_log.py).
+  [error_log.py](../../../../src/stellaris_patcher/paradox/error_log.py).
 - Split the entries by time. Loading lasted until the galaxy was made at
   23:45:48 (`game.log`). Game start lasted to 23:46:02. Play came after
   that. Grouped them by the source in the game's code, then by mod, the same
@@ -221,7 +221,7 @@ The check was accepted after this report, so the next one skips these
   to its initializer.
 - Ran the update check, and read Ascension Worlds' 15 diffs.
 - Unpacked the `2202.02.01` save into a scratch folder and read it with
-  [script.py](../../src/stellaris_patcher/paradox/script.py). Looked for the
+  [script.py](../../../../src/stellaris_patcher/paradox/script.py). Looked for the
   story's flags, its leader and the Fallen Empire's government, the planet
   it fired on, every `sealed_system` flag, the Lost Emperor's flags, Lithoid
   Budding and the `d_lithoid_crater` deposit, the Gundersen Research Society,

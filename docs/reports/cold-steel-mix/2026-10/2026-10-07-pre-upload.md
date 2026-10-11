@@ -69,7 +69,7 @@ file.
 | 19 | Not logged. The game logs no duplicate trait or game rule: Planetary Diversity's 12 copies of game traits aren't logged either. In the build, the patch's trait file sorts first and its game rule file sorts last | A species in the save has Lithoid Budding. No Massive Crater or consecrated world was checked |
 
 Fix 17's notice is the same check fixes 11 and 12 give, and it will be in
-every run. [cold-steel-mix.md](../patches/cold-steel-mix.md#check-in-game)
+every run. [cold-steel-mix.md](../../../patches/cold-steel-mix.md#check-in-game)
 says the log "may" name Real Space's copy. Item 2 below corrects it.
 
 ## Loading
@@ -137,14 +137,14 @@ fewer than expected. Seven minutes is still short.
 | # | Problem | Proposal |
 |---|---|---|
 | 1 | Upload the patch to the Workshop | Nothing in this run stops it. Still unchecked in play: fixes 11 and 12 firing, 15's upkeep in the ship designer, 16's fauna in combat, 17's jump, 19's crater bonus and terraforming, 10's tooltip, 1's megastructures and storms |
-| 2 | [cold-steel-mix.md](../patches/cold-steel-mix.md#check-in-game) says the log "may" name Real Space's copy for fix 17 | **Done** on 7 October. Was: Say instead that it names Real Space's `special_system_initializers.txt` once, and that this is the check that the patch wins, as for fixes 11 and 12. Also say fix 15's check at load: no `Malformed token` for `@shield_*_t7_upkeep_*` |
-| 20 | More Events Mod's Lost Emperor story can fail to place its system, and then never starts | **Left to the author** on 7 October, and listed on the patch's Workshop page ([decision 33](../decisions.md)). Was: Leave it to More Events Mod's author. It's their own code and rare. A patch would copy one scripted effect for a story that rolls in one game in three. Add it to the Workshop page's known issues only if it shows again ([decision 33](../decisions.md)) |
+| 2 | [cold-steel-mix.md](../../../patches/cold-steel-mix.md#check-in-game) says the log "may" name Real Space's copy for fix 17 | **Done** on 7 October. Was: Say instead that it names Real Space's `special_system_initializers.txt` once, and that this is the check that the patch wins, as for fixes 11 and 12. Also say fix 15's check at load: no `Malformed token` for `@shield_*_t7_upkeep_*` |
+| 20 | More Events Mod's Lost Emperor story can fail to place its system, and then never starts | **Left to the author** on 7 October, and listed on the patch's Workshop page ([decision 33](../../../decisions.md)). Was: Leave it to More Events Mod's author. It's their own code and rare. A patch would copy one scripted effect for a story that rolls in one game in three. Add it to the Workshop page's known issues only if it shows again ([decision 33](../../../decisions.md)) |
 | 8, 9, 18 | Starbase Extended's starbase items and triggers, the trait stacking | Unchanged. Left to the authors and listed on the Workshop page |
 
 ## How this was worked out
 
 - Read `error.log` with our
-  [error_log.py](../../src/stellaris_patcher/paradox/error_log.py).
+  [error_log.py](../../../../src/stellaris_patcher/paradox/error_log.py).
 - Split the entries by time. Loading lasted until the galaxy was made at
   18:27:53 (`game.log`). Game start lasted to 18:28:16. Play came after
   that. Grouped them by the source in the game's code, then by mod, the same

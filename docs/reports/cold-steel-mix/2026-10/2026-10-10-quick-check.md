@@ -3,7 +3,7 @@
 **A new galaxy as the Sathyrel, played for three years, to 2203.01.25, as a
 quick check of the rebuilt patch. It's the first run with fix 36 in the
 build. The patch held, and play logged nothing. The log matches the
-[ten years](2026-10-10-cold-steel-mix-ten-years.md) run, apart from three
+[ten years](2026-10-10-ten-years.md) run, apart from three
 entries that depend on the galaxy and on who's played. All three were seen
 before. The user saw nothing unusual. Nothing new to fix.**
 
@@ -12,7 +12,7 @@ before. The user saw nothing unusual. Nothing new to fix.**
   do. See [The patch's fixes](#the-patchs-fixes).
 - **The 18 Life-Seeded checks at galaxy creation are back,** because the
   user played a premade, not their saved Divine Elven Order design. The
-  [UNE five years report](2026-10-09-cold-steel-mix-une-five-years.md)
+  [UNE five years report](2026-10-09-une-five-years.md)
   found that pattern.
 - **More Events Mod's two galaxy-dependent entries are back**: the Lost
   Emperor's system couldn't be placed (item 20, left to its author), and an
@@ -54,7 +54,7 @@ initializer.
 ## The patch's fixes
 
 **None of the names the fixes removed are in the log**, the same list as the
-[ten years](2026-10-10-cold-steel-mix-ten-years.md#the-patchs-fixes) run.
+[ten years](2026-10-10-ten-years.md#the-patchs-fixes) run.
 Its one `ion_core_effect` is a duplicate entity notice, and its one
 `solar_system` is fix 17's initializer notice.
 
@@ -79,8 +79,8 @@ game start:
   `mem_descended_scripted_effects.txt` asks for a system that connects 4 to 8
   jumps from home, and there wasn't one. The story is lost in this galaxy.
   More Events Mod's own code, item 20, left to its author
-  ([decision 41](../decisions.md)). The
-  [pre-upload report](2026-10-07-cold-steel-mix-pre-upload.md#more-events-mod-2)
+  ([decision 41](../../../decisions.md)). The
+  [pre-upload report](2026-10-07-pre-upload.md#more-events-mod-2)
   traced it.
 - **An empire switched to More Events Mod's `mem_ancient_01` ship set**
   (15:36:05). A notice, not an error. Seen in run 3 and later.
@@ -91,20 +91,20 @@ game start:
 made. All name the user's saved Divine Elven Order design, a Life-Seeded
 empire, which isn't in this galaxy. The game's own. The 18 come when that
 design is saved but not played, as the
-[UNE five years report](2026-10-09-cold-steel-mix-une-five-years.md) found.
+[UNE five years report](2026-10-09-une-five-years.md) found.
 
 ## What to do next
 
 | # | Problem | Proposal |
 |---|---|---|
 | 36 | Fix 36 isn't checked in game | Open the Grand Archive on a More Events Mod specimen when one turns up: it should say where it was found, with no blank, and the log should have no `Unknown promotion From`. The specimens are rare |
-| 1 | Still unchecked in play | As in the [ten years](2026-10-10-cold-steel-mix-ten-years.md#what-to-do-next) report |
+| 1 | Still unchecked in play | As in the [ten years](2026-10-10-ten-years.md#what-to-do-next) report |
 | — | This report, the ten years report and fix 36 aren't committed | Commit them |
 
 ## How this was worked out
 
 - Read `error.log` with our
-  [error_log.py](../../src/stellaris_patcher/paradox/error_log.py), and
+  [error_log.py](../../../../src/stellaris_patcher/paradox/error_log.py), and
   grouped it as the last report did.
 - Split the entries by time. The galaxy was made at 15:36:02 (`game.log`).
   The last entry is at 15:36:17.

@@ -69,7 +69,7 @@ Three fixes weren't really tested:
 ## Loading
 
 **89 entries, all with causes known from
-[run 3](2026-10-03-cold-steel-mix-errors-run-3.md#whats-left-by-mod).**
+[run 3](2026-10-03-errors-run-3.md#whats-left-by-mod).**
 
 | Group | Run 4 | This run | Change |
 |---|---:|---:|---|
@@ -155,7 +155,7 @@ None of these are in files a mod replaces, unless noted.
 | A Toxoids story title names `questing_knight_1`, with nothing to point at | 2 | `toxoids.7011` in `localisation/english/toxoids_l_english.yml` |
 | Luxury Residences couldn't be added to "Queptilium Primum". The building's AI limit fails: the AI owner has enough amenities | 1 | `building_luxury_residence` in `common/buildings/07_amenity_buildings.txt` |
 | A ship aura tooltip got a scope that wasn't a ship | 1 | The game program (`ship_aura.cpp`). No script file named |
-| A machine empire's Lost Colony parent can't get its research zone | 1 | Real Space 4.0's copy of `federations_initializers.txt`, line 1179. The game's own file has the same code, as the [long session](2026-10-04-cold-steel-mix-long-session.md#the-games-own-80) found |
+| A machine empire's Lost Colony parent can't get its research zone | 1 | Real Space 4.0's copy of `federations_initializers.txt`, line 1179. The game's own file has the same code, as the [long session](2026-10-04-long-session.md#the-games-own-80) found |
 
 ## Not errors: AI empires defaulting
 
@@ -166,9 +166,9 @@ None of these are in files a mod replaces, unless noted.
 
 | # | Problem | Status |
 |---|---|---|
-| 11 | More Events Mod's `mem_scfe_ziaskehorn.1` fires the discovery before saving the planet, so the Ziaskehorn dig site is never made | **Done** on 5 October ([patch](../patches/cold-steel-mix.md#what-each-fix-does)). Not yet checked in game. Was: Ship a copy of `mem_scfe_ziaskehorn.1` with the `from = { save_event_target_as = … }` block moved above the `ship_event` call. Events go to the first file by name ([merge_rules.json](../../src/stellaris_patcher/data/merge_rules.json)), so the patch's file must sort before `mem_asp_scfe_events.txt` and declare the `mem_scfe_ziaskehorn` namespace. Check in game that More Events Mod's copy is then ignored |
-| 12 | More Events Mod's `mem_stuck_in_glacier.22` gives an official the commander trait Iron Fist | **Done** on 5 October, as a commander that keeps Iron Fist ([decision 24](../decisions.md)). Not yet checked in game. Was: Low value: one leader, one roll in four, no trait instead of one. Same method as 11, with an official trait in its place |
-| 8 | Starbase Extended's duplicate `potential` blocks, the `category` trigger, two missing buildings | Open, from [run 3](2026-10-03-cold-steel-mix-errors-run-3.md#what-a-patch-mod-could-fix) |
+| 11 | More Events Mod's `mem_scfe_ziaskehorn.1` fires the discovery before saving the planet, so the Ziaskehorn dig site is never made | **Done** on 5 October ([patch](../../../patches/cold-steel-mix.md#what-each-fix-does)). Not yet checked in game. Was: Ship a copy of `mem_scfe_ziaskehorn.1` with the `from = { save_event_target_as = … }` block moved above the `ship_event` call. Events go to the first file by name ([merge_rules.json](../../../../src/stellaris_patcher/data/merge_rules.json)), so the patch's file must sort before `mem_asp_scfe_events.txt` and declare the `mem_scfe_ziaskehorn` namespace. Check in game that More Events Mod's copy is then ignored |
+| 12 | More Events Mod's `mem_stuck_in_glacier.22` gives an official the commander trait Iron Fist | **Done** on 5 October, as a commander that keeps Iron Fist ([decision 24](../../../decisions.md)). Not yet checked in game. Was: Low value: one leader, one roll in four, no trait instead of one. Same method as 11, with an official trait in its place |
+| 8 | Starbase Extended's duplicate `potential` blocks, the `category` trigger, two missing buildings | Open, from [run 3](2026-10-03-errors-run-3.md#what-a-patch-mod-could-fix) |
 | 9 | Orbital ring sections, starbase window items, sounds, animations and attach points | Open, from run 3. Cosmetic. This run adds the aquatic and reptilian starports' `part4`–`part7` |
 
 Still to check in game: fix 10's tooltip, fix 1's megastructures and storms,
