@@ -168,9 +168,10 @@ written by hand, one line per problem.
 | `localisation/english/replace/stellaris_patcher_cold_steel_mix_specimens_l_english.yml` | Six of More Events Mod's specimen descriptions, with a planet's name swapped for a few words in each |
 | `common/buildings/~~_stellaris_patcher_cold_steel_mix_faculty.txt` | Stellar AI's Archaeostudies Faculty, with More Arcologies' two Archeotech Preserve checks |
 | `common/inline_scripts/mem_ancestors_grudge/random_leader.txt` | More Events Mod's whole file, with 4 lines added |
+| `events/!!_stellaris_patcher_cold_steel_mix_astral_tales.txt` | One of More Events Mod's events, with one line added |
 
 The game's own files are fine to ship in a mod. The others need their
-authors' permission, or fixes 3, 5, 10–12, 16–19, 25–34 and 36–38 left out.
+authors' permission, or fixes 3, 5, 10–12, 16–19, 25–34, 36–38 and 40 left out.
 
 ## What each fix does
 
@@ -204,6 +205,7 @@ authors' permission, or fixes 3, 5, 10–12, 16–19, 25–34 and 36–38 left o
 | 36 | Six of More Events Mod's specimen descriptions name a planet with `[From.From.GetName]` (`[From.From.From.GetName]` for the datacore). A specimen keeps only its event's scope, the science ship, so the name is blank in the Grand Archive and logs `Unknown promotion From` | A `localisation/english/replace/` file with the six lines, each the winning text with the name swapped for a few words: "a lifeless planetoid", "a world of long-dead civilizations", "alien ruins", "an ancient satellite", "a living asteroid", "a disguised planet". A line More Events Mod has reworded is skipped ([decision 52](../decisions.md)) |
 | 37 | Stellar AI and More Arcologies each replace the game's Archaeostudies Faculty, and Stellar AI's `~stellarai_…` file sorts after More Arcologies' `zzz_…` one. Stellar AI raises its AI weight. More Arcologies gives its Relic World bonuses, +0.25 minor artifacts per biologist and +25% archaeostudies research speed, to planets with its Archeotech Preserve zone, and that's lost | Stellar AI's faculty in a `~~_` file, with each block More Arcologies changed from the game's: its two Relic World checks, each an `OR` with the zone. Only while Stellar AI's copy of each such block is still the game's, so neither mod's change is lost ([decision 53](../decisions.md)) |
 | 38 | More Events Mod's Ancestors' Grudge picks the leader for a relic's trait with no check that the game lets them take a normal trait. In a gestalt empire it can pick a councilor, and the relic's owner gets no trait | More Events Mod's `common/inline_scripts/mem_ancestors_grudge/random_leader.txt`, whole at its own path: an inline script is replaced as a whole file, and the patch loads last. Each of its 4 picks, the relic planet's governor and `leader_1`–`3`, gets the game's `can_leader_get_normal_trait_trigger`, as fix 26's do ([decision 57](../decisions.md)). Event `mem_ancestors_grudge.45` always keeps a scrap or archeotech option, so the story still ends if no leader is left |
+| 40 | More Events Mod's Astral Tales event `mem_astral_tales.8` gives the ruler a 33% chance of Substance Abuser with no check that the game lets them take a normal trait. An autocracy's ruler can't, so the option's tooltip offers a risk that can't happen, and the log has `rules_leader_cannot_get_normal_trait` | A copy of the event in a `!!_` file, with the game's `can_leader_get_normal_trait_trigger` in the `limit` on the ruler before the roll, as fix 26 does. An autocracy's ruler is then offered no roll ([decision 59](../decisions.md)) |
 
 ### Notes
 
@@ -328,3 +330,8 @@ These weren't seen in game yet:
   `rules_leader_cannot_get_normal_trait` for
   `mem_ancestors_grudge_scripted_effects.txt`. The log has no notice for an
   inline script, so it can't show which copy won.
+- More Events Mod's Astral Tales, in an autocracy, offers no Substance Abuser
+  roll for the ruler when you take "It's all just a game?!" (fix 40). The log
+  has no `rules_leader_cannot_get_normal_trait` for `mem_astral_tales.txt`,
+  and a duplicate event notice for `mem_astral_tales.8` names More Events
+  Mod's file, so the patch's copy wins.
