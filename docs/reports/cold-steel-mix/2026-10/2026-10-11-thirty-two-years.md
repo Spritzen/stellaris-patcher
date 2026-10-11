@@ -1,6 +1,6 @@
 # Game report: Cold Steel Mix, the seventeen years save continued to 2232, 11 October 2026
 
-**The [seventeen years](2026-10-10-cold-steel-mix-seventeen-years.md) game,
+**The [seventeen years](2026-10-10-seventeen-years.md) game,
 loaded from its 2217.05.04 save and played to 2232.02.02. That's about
 fifteen more years in 1¼ hours. It's the first run with fix 37 in the build,
 in a save started before it. The patch held, and the user saw nothing
@@ -76,7 +76,7 @@ entry is at 09:51:10, just before the last save.
 | Real Space's initializer | 1 | 1 | None |
 | **Total** | **836** | **837** | **+1** |
 
-The [long session](2026-10-04-cold-steel-mix-long-session.md) was the last
+The [long session](2026-10-04-long-session.md) was the last
 long run from a save, at 95 play entries in 10.5 hours. 32 in 1¼ hours is
 more than any run since. 23 of them are one event, so the rate isn't a
 trend.
@@ -89,7 +89,7 @@ notices for fixes 11, 12 and 26, and fix 17's initializer notice, name the
 mods' own files, so the patch's copies win.
 
 **None of the names the fixes removed are in the log**, the same list as the
-[ten years](2026-10-10-cold-steel-mix-ten-years.md#the-patchs-fixes) run,
+[ten years](2026-10-10-ten-years.md#the-patchs-fixes) run,
 with fix 36's `Unknown promotion`. Its one `ion_core_effect` is a duplicate
 entity notice, and its one `solar_system` is fix 17's initializer notice.
 Its one `rules_leader_cannot_get_normal_trait` is from the Ancestors' Grudge,
@@ -106,7 +106,7 @@ not fix 26's Under the Blanket (below).
 
 The same 42 as the seventeen years run, group for group, without Stellar AI's
 "Could not find files". Details of each group are in
-[run 3](2026-10-03-cold-steel-mix-errors-run-3.md#whats-left-by-mod).
+[run 3](2026-10-03-errors-run-3.md#whats-left-by-mod).
 
 ## Loading the save (1)
 
@@ -175,12 +175,12 @@ still counts as used. The origin is a hive version of the story, so a hive
 empire is who uses it most. A player on it could lose the trait too.
 
 This is the mistake fix 26 mends in Under the Blanket
-([decision 40](../decisions.md)). Fix 38 now mends it the same way.
+([decision 40](../../../decisions.md)). Fix 38 now mends it the same way.
 
 **`leader_forge_leader` isn't set (3).** The same script compares each pick
 with the relic planet's governor, which is only saved when the planet has
 one. The comparison logs an error but gives the right answer. The
-[long session](2026-10-04-cold-steel-mix-long-session.md) logged it too.
+[long session](2026-10-04-long-session.md) logged it too.
 
 ### Aevum (1)
 
@@ -202,11 +202,11 @@ Mod's own, like the Grudge's double relic in the long session.
 
 | # | Problem | Proposal |
 |---|---|---|
-| 38 | More Events Mod's Ancestors' Grudge picks leaders with no check that the game lets them take a normal trait. In a gestalt empire, a councilor can be picked and get no relic trait (see [Ancestors' Grudge](#ancestors-grudge-4)) | **Done** on 11 October as fix 38 ([decision 57](../decisions.md)), without the optional `exists` check. Not yet checked in game. Was: ship a copy of `common/inline_scripts/mem_ancestors_grudge/random_leader.txt` at its own path, with `can_leader_get_normal_trait_trigger = yes` in each of its four picks: the forge leader and `leader_1`–`3`. That's the game's own rule, as in fix 26. An inline script is replaced as a whole file, and the patch loads last, so its copy wins ([merge_rules.json](../../src/stellaris_patcher/data/merge_rules.json)). Event `.45` always keeps a fallback option, scrap or archeotech, so a story with no leader left still ends. Optionally, check `exists` before comparing with `leader_forge_leader`, which quiets its 3 entries. Small, about 80 lines, and works in existing saves. It ships More Events Mod's lines, so needs its author's permission at the next upload, as fix 26 does |
-| 39 | `check-update` says "Changed after it: the patch" when only `descriptor.mod` is newer. The build never copies it or `thumbnail.png` | **Done** on 11 October. `_build_status` in [check.py](../../src/stellaris_patcher/update/check.py) skips those two (`NOT_BUILT`). The check now says "Nothing changed after it" for this build. Was: skip those two, or read the build record's `left_out` |
+| 38 | More Events Mod's Ancestors' Grudge picks leaders with no check that the game lets them take a normal trait. In a gestalt empire, a councilor can be picked and get no relic trait (see [Ancestors' Grudge](#ancestors-grudge-4)) | **Done** on 11 October as fix 38 ([decision 57](../../../decisions.md)), without the optional `exists` check. Not yet checked in game. Was: ship a copy of `common/inline_scripts/mem_ancestors_grudge/random_leader.txt` at its own path, with `can_leader_get_normal_trait_trigger = yes` in each of its four picks: the forge leader and `leader_1`–`3`. That's the game's own rule, as in fix 26. An inline script is replaced as a whole file, and the patch loads last, so its copy wins ([merge_rules.json](../../../../src/stellaris_patcher/data/merge_rules.json)). Event `.45` always keeps a fallback option, scrap or archeotech, so a story with no leader left still ends. Optionally, check `exists` before comparing with `leader_forge_leader`, which quiets its 3 entries. Small, about 80 lines, and works in existing saves. It ships More Events Mod's lines, so needs its author's permission at the next upload, as fix 26 does |
+| 39 | `check-update` says "Changed after it: the patch" when only `descriptor.mod` is newer. The build never copies it or `thumbnail.png` | **Done** on 11 October. `_build_status` in [check.py](../../../../src/stellaris_patcher/update/check.py) skips those two (`NOT_BUILT`). The check now says "Nothing changed after it" for this build. Was: skip those two, or read the build record's `left_out` |
 | 37 | Fix 37 isn't checked in game | Look at an Archaeostudies Faculty on a planet with More Arcologies' Archeotech Preserve zone. The log already fits |
-| 36 | Fix 36 isn't checked on screen | As in the [seventeen years](2026-10-10-cold-steel-mix-seventeen-years.md#what-to-do-next) report |
-| 1 | Still unchecked in play | As in the [ten years](2026-10-10-cold-steel-mix-ten-years.md#what-to-do-next) report. This run built 23 Starports, still none past Starport, and no Hyper Relay |
+| 36 | Fix 36 isn't checked on screen | As in the [seventeen years](2026-10-10-seventeen-years.md#what-to-do-next) report |
+| 1 | Still unchecked in play | As in the [ten years](2026-10-10-ten-years.md#what-to-do-next) report. This run built 23 Starports, still none past Starport, and no Hyper Relay |
 | — | This report isn't committed | Commit it |
 
 The giant sphere's `after` block, the Aevum relic and the typeless deposits
@@ -215,7 +215,7 @@ are harmless, and no fix is proposed.
 ## How this was worked out
 
 - Read `error.log` with our
-  [error_log.py](../../src/stellaris_patcher/paradox/error_log.py), and
+  [error_log.py](../../../../src/stellaris_patcher/paradox/error_log.py), and
   grouped it as the last report did.
 - Split the entries by time. Loading ends at 08:36:39, the save loads at
   08:38:35 (`time.log`), and play entries run from 08:57:45 to 09:51:10.

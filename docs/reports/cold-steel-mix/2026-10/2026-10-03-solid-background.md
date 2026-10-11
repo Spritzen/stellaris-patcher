@@ -17,9 +17,9 @@ after the galaxy was made. The next 57 minutes of play left nothing there.
   colour-correction tables, its copy of the game's mesh shader, and every
   star class in the save. See [Ruled out](#ruled-out).
 - **Fix 4's test worked.** The zoom mismatch from
-  [run 4](2026-10-03-cold-steel-mix-errors-run-4.md#fix-4-the-zoom-mismatch-is-still-there)
+  [run 4](2026-10-03-errors-run-4.md#fix-4-the-zoom-mismatch-is-still-there)
   is gone from the log. This was already recorded in
-  [decision 17](../decisions.md).
+  [decision 17](../../../decisions.md).
 
 ## The run
 
@@ -151,7 +151,7 @@ zoom step, and leaves the fix out if one would still point past the end.
   and checked that each star class's `class` has a matching scene.
 - Unpacked the save into a scratch folder and read its systems, the player's
   fleets and their locations with
-  [script.py](../../src/stellaris_patcher/paradox/script.py).
+  [script.py](../../../../src/stellaris_patcher/paradox/script.py).
 - Listed every define in the build that points at a zoom step, and compared
   each with the length of the step list the game ends up with.
 

@@ -38,7 +38,7 @@ proposed, and since added as fix 37.**
 | Patch | The local copy, `local:stellaris_patcher_cold_steel_mix`, version `2026.10.10`. Its 69 files in the build match our source folder byte for byte |
 | Built | The Cold Steel build at 22:23 on the log's clock, after Stellar AI's update reached Steam. The build record has no mismatches |
 | Session | Started 22:27:10. New galaxy, seed 2111005531, made at 22:29:12: medium, `spiral_3`, 18 empires, one Fallen Empire, one Marauder, late scaling. Played to `2217.05.04`, saved at 00:13. About 1¾ hours of play |
-| Empire | Divine Elven Order, the user's custom Life-Seeded empire, as in the [ten years](2026-10-10-cold-steel-mix-ten-years.md) run |
+| Empire | Divine Elven Order, the user's custom Life-Seeded empire, as in the [ten years](2026-10-10-ten-years.md) run |
 | Logs | `error.log`: 6,604 entries. 5,717 resources not installed, 836 override notices and 51 problems: 43 from loading, 4 from the game's Life-Seeded check in the empire designer, 1 at game start, 3 from play |
 
 The log's clock is one hour ahead of the file times, as before. The last
@@ -76,7 +76,7 @@ check played a premade for three years.
 ## The patch's fixes
 
 **None of the names the fixes removed are in the log**, the same list as the
-[ten years](2026-10-10-cold-steel-mix-ten-years.md#the-patchs-fixes) run,
+[ten years](2026-10-10-ten-years.md#the-patchs-fixes) run,
 with fix 36's `Unknown promotion`. Its one `ion_core_effect` is a duplicate
 entity notice, and its one `solar_system` is fix 17's initializer notice.
 
@@ -87,7 +87,7 @@ the patch's copies win.
 
 | Fix | In game |
 |---|---|
-| 36 | **Not checked on screen, but the log fits.** An AI empire found More Events Mod's laser rifle on 2208.07.12. Before fix 36, this specimen's text logged `Unknown promotion From` in the [long session](2026-10-04-cold-steel-mix-long-session.md) and the [new-galaxy run](2026-10-05-cold-steel-mix-new-galaxy.md). This log has none. The log can't show whether the text was drawn |
+| 36 | **Not checked on screen, but the log fits.** An AI empire found More Events Mod's laser rifle on 2208.07.12. Before fix 36, this specimen's text logged `Unknown promotion From` in the [long session](2026-10-04-long-session.md) and the [new-galaxy run](2026-10-05-new-galaxy.md). This log has none. The log can't show whether the text was drawn |
 | 31 | No attach point, sound, particle or animation entries. The galaxy went from 17 Starports to 33, so 16 were built in play. No starbase went past Starport |
 | 32 | No `Duplicate trigger`. The galaxy's two arkship starbases and 11 waystations built in play logged nothing |
 | 28 | Not reached: no Hyper Relay was built |
@@ -116,7 +116,7 @@ None of them is one the patch copies. One is also replaced by another mod
 came at 22:27:10. Steam's record shows it touched Stellar AI's item in that
 same second. The folder is there, and the game loads only the build, which
 has Stellar AI's files. Harmless. The
-[long session](2026-10-04-cold-steel-mix-long-session.md) logged the same
+[long session](2026-10-04-long-session.md) logged the same
 for Diverse Rooms.
 
 The update check run for this report (`check-update --notes`) found nothing
@@ -158,12 +158,12 @@ Archeotech Preserve change added, so nothing is lost.
 
 The same 42 as the ten years run, group for group, with Stellar AI's
 "Could not find files" (above). Details of each group are in
-[run 3](2026-10-03-cold-steel-mix-errors-run-3.md#whats-left-by-mod).
+[run 3](2026-10-03-errors-run-3.md#whats-left-by-mod).
 
 **The game's Life-Seeded check (4).** Four `Invalid context switch
 [founder_species]` entries at 22:28:10–22:28:16, in the empire designer, for
 Divine Elven Order. The game's own, as the
-[ten years](2026-10-10-cold-steel-mix-ten-years.md#the-games-life-seeded-check-4)
+[ten years](2026-10-10-ten-years.md#the-games-life-seeded-check-4)
 report explains.
 
 **The Lost Emperor's system couldn't be placed (1).** At 22:29:24,
@@ -172,7 +172,7 @@ found no system to connect it to. The save has the `mem_system_spawned` flag
 and no `mem_descended_system`, so the story is lost in this galaxy.
 `game.log`'s "spawned Scylla" is wrong: the effect logs the last system made
 before it. More Events Mod's own code, item 20, left to its author
-([decision 41](../decisions.md)). It's the third run to log this.
+([decision 41](../../../decisions.md)). It's the third run to log this.
 
 ## During play (3)
 
@@ -184,7 +184,7 @@ an AI may build it only while the planet has fewer than 500 spare amenities
 (`@amenity_ai_limit`). The planets had more by the time the building was
 due. No mod changes this building or that limit. More Events Mod adds one by
 effect, but only for its Sadrell newcomers. The
-[new-galaxy report](2026-10-05-cold-steel-mix-new-galaxy.md#the-games-own-7)
+[new-galaxy report](2026-10-05-new-galaxy.md#the-games-own-7)
 logged one too. The game's own.
 
 **A fleet was sent home (1).** At 23:56:57, the game program found the
@@ -196,7 +196,7 @@ own.
 
 **No AI empire defaulted on its debts in seventeen years.** `game.log` has
 no default line, and the save has no `country_defaulted` flag. The
-[UNE five years](2026-10-09-cold-steel-mix-une-five-years.md) run had one in
+[UNE five years](2026-10-09-une-five-years.md) run had one in
 five years, and item 24 asked to watch for more in longer runs. This is the
 longest run since, and the first with Stellar AI's new budgets.
 
@@ -204,17 +204,17 @@ longest run since, and the first with Stellar AI's new budgets.
 
 | # | Problem | Proposal |
 |---|---|---|
-| 37 | Stellar AI's copy of the Archaeostudies Faculty beats More Arcologies', so a faculty on an Archeotech Preserve planet loses its Relic World bonuses (see [Stellar AI and More Arcologies](#stellar-ai-and-more-arcologies)) | **Done** on 10 October as fix 37 ([decision 53](../decisions.md)). Not yet checked in game. Was: ship one merged `building_archaeostudies_faculty`: Stellar AI's copy with More Arcologies' two `OR` blocks, in a `common/buildings/` file named to sort after `~stellarai_…` (`~~…`). The fix checks both mods' copies are still as found, and is left out if either changes. Small, and it works in existing saves. At the next Workshop upload it ships both authors' lines, so it needs their permission, as fixes 29–34 do |
+| 37 | Stellar AI's copy of the Archaeostudies Faculty beats More Arcologies', so a faculty on an Archeotech Preserve planet loses its Relic World bonuses (see [Stellar AI and More Arcologies](#stellar-ai-and-more-arcologies)) | **Done** on 10 October as fix 37 ([decision 53](../../../decisions.md)). Not yet checked in game. Was: ship one merged `building_archaeostudies_faculty`: Stellar AI's copy with More Arcologies' two `OR` blocks, in a `common/buildings/` file named to sort after `~stellarai_…` (`~~…`). The fix checks both mods' copies are still as found, and is left out if either changes. Small, and it works in existing saves. At the next Workshop upload it ships both authors' lines, so it needs their permission, as fixes 29–34 do |
 | 36 | Fix 36 isn't checked on screen | Open the Grand Archive on a More Events Mod specimen when the player owns one: it should say where it was found, with no blank. The log already fits (see [The patch's fixes](#the-patchs-fixes)) |
 | 24 | AI defaults, from the UNE five years run | **Close it.** None in seventeen years, with Stellar AI's update. Reopen if a long run shows several |
 | — | The update check has 26 unreviewed findings | Run the update check and write its report. It covers Stellar AI's 29 changed files, and Starbase Extended's and shrimpAI's findings, which show as new because the last accept was made while those two mods were off. Then accept it |
-| 1 | Still unchecked in play | As in the [ten years](2026-10-10-cold-steel-mix-ten-years.md#what-to-do-next) report. This run built 16 Starports, still none past Starport, and no Hyper Relay |
+| 1 | Still unchecked in play | As in the [ten years](2026-10-10-ten-years.md#what-to-do-next) report. This run built 16 Starports, still none past Starport, and no Hyper Relay |
 | — | This report isn't committed | Commit it |
 
 ## How this was worked out
 
 - Read `error.log` with our
-  [error_log.py](../../src/stellaris_patcher/paradox/error_log.py), and
+  [error_log.py](../../../../src/stellaris_patcher/paradox/error_log.py), and
   grouped it as the last report did.
 - Split the entries by time. The galaxy was made at 22:29:12 (`game.log`).
   Loading ends at 22:27:44 and the designer's entries at 22:28:16. Play

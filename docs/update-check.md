@@ -46,7 +46,7 @@ PYTHONPATH=src python3 -m stellaris_patcher check-update --accept  # 8. once rev
    a note that names the change: a fix, a balance change or a new check.
    Only those go in the report. On 7 October this found Ships in Scaling's
    Large Mega Bombard range and Planetary Diversity's trait categories
-   ([report](reports/2026-10-07-cold-steel-mix-4.5.2-first-run.md#the-patch-notes-against-older-mods)).
+   ([report](reports/cold-steel-mix/2026-10/2026-10-07-4.5.2-first-run.md#the-patch-notes-against-older-mods)).
 
 4. **Sort each finding.** Does it break play, change balance or only look
    different? Is it the mod's own to fix, and is that mod likely to update
@@ -57,8 +57,8 @@ PYTHONPATH=src python3 -m stellaris_patcher check-update --accept  # 8. once rev
    patch's [Left to the authors](patches/cold-steel-mix.md#left-to-the-authors)
    list, check whether the update fixed it, and propose dropping the line.
 
-5. **Write a report** in `docs/reports/`, named
-   `YYYY-MM-DD-<playset>-<version>-update.md`, and add it to
+5. **Write a report** in `docs/reports/<playset>/YYYY-MM/`, named
+   `YYYY-MM-DD-<version>-update.md`, and add it to
    [the reports table](README.md#reports). Give the result first, then a
    table of notes against the playset, the mod copies, a numbered "What to
    do next" list, how it was worked out, and its limits.

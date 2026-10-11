@@ -8,7 +8,7 @@ its mod, write a report and propose fixes. Add no fix until the user agrees**
 
 1. **Ask what happened in game.** How long, which galaxy, a new game or a
    save, and anything that looked wrong. Visual problems, like the
-   [solid background](reports/2026-10-03-cold-steel-mix-solid-background.md),
+   [solid background](reports/cold-steel-mix/2026-10/2026-10-03-solid-background.md),
    don't reach the logs.
 
 2. **Read the log** with
@@ -38,19 +38,19 @@ its mod, write a report and propose fixes. Add no fix until the user agrees**
 6. **Check the save, if a finding needs it.** Unpack the save into a scratch
    folder and read it with [script.py](../src/stellaris_patcher/paradox/script.py).
 
-7. **Write a report** in `docs/reports/`, named
-   `YYYY-MM-DD-<playset>-<what>.md`, and add it to
+7. **Write a report** in `docs/reports/<playset>/YYYY-MM/`, named
+   `YYYY-MM-DD-<what>.md`, and add it to
    [the reports table](README.md#reports). Give the result first, then the
    run, a comparison with earlier runs, the patch's fixes, the entries by
    mod, a numbered "What to do next" table, how it was worked out, and its
-   limits. The [new-galaxy report](reports/2026-10-05-cold-steel-mix-new-galaxy.md)
+   limits. The [new-galaxy report](reports/cold-steel-mix/2026-10/2026-10-05-new-galaxy.md)
    is a good model.
 
 8. **Propose the fixes and wait for the user.** Once agreed, add them as in
    [cold-steel-mix.md](patches/cold-steel-mix.md#add-a-fix).
 
    If the report read the update check's findings, as the
-   [first 4.5.2 run](reports/2026-10-07-cold-steel-mix-4.5.2-first-run.md)
+   [first 4.5.2 run](reports/cold-steel-mix/2026-10/2026-10-07-4.5.2-first-run.md)
    did, run `check-update --accept` afterwards. The next check then skips
    what was read ([decision 30](decisions.md)).
 

@@ -6,7 +6,7 @@ from the patch.** Play logged 95 entries, about two and a half per game year.
 80 of them are bugs in the game's own script.
 
 - **The patch holds over a long game.** None of the entries fixes 1–7
-  removed in [run 4](2026-10-03-cold-steel-mix-errors-run-4.md) came back,
+  removed in [run 4](2026-10-03-errors-run-4.md) came back,
   and no entry names one of the patch's files. Fix 4's zoom mismatch stays
   gone. Fix 1 is still untested in play: the save has no Dyson sphere,
   quantum catapult, Starlit system or Voidspawn storm.
@@ -34,7 +34,7 @@ from the patch.** Play logged 95 entries, about two and a half per game year.
 | Patch | The Workshop copy, `workshop:3812655652`, version `2026.10.03`. This is the deployed patch: the local link and `.mod` file were removed from the game's `mod/` folder after the upload. The Workshop copy matches our source folder byte for byte |
 | Built | 08:12 local time on 4 October. The playset hasn't changed since, and the build record has no mismatches |
 | Session | Started 11:38 local time. Loaded the `2244.10.01` save and played to `2282.08.11`, saved at 22:14 |
-| Empire | Elven Divine Order, the same game as the [solid-background report](2026-10-03-cold-steel-mix-solid-background.md) |
+| Empire | Elven Divine Order, the same game as the [solid-background report](2026-10-03-solid-background.md) |
 | Logs | `error.log`: 9,141 lines, 6,672 entries. 6,577 are from loading (11:38–11:39), 95 from play (11:44–22:12). `game.log`: event picks and 12 AI defaults |
 
 The mods are the same as in run 4. **Stellar AI**, second in load order, has
@@ -87,7 +87,7 @@ Run 4's log is gone, so the groups are compared by kind, not line by line.
 | **Total** | **96** | **108** | |
 
 Details of each group are in
-[run 3](2026-10-03-cold-steel-mix-errors-run-3.md#whats-left-by-mod).
+[run 3](2026-10-03-errors-run-3.md#whats-left-by-mod).
 
 ## During play
 
@@ -169,7 +169,7 @@ country and resource blank; that's the game's own text.
 **The patch is now deployed from the Workshop, as `workshop:3812655652`, and
 that's how it stays. The builder only skips its own layer under the local key,
 `local:stellaris_patcher_cold_steel_mix`** (in
-[\_\_main\_\_.py](../../src/stellaris_patcher/__main__.py)). So it treats the
+[\_\_main\_\_.py](../../../../src/stellaris_patcher/__main__.py)). So it treats the
 Workshop copy as another mod that already ships the patch's files. A dry run
 now reports, for example, "`nsc_starbases.txt` now comes from
 workshop:3812655652, not Starbase Extended", and leaves out all seven fixes.
@@ -182,7 +182,7 @@ and gets all seven fixes left out.
 
 **Fix: skip both keys.** The Workshop id is the `remote_file_id` the
 launcher saves in the patch's descriptor
-([decision 20](../decisions.md)). `--add-to-playset` should also leave the
+([decision 20](../../../decisions.md)). `--add-to-playset` should also leave the
 playset alone when the Workshop copy is already in it.
 
 ## What to do next
@@ -190,9 +190,9 @@ playset alone when the Workshop copy is already in it.
 | # | Problem | Status |
 |---|---|---|
 | | The builder doesn't skip the patch's Workshop copy | **Done** on 5 October: it skips both keys |
-| 8 | Starbase Extended's duplicate `potential` blocks, the `category` trigger, two missing buildings | Open, from [run 3](2026-10-03-cold-steel-mix-errors-run-3.md#what-a-patch-mod-could-fix) |
+| 8 | Starbase Extended's duplicate `potential` blocks, the `category` trigger, two missing buildings | Open, from [run 3](2026-10-03-errors-run-3.md#what-a-patch-mod-could-fix) |
 | 9 | Orbital ring sections, starbase window items, sounds, animations | Open, from run 3. Cosmetic |
-| 10 | Planetary Diversity's `[GetAdministratorPluralWithIcon]`: one modifier line and three necro world tooltips | **Done** on 5 October, in `replace/` ([patch](../patches/cold-steel-mix.md#what-each-fix-does)). Was: Ship the four keys with `[GetBureaucratPluralWithIcon]`, or the game's own text for the modifier. Outside `replace/`, the file whose name sorts first wins ([merge_rules.json](../../src/stellaris_patcher/data/merge_rules.json)), so the patch's file must sort before Planetary Diversity's, or go in `replace/` |
+| 10 | Planetary Diversity's `[GetAdministratorPluralWithIcon]`: one modifier line and three necro world tooltips | **Done** on 5 October, in `replace/` ([patch](../../../patches/cold-steel-mix.md#what-each-fix-does)). Was: Ship the four keys with `[GetBureaucratPluralWithIcon]`, or the game's own text for the modifier. Outside `replace/`, the file whose name sorts first wins ([merge_rules.json](../../../../src/stellaris_patcher/data/merge_rules.json)), so the patch's file must sort before Planetary Diversity's, or go in `replace/` |
 
 Still to check in game: whether the solid background came back, and fix 1's
 megastructures.
