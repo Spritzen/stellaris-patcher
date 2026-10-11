@@ -1,6 +1,6 @@
 # Cold Steel Mix patch
 
-**A mod named "Cold Steel Mix patch" that fixes 27 problems in the Cold
+**A mod named "Cold Steel Mix patch" that fixes 28 problems in the Cold
 Steel Mix playset.** [What each fix does](#what-each-fix-does) lists them.
 Most were proposed in a [report](../README.md#reports). Problems it leaves to
 the mods' authors are listed on its Workshop page

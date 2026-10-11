@@ -32,7 +32,10 @@ does this. On a real 33-mod playset, 699 patch files named this way all won.
 ## Before writing
 
 - **Check every file we write**: it must parse, and a localisation file must
-  name its language. One typo breaks the file in game.
+  start with a byte-order mark and name its language. One typo breaks the
+  file in game, and the game skips a localisation file with no mark.
+  `check_files()` in [write.py](../../src/stellaris_patcher/patchmod/write.py)
+  does this.
 - **Don't ship a choice made against text that has since changed.** It could
   quietly undo a mod's newer fix. Each fix checks its cause is still there
   ([decision 14](../decisions.md)).

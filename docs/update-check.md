@@ -44,9 +44,10 @@ PYTHONPATH=src python3 -m stellaris_patcher check-update --accept  # 8. once rev
 
    Then go through **Older mod copies**, mod by mod. For each diff, look for
    a note that names the change: a fix, a balance change or a new check.
-   Only those go in the report. On 7 October this found Ships in Scaling's
-   Large Mega Bombard range and Planetary Diversity's trait categories
-   ([report](reports/cold-steel-mix/2026-10/2026-10-07-4.5.2-first-run.md#the-patch-notes-against-older-mods)).
+   Only those go in the report. The
+   [4.5.2 first run report](reports/cold-steel-mix/2026-10/2026-10-07-4.5.2-first-run.md#the-patch-notes-against-older-mods)
+   is a worked example: it found Ships in Scaling's Large Mega Bombard range
+   and Planetary Diversity's trait categories this way.
 
 4. **Sort each finding.** Does it break play, change balance or only look
    different? Is it the mod's own to fix, and is that mod likely to update

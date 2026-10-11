@@ -12,5 +12,5 @@ Two rules from it that are easy to miss:
 - Propose fixes in the report and wait for the user before adding any
   ([decision 25](../../../docs/decisions.md)).
 - Use our [error_log.py](../../../src/stellaris_patcher/paradox/error_log.py),
-  not Cold Steel's reader. Older reports name Cold Steel's, and its source
-  isn't mounted any more ([decision 27](../../../docs/decisions.md)).
+  not Cold Steel's reader. Older reports name Cold Steel's, but its source
+  isn't mounted ([decision 27](../../../docs/decisions.md)).
