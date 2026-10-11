@@ -31,6 +31,9 @@ _VARIABLE_DEF = re.compile(rb"^\s*(@\w+)\s*=", re.MULTILINE)
 # A release's announcement names its version: "Stellaris 4.5.2 released", "4.5 'Cygnus' ...".
 _RELEASE = re.compile(r"\b\d+\.\d+")
 UPDATE_WINDOW = 3600.0  # seconds: game files this close to the program's time came with it
+# The patch's own files that Cold Steel's build leaves out, as for every mod. The
+# launcher writes the Workshop id into the descriptor at an upload.
+NOT_BUILT = ("descriptor.mod", "thumbnail.png")
 
 
 @dataclass(frozen=True)
@@ -324,12 +327,20 @@ def undefined_variables(layers: Layers) -> list[Use]:
 def _build_status(record: Path | None, now: dict[str, Manifest], patch: Path | None) -> str:
     """Whether Cold Steel's build of the playset is older than its game, its
     mods or our patch. The check skips the patch's layer, so its folder is
-    read here."""
+    read here, without the files the build leaves out."""
     if record is None or not record.is_file():
         return "Cold Steel has no build of this playset."
     built = record.stat().st_mtime
     after = [m.name for m in now.values() if m.newest > built]
-    patch_files = [f for f in patch.rglob("*") if f.is_file()] if patch is not None else []
+    patch_files = (
+        [
+            f
+            for f in patch.rglob("*")
+            if f.is_file() and f.relative_to(patch).as_posix() not in NOT_BUILT
+        ]
+        if patch is not None
+        else []
+    )
     if any(f.stat().st_mtime > built for f in patch_files):
         after.append("the patch")
     when = _time(built)

@@ -1394,6 +1394,24 @@ def _blanket_start(layers: Layers) -> tuple[bytes, str]:
 
 def _blanket_picks(layers: Layers) -> tuple[bytes, str]:
     """Each block that picks a scientist gets the game's check beside it."""
+    _check_normal_trait_rule(layers)
+    data, entry = _event_entry(layers, BLANKET_PICKS)
+    immediate = next((c for c in children(data, entry) if c.key == b"immediate" and c.block), None)
+    if immediate is None:
+        raise FixError(f"{BLANKET_PICKS} has no immediate block now.")
+    edits = _normal_trait_edits(data, _blocks(data, immediate), "scientist")
+    if not edits:
+        raise FixError(f"{BLANKET_PICKS} picks only leaders who can take normal traits now.")
+    body = _mended(data, entry, edits)
+    note = (
+        f"{BLANKET_PICKS}: {len(edits)} scientist picks leave out an autocracy's ruler "
+        f"and heir, who can't take normal traits ({NORMAL_TRAIT})"
+    )
+    return _copy(layers, data, entry, body), note
+
+
+def _check_normal_trait_rule(layers: Layers) -> None:
+    """Raises FixError unless the game's rule still calls the trigger the fixes add."""
     rule = _game_rule(layers, NORMAL_TRAIT)
     if rule is None or NORMAL_TRAIT_CHECK not in _COMMENT.sub(
         b"", rule[1][rule[2].start : rule[2].end]
@@ -1403,28 +1421,27 @@ def _blanket_picks(layers: Layers) -> tuple[bytes, str]:
         )
     if NORMAL_TRAIT_CHECK.decode() not in layers.defined("common/scripted_triggers"):
         raise FixError(f"Nothing defines {NORMAL_TRAIT_CHECK.decode()} now.")
-    data, entry = _event_entry(layers, BLANKET_PICKS)
-    immediate = next((c for c in children(data, entry) if c.key == b"immediate" and c.block), None)
-    if immediate is None:
-        raise FixError(f"{BLANKET_PICKS} has no immediate block now.")
+
+
+def _normal_trait_edits(
+    data: bytes, blocks: list[Entry], leader_class: str | None = None
+) -> list[tuple[int, int, bytes]]:
+    """The game's check after each `leader_class = …` line in `blocks`, of
+    `leader_class` or any, where the block doesn't have it already."""
     edits: list[tuple[int, int, bytes]] = []
-    for block in _blocks(data, immediate):
+    for block in blocks:
         inner = children(data, block)
         if any(c.key == NORMAL_TRAIT_CHECK for c in inner):
             continue
         for c in inner:
-            if c.key == b"leader_class" and not c.block and _text(data, c) == "scientist":
-                before = data[data.rfind(b"\n", 0, c.start) + 1 : c.start]
-                gap = b" " if before.strip() else b"\n" + before  # on its own line, or not
-                edits.append((c.end, c.end, gap + NORMAL_TRAIT_CHECK + b" = yes"))
-    if not edits:
-        raise FixError(f"{BLANKET_PICKS} picks only leaders who can take normal traits now.")
-    body = _mended(data, entry, edits)
-    note = (
-        f"{BLANKET_PICKS}: {len(edits)} scientist picks leave out an autocracy's ruler "
-        f"and heir, who can't take normal traits ({NORMAL_TRAIT})"
-    )
-    return _copy(layers, data, entry, body), note
+            if c.key != b"leader_class" or c.block:
+                continue
+            if leader_class is not None and _text(data, c) != leader_class:
+                continue
+            before = data[data.rfind(b"\n", 0, c.start) + 1 : c.start]
+            gap = b" " if before.strip() else b"\n" + before  # on its own line, or not
+            edits.append((c.end, c.end, gap + NORMAL_TRAIT_CHECK + b" = yes"))
+    return edits
 
 
 # 27. Planetary Diversity's Aquatic trait misses the game's 4.5.2 AI weight
@@ -2607,6 +2624,33 @@ def _layer_definition(
     return found
 
 
+# 38. More Events Mod's Ancestors' Grudge picks leaders the game won't give its relic traits
+
+
+GRUDGE_PICKS = "common/inline_scripts/mem_ancestors_grudge/random_leader.txt"
+
+
+def fix_grudge_picks(layers: Layers) -> Made:
+    """A copy of the story's leader picks, at their own path: an inline script is
+    replaced as a whole file. Each pick leaves out leaders the game won't give a
+    normal trait, as fix 26's, so the relic's trait sticks."""
+    _check_normal_trait_rule(layers)
+    if not layers.has(MORE_EVENTS, GRUDGE_PICKS):
+        raise FixError(f"More Events Mod has no {GRUDGE_PICKS} now.")
+    _expect_winner(layers, GRUDGE_PICKS, MORE_EVENTS, "More Events Mod")
+    data = layers.read(MORE_EVENTS, GRUDGE_PICKS)
+    blocks = [b for e in scan(data) if e.block for b in (e, *_blocks(data, e))]
+    edits = _normal_trait_edits(data, blocks)
+    if not edits:
+        raise FixError("The Ancestors' Grudge picks only leaders who can take normal traits now.")
+    note = (
+        f"{GRUDGE_PICKS.rpartition('/')[2]}: {len(edits)} leader picks leave out a gestalt's "
+        f"councilors and an autocracy's ruler and heir, who can't take normal traits "
+        f"({NORMAL_TRAIT})"
+    )
+    return {GRUDGE_PICKS: _edit(data, edits).replace(b"\r\n", b"\n")}, [note]
+
+
 # The playset's problems the patch leaves to the mods' authors, for the Workshop
 # page. Each is a mod's own bug, too big to copy or soon to be fixed upstream.
 # Drop a line once its mod has fixed it.
@@ -2618,7 +2662,7 @@ LEFT_TO_AUTHORS: tuple[str, ...] = ()
 FIX_GROUPS: tuple[tuple[str, tuple[int, ...]], ...] = (
     ("Species and traits", (18, 19, 27)),
     ("Planets and buildings", (37,)),
-    ("Events and stories", (6, 11, 12, 26)),
+    ("Events and stories", (6, 11, 12, 26, 38)),
     ("Galaxy and systems", (5, 17, 28)),
     ("Ships and starbases", (2, 3, 15, 16, 29, 30, 31, 32, 33, 34)),
     ("Graphics and camera", (1, 4)),
@@ -2842,5 +2886,14 @@ FIXES: tuple[tuple[int, str, Callable[[Layers], Made], tuple[str, ...]], ...] = 
         ),
         fix_faculty,
         (STELLAR_AI, MORE_ARCOLOGIES),
+    ),
+    (
+        38,
+        (
+            "More Events Mod's Ancestors' Grudge gives a relic's leader their trait: it no "
+            "longer picks a gestalt's councilor or an autocracy's heir"
+        ),
+        fix_grudge_picks,
+        (MORE_EVENTS,),
     ),
 )

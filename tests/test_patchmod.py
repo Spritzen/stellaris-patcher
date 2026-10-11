@@ -1816,6 +1816,67 @@ def test_fix_37_is_left_out_when_both_mods_change_the_same_block(game: Game) -> 
         cold_steel_mix.fix_faculty(layers)
 
 
+# Fix 38: More Events Mod's Ancestors' Grudge leader picks
+
+GRUDGE = "common/inline_scripts/mem_ancestors_grudge/random_leader.txt"
+GRUDGE_PICKS = """if = {\r
+\tlimit = {\r
+\t\tevent_target:mem_ancestors_grudge_planet.colony = {\r
+\t\t\tleader = {\r
+\t\t\t\tleader_class = $LEADER$\r
+\t\t\t}\r
+\t\t}\r
+\t}\r
+\tevent_target:mem_ancestors_grudge_planet.colony = {\r
+\t\tleader = { save_event_target_as = leader_forge_leader }\r
+\t}\r
+}\r
+random_owned_leader = {\r
+\tlimit = { leader_class = $LEADER$ NOR = { is_ruler = yes } }\r
+\tsave_event_target_as = leader_1\r
+}\r
+"""
+
+
+def test_fix_38_picks_leaders_who_can_take_the_relic_trait(game: Game) -> None:
+    mem = cold_steel_mix.MORE_EVENTS
+    layers = _layers(game, {GAME: dict(NORMAL_TRAIT_RULE), mem: {GRUDGE: GRUDGE_PICKS}})
+    files, notes = cold_steel_mix.fix_grudge_picks(layers)
+    assert list(files) == [GRUDGE]  # at its own path: the whole file is replaced
+    data = files[GRUDGE]
+    assert b"\r" not in data
+    # The forge leader's pick on its own line, indented like it; leader_1's on the same line.
+    assert b"\t\t\t\tleader_class = $LEADER$\n\t\t\t\tcan_leader_get_normal_trait_trigger" in data
+    check = b"can_leader_get_normal_trait_trigger = yes"
+    assert b"limit = { leader_class = $LEADER$ " + check + b" NOR" in data
+    assert data.count(b"can_leader_get_normal_trait_trigger") == 2
+    assert notes == [
+        "random_leader.txt: 2 leader picks leave out a gestalt's councilors and an "
+        "autocracy's ruler and heir, who can't take normal traits (can_leader_get_normal_trait)"
+    ]
+    assert check_files(files) == []
+
+
+def test_fix_38_is_left_out_once_the_mod_checks_its_picks(game: Game) -> None:
+    pick = "leader_class = $LEADER$"
+    checked = GRUDGE_PICKS.replace(pick, f"{pick} can_leader_get_normal_trait_trigger = yes")
+    layers = _layers(
+        game, {GAME: dict(NORMAL_TRAIT_RULE), cold_steel_mix.MORE_EVENTS: {GRUDGE: checked}}
+    )
+    with pytest.raises(FixError, match="picks only leaders who can take normal traits"):
+        cold_steel_mix.fix_grudge_picks(layers)
+
+
+def test_fix_38_is_left_out_once_the_game_rule_changes(game: Game) -> None:
+    rule = {
+        **NORMAL_TRAIT_RULE,
+        "common/game_rules/00_rules.txt": "can_leader_get_normal_trait = { always = yes }\n",
+    }
+    layers = _layers(game, {GAME: rule, cold_steel_mix.MORE_EVENTS: {GRUDGE: GRUDGE_PICKS}})
+    with pytest.raises(FixError, match="doesn't call can_leader_get_normal_trait_trigger"):
+        cold_steel_mix.fix_grudge_picks(layers)
+
+
 # Mods out of the playset
 
 
