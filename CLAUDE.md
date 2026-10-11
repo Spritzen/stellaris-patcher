@@ -23,6 +23,7 @@ We share its data files only, never its code
 | know how a patch mod has to be built to win | [docs/reference/patch-rules.md](docs/reference/patch-rules.md) |
 | run, test or lint the code | [docs/development.md](docs/development.md) |
 | commit, open and merge a PR | [docs/development.md](docs/development.md#commit-and-merge) |
+| adapt the tool to another playset, or learn how a fix is written | [docs/adapting.md](docs/adapting.md) |
 | build or change the Cold Steel Mix patch | [docs/patches/cold-steel-mix.md](docs/patches/cold-steel-mix.md) |
 | find where Stellaris keeps its files | [docs/reference/stellaris-files.md](docs/reference/stellaris-files.md) |
 | read past error-log investigations | [docs/reports/](docs/README.md#reports) |

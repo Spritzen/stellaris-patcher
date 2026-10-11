@@ -1,9 +1,10 @@
 # Cold Steel Mix patch
 
-**A mod named "Cold Steel Mix patch" that fixes 26 problems in the Cold
+**A mod named "Cold Steel Mix patch" that fixes 27 problems in the Cold
 Steel Mix playset.** [What each fix does](#what-each-fix-does) lists them.
-Most were proposed in a [report](../README.md#reports). Problems it leaves to the mods' authors are listed on its
-Workshop page ([Left to the authors](#left-to-the-authors)).
+Most were proposed in a [report](../README.md#reports). Problems it leaves to
+the mods' authors are listed on its Workshop page
+([Left to the authors](#left-to-the-authors)).
 The code is [cold_steel_mix.py](../../src/stellaris_patcher/patchmod/cold_steel_mix.py).
 
 ## Build it
@@ -115,11 +116,8 @@ next upload
   the `.mod` file, and later builds keep it, so the next upload updates the
   same Workshop item.
 - On the Workshop page, add the same mods as **Required items**. Steam doesn't
-  read `dependencies`. Remove any it no longer lists. At the next upload,
-  add Planetary Diversity - More Arcologies, which fix 25 patches, Smarter
-  Hyper Relays: Improved AI (shrimpAI), back on with fix 28, and UI Overhaul
-  Dynamic, whose window fix 30 ships, and Stellar AI, which fix 37 patches. Keep Starbase Extended 3.0, back on with
-  fixes 29–34, and Planetary Diversity - Ascension Worlds.
+  read `dependencies`. Remove any it no longer lists. The page matches the
+  build today: no mod waits to be added at the next upload.
 
 ### Left to the authors
 
@@ -218,8 +216,9 @@ authors' permission, or fixes 3, 5, 10–12, 16–19, 25–34, 36 and 37 left ou
   copy must be the one the game uses.
 - **Fixes 11, 12 and 26 copy whole events**, and the game then has two
   events with one id. More Events Mod's copy is still loaded, but never
-  used. Fixes 17, 18, 19, 27, 28 and 37 do the same for a system, traits, a
-  rule, a megastructure and a building.
+  used. Fixes 17, 18, 19, 27, 28, 29, 34 and 37 do the same for a system,
+  traits, a rule, a megastructure, starbase modules, starbase sizes and a
+  building.
 - **Fix 15 doesn't name More Events Mod.** It defines every old shield upkeep
   name any component uses and nothing defines.
 - **Fix 18 copies 15 traits, not 18.** Three of More Events Mod's six are
@@ -233,8 +232,8 @@ fix 4, the [solid-background run](../reports/2026-10-03-cold-steel-mix-solid-bac
 Later runs found none back.
 
 **Fix 25 cleared every localisation error Cold Steel's health check listed**:
-Planetary Diversity's and More Arcologies' 7, and on 9 October Ascension
-Worlds' 10, once it was back on. Cold Steel's health check passes.
+Planetary Diversity's and More Arcologies' 7, and Ascension Worlds' 10.
+Cold Steel's health check passes.
 
 These weren't seen in game yet:
 
@@ -250,8 +249,8 @@ These weren't seen in game yet:
   that the patch's copy won: the
   [4.5.2 first run](../reports/2026-10-07-cold-steel-mix-4.5.2-first-run.md#the-patchs-fixes)
   had both. Both events are rare: the Ziaskehorn roll is 1 in 10 on a
-  molten or volcanic survey after year 20, and the Iron Fist leader 1 in 4 when the robot is brought
-  online. A new save with the `discovered_ziaskehorn` flag should have the
+  molten or volcanic survey after year 20, and the Iron Fist leader 1 in 4
+  when the robot is brought online. A new save with the `discovered_ziaskehorn` flag should have the
   dig site too.
 - A researched Progenitor shield shows an upkeep of energy and alloys in the
   ship designer (fix 15). At load, the log has no `Malformed token` for
@@ -290,8 +289,9 @@ These weren't seen in game yet:
   Details top-right (fix 30). **Seen** on a Starport in the
   [Starbase Extended back](../reports/2026-10-10-cold-steel-mix-starbase-extended-back.md)
   run: every slot showed and nothing looked wrong. Still to see on a
-  Citadel. An Orbital Ring's window has the button back to its planet, and the log has no `open_planet` or `design_name`. Watch a
-  slot under construction: Starbase Extended's progress bar keeps its full
+  Citadel. An Orbital Ring's window has the button back to its planet, and
+  the log has no `open_planet` or `design_name`. Watch a slot under
+  construction: Starbase Extended's progress bar keeps its full
   size in the smaller slot, so it may hang into the row below.
 - A destroyed starbase explodes, aquatic and toxoid starbases hum with the
   game's sounds, and toxoid starbases' lights glow (fix 31). The log has no

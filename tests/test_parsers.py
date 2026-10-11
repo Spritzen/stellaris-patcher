@@ -118,7 +118,7 @@ def test_scan_reads_inside_a_block() -> None:
 @pytest.mark.parametrize(
     ("data", "expected"),
     [
-        # A file of nothing but comments once made the regex hang.
+        # A file of nothing but comments can make a careless regex hang.
         (b"#" * 40 + b"\n# title #\n" + b"#" * 40, []),
         (b"", []),
         # A stray "}" is skipped and reading goes on.

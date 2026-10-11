@@ -3,6 +3,7 @@
 | File | What it answers |
 |---|---|
 | [decisions.md](decisions.md) | Every settled decision, one row each, result first |
+| [adapting.md](adapting.md) | Adapting the tool to another playset, how a build works, and how to write a fix |
 | [development.md](development.md) | How to run, test and lint, commit and merge, and how the code is laid out |
 | [reference/stellaris-files.md](reference/stellaris-files.md) | Where Stellaris, Steam and the launcher keep things, and what's inside |
 | [reference/patch-rules.md](reference/patch-rules.md) | How a patch file wins over other mods' files, and lessons from the reports |

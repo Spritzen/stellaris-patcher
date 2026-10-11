@@ -1,7 +1,7 @@
 """What a game or mod update changed, and what it may break in a playset.
 The steps around it are in docs/update-check.md.
 
-    report = check(layers, game, base, fixes, record, updated, kept_notes)
+    report = check(layers, game, base, fixes, record, updated, kept_notes, patch)
     folder = write(report, out)                # check.md, diffs/ and notes/ to read
 
 Every finding is a lead to read, not a verdict. It never writes a fix.
@@ -487,7 +487,8 @@ def _folders(paths: list[str]) -> list[str]:
 
 
 def write(report: Report, out: Path) -> Path:
-    """Writes check.md and the diffs into `out`, and returns check.md's path."""
+    """Writes check.md, the diffs, the notes and the changed game files' list
+    into `out`, and returns check.md's path."""
     (out / "diffs").mkdir(parents=True, exist_ok=True)
     for name, text in report.diffs.items():
         (out / "diffs" / name).write_text(text, "utf-8")
