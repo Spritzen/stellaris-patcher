@@ -18,6 +18,7 @@ We share its data files only, never its code
 | read or write Cold Steel's playsets and choices | [docs/reference/cold-steel-data.md](docs/reference/cold-steel-data.md) |
 | check the playset after Stellaris or a mod updates | [docs/update-check.md](docs/update-check.md) |
 | report on a game run's error log | [docs/game-report.md](docs/game-report.md) |
+| write the patch notes for a Workshop upload | [docs/patch-notes.md](docs/patch-notes.md) |
 | know how a patch mod has to be built to win | [docs/reference/patch-rules.md](docs/reference/patch-rules.md) |
 | run, test or lint the code | [docs/development.md](docs/development.md) |
 | commit, open and merge a PR | [docs/development.md](docs/development.md#commit-and-merge) |
@@ -27,9 +28,9 @@ We share its data files only, never its code
 | see everything else | [docs/README.md](docs/README.md) |
 
 Each repeated task also has a skill in [.claude/skills/](.claude/skills/):
-`update-check`, `game-report`, `build-patch`, `add-fix` and `commit`. A
-skill only points at its doc and repeats the rules that are easy to miss.
-The steps stay in the doc ([decision 28](docs/decisions.md)).
+`update-check`, `game-report`, `build-patch`, `add-fix`, `patch-notes`
+and `commit`. A skill only points at its doc and repeats the rules that are
+easy to miss. The steps stay in the doc ([decision 28](docs/decisions.md)).
 
 ## Rules that always apply
 
