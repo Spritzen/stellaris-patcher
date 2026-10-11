@@ -151,6 +151,28 @@ that copies a mod's file ships their work. See
   [merge_rules.json](src/stellaris_patcher/data/merge_rules.json) with no
   `checked` date come from Irony Mod Manager, not a game test.
 
+### Windows or macOS
+
+**You could fork the project and port it to Windows or macOS fairly
+easily.** The fixes, the parsers and the update check are plain Python and
+work anywhere. The parts tied to Linux are few:
+
+- **Finding the game:** [game.py](src/stellaris_patcher/paradox/game.py)
+  looks for Steam in its Linux folders, and refuses the Windows build of the
+  game.
+- **Telling whether the game, the launcher or Cold Steel is open:**
+  [processes.py](src/stellaris_patcher/paradox/processes.py) and
+  [coldsteel/files.py](src/stellaris_patcher/coldsteel/files.py) read
+  `/proc`.
+- **Linking the patch into the game:**
+  [write.py](src/stellaris_patcher/patchmod/write.py) uses a symlink, which
+  Windows only allows with Developer Mode turned on.
+- **The dev container** mounts Linux paths. Run the code on the host
+  instead.
+
+Ask Claude to make the port in your fork. Test it with a real build before
+you trust it.
+
 ## Read more
 
 [docs/README.md](docs/README.md) maps every doc. The commands Claude runs
