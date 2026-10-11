@@ -19,15 +19,15 @@ mods in this playset broke it exactly that way.
 2. **Run each fix.** A fix is a Python function. It looks at the layers,
    checks its problem is still there, and returns the files to ship. If the
    problem is gone, it raises `FixError` with the reason.
-3. **Check every file.** Each must parse, and a localisation file must name
-   its language. One typo would break the file in game, so nothing is
-   written if any file fails.
+3. **Check every file.** Each must load in game
+   ([patch-rules.md](reference/patch-rules.md#before-writing)). One typo
+   would break the file, so nothing is written if any file fails.
 4. **Write the mod and link it.** The mod goes in our own data folder. The
    game's `mod/` folder gets a link and a `.mod` file. A rebuild is then
    live with no copying.
 
 **Who wins a clash depends on the game folder.** In most folders the last
-definition wins, sorted by file name. In 14 folders, such as `events/` and
+definition wins, sorted by file name. In some, such as `events/` and
 `common/traits/`, the first one wins. `on_actions` merge. The rules are in
 [merge_rules.json](../src/stellaris_patcher/data/merge_rules.json), one row
 per folder. A patch file wins by its name: `zz_…` to sort last, `!!_…` to
@@ -119,20 +119,10 @@ to your docs.
 ## 4. Find your playset's problems
 
 **Play a short game, then run `/game-report`.** The first run on a new
-playset is usually thousands of entries, and most don't matter. Lessons
-from this playset's reports
-([patch-rules.md](reference/patch-rules.md#lessons-from-the-reports)):
-
-- **Old copies of game files do the most damage.** A mod made for an older
-  version that ships whole game files takes out everything newer versions
-  added to them. One such mod caused half of an 11,463-entry log. Patching
-  can't fix that. Drop the mod.
-- **A version number proves nothing.** Compare what a mod's copy defines
-  with what the game's copy defines.
-- **A parse break loses the rest of the file**, and the errors show up in
-  other files that used what was lost.
-- **Filter out the harmless entries before counting.** In one run, a single
-  mod's notices were 85% of the log.
+playset is usually thousands of entries, and most don't matter. Read the
+[lessons from this playset's reports](reference/patch-rules.md#lessons-from-the-reports)
+first. The biggest: a mod that ships old copies of whole game files does the
+most damage, and patching can't fix it. Drop the mod.
 
 Then sort what's left. Is a fix small and safe? Or would it copy a large
 part of a mod whose author will likely fix it soon? Leave those to the

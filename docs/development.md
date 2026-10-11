@@ -138,8 +138,8 @@ tools/
 └── collection_background.py  the Workshop collection's background picture
 ```
 
-The code started as a copy of Cold Steel's parsers, and is now ours
-([decision 7](decisions.md)). It doesn't import or follow Cold Steel's code.
+The code is ours. It doesn't import or follow Cold Steel's code
+([decision 7](decisions.md)).
 
 ## Container and host
 
