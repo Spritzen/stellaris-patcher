@@ -108,6 +108,9 @@ next upload
   rsvg-convert -w 195 -h 195 /tmp/brand.svg -o ~/.local/share/stellaris-patcher/mods/cold_steel_mix_collection_branding_195.png
   ```
 
+- Write the upload's patch notes as in [patch-notes.md](../patch-notes.md),
+  and record the upload in
+  [cold-steel-mix-patch-notes.md](cold-steel-mix-patch-notes.md) once it's done.
 - Upload it from the Paradox launcher. The launcher saves the Workshop id in
   the `.mod` file, and later builds keep it, so the next upload updates the
   same Workshop item.
