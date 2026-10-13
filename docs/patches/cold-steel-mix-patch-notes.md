@@ -16,6 +16,22 @@ them.
   again with Steam's Edit.
 - The history starts at the 4.5.2 update. Earlier uploads weren't copied.
 
+## 13 October 2026, 19:38
+
+Built from `165992a`.
+
+```text
+2026.10.13
+
+Two new fixes, for More Events Mod's Astral Tales and for Stellar AI's Gaia Seeders.
+
+Stellar AI and Planetary Diversity
+AI empires no longer build or upgrade a Gaia Seeder while short of exotic gases. Stellar AI's rule for this is kept with Planetary Diversity's Gaia Seeders, which carry its gaia worlds.
+
+More Events Mod
+Astral Tales no longer offers an autocracy's ruler a chance of Substance Abuser. The game never gives them the trait, so the option's risk couldn't happen.
+```
+
 ## 11 October 2026, 10:41
 
 Built from `1d0a3db`. The notes were added afterwards with Steam's Edit.
