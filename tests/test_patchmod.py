@@ -1816,6 +1816,68 @@ def test_fix_37_is_left_out_when_both_mods_change_the_same_block(game: Game) -> 
         cold_steel_mix.fix_faculty(layers)
 
 
+# Fix 41: Planetary Diversity's Gaia Seeders and Stellar AI's exotic gas guard
+
+SEEDER = """building_gaiaseeders_NAME = {
+\tbase_buildtime = 360
+\tdestroy_trigger = { GAIA }
+ALLOW}
+"""
+GAIA = "is_planet_class = pc_gaia"
+PD_GAIA = "pd_is_planet_class_gaia = yes"
+GUARD = "inline_script = { script = stellarai/strategic_upkeep_allow RESOURCE = exotic_gases }"
+SEEDERS_COPY = "common/buildings/zz_stellaris_patcher_cold_steel_mix_gaia_seeders.txt"
+
+
+def _seeder(name: str, gaia: str, allow: str) -> str:
+    return SEEDER.replace("NAME", name).replace("GAIA", gaia).replace("ALLOW", allow)
+
+
+def _gaia_seeders(game: Game, guard: str = GUARD) -> Layers:
+    """Seeder 3 has the game's `allow`, which Stellar AI changes. Seeder 4 has
+    none, and Stellar AI adds one."""
+    plain = "\tallow = { has_upgraded_capital = yes }\n"
+    guarded = f"\tallow = {{ has_upgraded_capital = yes {guard} }}\n" if guard else plain
+    added = f"\tallow = {{ {guard} }}\n" if guard else ""
+
+    def seeders(gaia: str, three: str, four: str) -> str:
+        return _seeder("3", gaia, three) + _seeder("4", gaia, four)
+
+    return _layers(
+        game,
+        {
+            GAME: {"common/buildings/02_government_buildings.txt": seeders(GAIA, plain, "")},
+            cold_steel_mix.STELLAR_AI: {
+                "common/buildings/02_government_buildings.txt": seeders(GAIA, guarded, added)
+            },
+            cold_steel_mix.PLANETARY_DIVERSITY: {
+                "common/buildings/pd_buildings_overwrites.txt": seeders(PD_GAIA, plain, "")
+            },
+        },
+    )
+
+
+def test_fix_41_gives_planetary_diversitys_seeders_stellar_ais_guard(game: Game) -> None:
+    files, notes = cold_steel_mix.fix_gaia_seeders(_gaia_seeders(game))
+    three = _seeder("3", PD_GAIA, f"\tallow = {{ has_upgraded_capital = yes {GUARD} }}\n")
+    four = _seeder("4", PD_GAIA, "").replace(
+        f"{{ {PD_GAIA} }}", f"{{ {PD_GAIA} }}\n\n\tallow = {{ {GUARD} }}"
+    )
+    assert files == {SEEDERS_COPY: (three.rstrip("\n") + "\n\n" + four).encode()}
+    assert notes == [
+        "building_gaiaseeders_pc_gaia doesn't come from Planetary Diversity now. Skipped.",
+        "building_gaiaseeders_2 doesn't come from Planetary Diversity now. Skipped.",
+        "building_gaiaseeders_3, from Planetary Diversity: gets Stellar AI's allow",
+        "building_gaiaseeders_4, from Planetary Diversity: gets Stellar AI's allow",
+    ]
+    assert check_files(files) == []
+
+
+def test_fix_41_is_left_out_once_stellar_ais_seeders_are_the_games(game: Game) -> None:
+    with pytest.raises(FixError, match="Stellar AI's building_gaiaseeders_4 is the game's now"):
+        cold_steel_mix.fix_gaia_seeders(_gaia_seeders(game, guard=""))
+
+
 # Fix 38: More Events Mod's Ancestors' Grudge leader picks
 
 GRUDGE = "common/inline_scripts/mem_ancestors_grudge/random_leader.txt"
