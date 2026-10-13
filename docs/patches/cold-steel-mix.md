@@ -169,9 +169,10 @@ written by hand, one line per problem.
 | `common/buildings/~~_stellaris_patcher_cold_steel_mix_faculty.txt` | Stellar AI's Archaeostudies Faculty, with More Arcologies' two Archeotech Preserve checks |
 | `common/inline_scripts/mem_ancestors_grudge/random_leader.txt` | More Events Mod's whole file, with 4 lines added |
 | `events/!!_stellaris_patcher_cold_steel_mix_astral_tales.txt` | One of More Events Mod's events, with one line added |
+| `common/buildings/~~_stellaris_patcher_cold_steel_mix_gaia_seeders.txt` | Planetary Diversity's four Gaia Seeders, with Stellar AI's `allow` in each |
 
 The game's own files are fine to ship in a mod. The others need their
-authors' permission, or fixes 3, 5, 10–12, 16–19, 25–34, 36–38 and 40 left out.
+authors' permission, or fixes 3, 5, 10–12, 16–19, 25–34, 36–38, 40 and 41 left out.
 
 ## What each fix does
 
@@ -206,6 +207,7 @@ authors' permission, or fixes 3, 5, 10–12, 16–19, 25–34, 36–38 and 40 le
 | 37 | Stellar AI and More Arcologies each replace the game's Archaeostudies Faculty, and Stellar AI's `~stellarai_…` file sorts after More Arcologies' `zzz_…` one. Stellar AI raises its AI weight. More Arcologies gives its Relic World bonuses, +0.25 minor artifacts per biologist and +25% archaeostudies research speed, to planets with its Archeotech Preserve zone, and that's lost | Stellar AI's faculty in a `~~_` file, with each block More Arcologies changed from the game's: its two Relic World checks, each an `OR` with the zone. Only while Stellar AI's copy of each such block is still the game's, so neither mod's change is lost ([decision 53](../decisions.md)) |
 | 38 | More Events Mod's Ancestors' Grudge picks the leader for a relic's trait with no check that the game lets them take a normal trait. In a gestalt empire it can pick a councilor, and the relic's owner gets no trait | More Events Mod's `common/inline_scripts/mem_ancestors_grudge/random_leader.txt`, whole at its own path: an inline script is replaced as a whole file, and the patch loads last. Each of its 4 picks, the relic planet's governor and `leader_1`–`3`, gets the game's `can_leader_get_normal_trait_trigger`, as fix 26's do ([decision 57](../decisions.md)). Event `mem_ancestors_grudge.45` always keeps a scrap or archeotech option, so the story still ends if no leader is left |
 | 40 | More Events Mod's Astral Tales event `mem_astral_tales.8` gives the ruler a 33% chance of Substance Abuser with no check that the game lets them take a normal trait. An autocracy's ruler can't, so the option's tooltip offers a risk that can't happen, and the log has `rules_leader_cannot_get_normal_trait` | A copy of the event in a `!!_` file, with the game's `can_leader_get_normal_trait_trigger` in the `limit` on the ruler before the roll, as fix 26 does. An autocracy's ruler is then offered no roll ([decision 59](../decisions.md)) |
+| 41 | Stellar AI 0.12 adds an AI-only guard to the four Gaia Seeders' `allow`: no new one, or upgrade, while the empire is short of exotic gases. Planetary Diversity's `pd_buildings_overwrites.txt` sorts after Stellar AI's `02_government_buildings.txt`, and its copies, with its own gaia world classes, drop the guard | Planetary Diversity's four copies in a `~~_` file, each with every block Stellar AI changed from the game's or added: its `allow`. Fix 37's merge with the mods the other way round, and a block the game lacks is added after the one it follows in Stellar AI's copy. Each Gaia Seeder is left out on its own if both mods change the same block ([decision 60](../decisions.md)) |
 
 ### Notes
 
@@ -220,9 +222,9 @@ authors' permission, or fixes 3, 5, 10–12, 16–19, 25–34, 36–38 and 40 le
   copy must be the one the game uses.
 - **Fixes 11, 12 and 26 copy whole events**, and the game then has two
   events with one id. More Events Mod's copy is still loaded, but never
-  used. Fixes 17, 18, 19, 27, 28, 29, 34 and 37 do the same for a system,
-  traits, a rule, a megastructure, starbase modules, starbase sizes and a
-  building.
+  used. Fixes 17, 18, 19, 27, 28, 29, 34, 37 and 41 do the same for a system,
+  traits, a rule, a megastructure, starbase modules, starbase sizes and
+  buildings.
 - **Fix 15 doesn't name More Events Mod.** It defines every old shield upkeep
   name any component uses and nothing defines.
 - **Fix 18 copies 15 traits, not 18.** Three of More Events Mod's six are

@@ -2584,29 +2584,61 @@ def fix_faculty(layers: Layers) -> Made:
     theirs = _layer_definition(layers, MORE_ARCOLOGIES, BUILDINGS, FACULTY)
     if theirs is None:
         raise FixError(f"More Arcologies has no {FACULTY} now.")
-    ma_data, ma_entry = theirs
-    game_data, game_entry = _game_entry(layers, BUILDINGS, FACULTY)
-    game = children(game_data, game_entry)
-    ours, ma = children(data, entry), children(ma_data, ma_entry)
-    keys = [c.key for c in game]
-    if [c.key for c in ours] != keys or [c.key for c in ma] != keys:
-        raise FixError(f"{FACULTY}'s copies don't have the game's blocks in its order now.")
-    edits: list[tuple[int, int, bytes]] = []
-    taken: list[str] = []
-    for own, arcology, original in zip(ours, ma, game, strict=True):
-        if _clause(ma_data, arcology) == _clause(game_data, original):
-            continue
-        if _clause(data, own) != _clause(game_data, original):
-            block = own.key.decode()
-            raise FixError(f"Stellar AI and More Arcologies both change {FACULTY}'s {block}.")
-        edits.append((own.start, own.end, ma_data[arcology.start : arcology.end]))
-        taken.append(own.key.decode())
+    game = _game_entry(layers, BUILDINGS, FACULTY)
+    mods = "Stellar AI and More Arcologies"
+    edits, taken = _block_edits((data, entry), theirs, game, FACULTY, mods)
     if not edits:
         raise FixError(f"More Arcologies' {FACULTY} is the game's now.")
     body = _mended(data, entry, edits)
     path = _last_file(layers, BUILDINGS, "faculty")
     note = f"{FACULTY}, from Stellar AI: gets More Arcologies' {', '.join(taken)}"
     return {path: _copy(layers, data, entry, body)}, [note]
+
+
+def _block_edits(
+    base: tuple[bytes, Entry],
+    other: tuple[bytes, Entry],
+    game: tuple[bytes, Entry],
+    key: str,
+    mods: str,
+) -> tuple[list[tuple[int, int, bytes]], list[str]]:
+    """Edits that give `base`, one mod's copy of the game's `key`, each block
+    `other` changed from the game's or added to it, and those blocks' names.
+    Only while `base`'s copy of that block is still the game's, so neither mod's
+    change is lost."""
+    data, entry = base
+    other_data, other_entry = other
+    game_data, game_entry = game
+    ours, original = children(data, entry), children(game_data, game_entry)
+    keys = [c.key for c in original]
+    order = f"{key}'s copies don't have the game's blocks in its order now."
+    if [c.key for c in ours] != keys:
+        raise FixError(order)
+    edits: list[tuple[int, int, bytes]] = []
+    taken: list[str] = []
+    at = 0  # the game's next block
+    for theirs in children(other_data, other_entry):
+        block = other_data[theirs.start : theirs.end]
+        if at < len(keys) and theirs.key == keys[at]:
+            own, before = ours[at], original[at]
+            at += 1
+            if _clause(other_data, theirs) == _clause(game_data, before):
+                continue
+            if _clause(data, own) != _clause(game_data, before):
+                raise FixError(f"{mods} both change {key}'s {theirs.key.decode()}.")
+            edits.append((own.start, own.end, block))
+        elif theirs.key in keys or not ours:
+            raise FixError(order)
+        elif at:  # a block the game lacks, after the one it follows
+            after = ours[at - 1]
+            edits.append((after.end, after.end, b"\n\n" + _indent(data, after) + block))
+        else:
+            first = ours[0]
+            edits.append((first.start, first.start, block + b"\n\n" + _indent(data, first)))
+        taken.append(theirs.key.decode())
+    if at != len(keys):
+        raise FixError(order)
+    return edits, taken
 
 
 def _layer_definition(
@@ -2702,6 +2734,59 @@ def _gives_ruler_trait(data: bytes, entry: Entry) -> bool:
     )
 
 
+# 41. Planetary Diversity's Gaia Seeders drop Stellar AI's exotic gas guard
+
+
+GAIA_SEEDERS = (
+    "building_gaiaseeders_pc_gaia",
+    "building_gaiaseeders_2",
+    "building_gaiaseeders_3",
+    "building_gaiaseeders_4",
+)
+
+
+def fix_gaia_seeders(layers: Layers) -> Made:
+    """Copies of Planetary Diversity's Gaia Seeders, in a file that sorts last,
+    with each block Stellar AI changed from the game's or added: its AI-only
+    guard against building into an exotic gas deficit. As fix 37's, only while
+    Planetary Diversity's copy of that block is still the game's."""
+    bodies: list[bytes] = []
+    header: dict[str, str] = {}
+    notes: list[str] = []
+    for name in GAIA_SEEDERS:
+        found = _last_definition(layers, BUILDINGS, name)
+        theirs = _layer_definition(layers, STELLAR_AI, BUILDINGS, name)
+        if found is None or found[0] != PLANETARY_DIVERSITY:
+            notes.append(f"{name} doesn't come from Planetary Diversity now. Skipped.")
+            continue
+        if theirs is None:
+            notes.append(f"Stellar AI has no {name} now. Skipped.")
+            continue
+        _, data, entry = found
+        mods = "Planetary Diversity and Stellar AI"
+        try:
+            game = _game_entry(layers, BUILDINGS, name)
+            edits, taken = _block_edits((data, entry), theirs, game, name, mods)
+            if not edits:
+                raise FixError(f"Stellar AI's {name} is the game's now.")
+            body = _mended(data, entry, edits)
+            variables = _copied_variables(layers, data, entry, body)
+        except FixError as error:
+            notes.append(f"{error} Skipped.")
+            continue
+        if any(header.get(n, value) != value for n, value in variables):
+            notes.append(f"{name} uses a variable another seeder defines differently. Skipped.")
+            continue
+        header.update(variables)
+        bodies.append(body)
+        notes.append(f"{name}, from Planetary Diversity: gets Stellar AI's {', '.join(taken)}")
+    if not bodies:
+        raise FixError(" ".join(notes))
+    top = "".join(f"{n} = {value}\n" for n, value in sorted(header.items()))
+    text = ((top + "\n" if top else "").encode() + b"\n\n".join(bodies)).replace(b"\r\n", b"\n")
+    return {_last_file(layers, BUILDINGS, "gaia_seeders"): text + b"\n"}, notes
+
+
 # The playset's problems the patch leaves to the mods' authors, for the Workshop
 # page. Each is a mod's own bug, too big to copy or soon to be fixed upstream.
 # Drop a line once its mod has fixed it.
@@ -2712,7 +2797,7 @@ LEFT_TO_AUTHORS: tuple[str, ...] = ()
 # A fix in none of them is listed last, under "Other".
 FIX_GROUPS: tuple[tuple[str, tuple[int, ...]], ...] = (
     ("Species and traits", (18, 19, 27)),
-    ("Planets and buildings", (37,)),
+    ("Planets and buildings", (37, 41)),
     ("Events and stories", (6, 11, 12, 26, 38, 40)),
     ("Galaxy and systems", (5, 17, 28)),
     ("Ships and starbases", (2, 3, 15, 16, 29, 30, 31, 32, 33, 34)),
@@ -2955,5 +3040,14 @@ FIXES: tuple[tuple[int, str, Callable[[Layers], Made], tuple[str, ...]], ...] = 
         ),
         fix_astral_ruler,
         (MORE_EVENTS,),
+    ),
+    (
+        41,
+        (
+            "AI empires don't build or upgrade a Gaia Seeder while short of exotic gases, "
+            "with Stellar AI and Planetary Diversity's Gaia Seeders"
+        ),
+        fix_gaia_seeders,
+        (PLANETARY_DIVERSITY, STELLAR_AI),
     ),
 )
