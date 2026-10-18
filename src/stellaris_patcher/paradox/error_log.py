@@ -21,24 +21,26 @@ FILE_NAME = "logs/error.log"  # inside the Paradox user data folder
 
 _ENTRY = re.compile(r"\[(\d\d:\d\d:\d\d)\]\[([^\]]*)\]: ?(.*)")
 
-_PATH = r"(?:[\w!.\-]+/)+[\w!.\-]+?\.[A-Za-z0-9]{2,6}"
+# A name in a path. Mods name files to sort first or last: !!_x.txt, ~x.txt.
+_NAME = r"[\w!~.\-]+"
+_PATH = rf"(?:{_NAME}/)+{_NAME}?\.[A-Za-z0-9]{{2,6}}"
 
 # In the order they're tried. The first match is the file the error is about.
 _FILE_REFS = (
     # A chain, where the problem is in the first file and the rest is how the
     # game got there: common/a.txt:12 @ in scripted trigger t at file: b.txt line: 3
-    re.compile(rf"(?<![\w/.])(?P<file>{_PATH}):(?P<line>\d+) @ "),
+    re.compile(rf"(?<![\w/.~])(?P<file>{_PATH}):(?P<line>\d+) @ "),
     # file: gfx/x.txt line: 44   /   in file: "sound/x.asset" near line: 16
     # /   in file: " file: common/x.txt line: 524
     re.compile(r'file: *"?(?: *file: *)?(?P<file>[^"\n]+?)"? +(?:near )?line: *(?P<line>\d+)'),
     # No space before "line": Corrupt Event Table Entry - } in events/x.txtline: 6838
-    re.compile(rf"(?<![\w/.])(?P<file>{_PATH})line: *(?P<line>\d+)"),
+    re.compile(rf"(?<![\w/.~])(?P<file>{_PATH})line: *(?P<line>\d+)"),
     # common/scripted_triggers/x.txt:64
-    re.compile(r"(?<![\w/.])(?P<file>(?:[\w!.\-]+/)+[\w!.\-]+\.\w+):(?P<line>\d+)"),
+    re.compile(rf"(?<![\w/.~])(?P<file>(?:{_NAME}/)+{_NAME}\.\w+):(?P<line>\d+)"),
     # Could not find files for mod: /home/.../workshop/content/281990/688086068
     re.compile(r"Could not find files for mod: (?P<file>/.+)"),
     # Any path: Couldn't find texture "gfx/models/x.dds"
-    re.compile(r"(?<![\w/.])(?P<file>/?(?:[\w!.\-]+/)+[\w!.\-]+\.[A-Za-z0-9]{2,6})(?![\w/])"),
+    re.compile(rf"(?<![\w/.~])(?P<file>/?(?:{_NAME}/)+{_NAME}\.[A-Za-z0-9]{{2,6}})(?![\w/])"),
 )
 
 _INLINE = re.compile(rf"(?P<file>{_PATH}):(?P<line>\d+)\(inline_script\)")
