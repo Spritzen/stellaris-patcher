@@ -3,6 +3,7 @@
 import pytest
 
 from stellaris_patcher.paradox.descriptor import Descriptor, parse_descriptor
+from stellaris_patcher.paradox.error_log import parse_error_log
 from stellaris_patcher.paradox.localisation import keys as loc_keys
 from stellaris_patcher.paradox.localisation import language
 from stellaris_patcher.paradox.script import Node, ParseError, children, parse, scan, value_of
@@ -153,3 +154,32 @@ def test_localisation_reads_language_and_keys() -> None:
         (b"tech_a_desc", 4, b'"No version number" # comment'),
     ]
     assert language(b' KEY: "no header"') == ""
+
+
+@pytest.mark.parametrize(
+    ("text", "file", "line"),
+    [
+        (
+            "Script Error: Invalid context switch [owner] from Al-Fawaris III [planet], file: "
+            "common/colony_types/~stellarai_colony_types.txt:21(inline_script) "
+            "common/inline_scripts/stellarai/invalid_urban_colony_type_potential.txt"
+            " line: 2, Scope:",
+            "common/colony_types/~stellarai_colony_types.txt",
+            21,
+        ),
+        (
+            "Unknown trigger at common/war_goals/~stellarai_war_goals.txt:12 @ in scripted "
+            "trigger t at file: common/b.txt line: 3",
+            "common/war_goals/~stellarai_war_goals.txt",
+            12,
+        ),
+        (
+            "Could not get variable at common/scripted_triggers/~~_x.txt:64",
+            "common/scripted_triggers/~~_x.txt",
+            64,
+        ),
+    ],
+)
+def test_error_log_reads_paths_with_a_tilde(text: str, file: str, line: int) -> None:
+    [entry] = parse_error_log(f"[15:49:20][trigger_impl.cpp:1218]: {text}\n")
+    assert (entry.file, entry.line) == (file, line)
