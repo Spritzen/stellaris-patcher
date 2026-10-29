@@ -1,0 +1,73 @@
+# Builds the image check.yml runs in (.github/ci/Dockerfile) and pushes it to GitHub's
+# registry, tagged latest and with the date (decision 38). Check runs pull it from there
+# with the repo's own token. Docker Hub and Amazon's public registry both limit anonymous
+# downloads per address, and GitHub's runners share addresses, so pulling the base image
+# on every check run fails at random ("toomanyrequests"). Only this build pulls from
+# them: when it's refused, checks keep using the last good image.
+# A pull request that changes the image builds it without pushing, as a test.
+
+name: ci-image
+
+on:
+  schedule:
+    - cron: "0 4 * * 1"  # Mondays, 04:00 UTC
+  workflow_dispatch:
+  push:
+    branches: [main, ci-image-ghcr]
+    paths:
+      - .github/ci/**
+      - .github/workflows/ci-image.yml
+  pull_request:
+    paths:
+      - .github/ci/**
+      - .github/workflows/ci-image.yml
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: ci-image-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/spritzen/stellaris-patcher-ci
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # Docker's official Arch image, from whichever registry lets us have it.
+      - name: Pull the base image
+        run: |
+          bases="public.ecr.aws/docker/library/archlinux:latest docker.io/library/archlinux:latest"
+          for wait in 60 180 0; do
+            for base in $bases; do
+              if docker pull "$base"; then
+                echo "BASE=$base" >> "$GITHUB_ENV"
+                exit 0
+              fi
+            done
+            sleep "$wait"
+          done
+          exit 1
+
+      - name: Build
+        run: |
+          dated="$IMAGE:$(date -u +%Y-%m-%d)"
+          echo "DATED=$dated" >> "$GITHUB_ENV"
+          docker build --build-arg BASE="$BASE" -t "$IMAGE:latest" -t "$dated" .github/ci
+
+      - name: Log in to GitHub's registry
+        if: github.event_name != 'pull_request'
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Push
+        if: github.event_name != 'pull_request'
+        run: |
+          docker push "$IMAGE:latest"
+          docker push "$DATED"
