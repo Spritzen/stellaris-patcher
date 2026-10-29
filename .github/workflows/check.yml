@@ -1,6 +1,6 @@
-# Runs `make check` on every pull request and on main (decision 36).
-# Arch, with the same pacman packages as the dev container, so ruff, mypy
-# and Python match. Keep the package list in step with .devcontainer/Dockerfile.
+# Runs `make check` on every pull request and on main (decision 36), in the CI image:
+# Arch with the dev container's pacman packages (.github/ci/Dockerfile), so ruff, mypy
+# and Python match. ci-image.yml builds it weekly.
 
 name: check
 
@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: read
+  packages: read
 
 concurrency:
   group: check-${{ github.ref }}
@@ -19,17 +20,13 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
-    # Docker's official image, from Amazon's public copy: Docker Hub limits anonymous
-    # pulls, and GitHub's runners share addresses (decision 38).
-    container: public.ecr.aws/docker/library/archlinux:latest
+    # From GitHub's registry, with the repo's own token (decision 38, see ci-image.yml).
+    container:
+      image: ghcr.io/spritzen/stellaris-patcher-ci:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - name: Install packages
-        run: |
-          pacman -Syu --noconfirm --needed \
-              git make python \
-              python-msgspec python-xxhash \
-              python-pytest ruff mypy
-
       - uses: actions/checkout@v5
 
       # The real-install tests skip themselves: there's no Stellaris or Cold Steel here.
