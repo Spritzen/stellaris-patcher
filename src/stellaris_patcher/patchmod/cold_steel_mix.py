@@ -2734,7 +2734,7 @@ def _gives_ruler_trait(data: bytes, entry: Entry) -> bool:
     )
 
 
-# 41. Planetary Diversity's Gaia Seeders drop Stellar AI's exotic gas guard
+# 41. Planetary Diversity's and Stellar AI's Gaia Seeders each drop the other's change
 
 
 GAIA_SEEDERS = (
@@ -2749,20 +2749,24 @@ def fix_gaia_seeders(layers: Layers) -> Made:
     """Copies of Planetary Diversity's Gaia Seeders, in a file that sorts last,
     with each block Stellar AI changed from the game's or added: its AI-only
     guard against building into an exotic gas deficit. As fix 37's, only while
-    Planetary Diversity's copy of that block is still the game's."""
+    Planetary Diversity's copy of that block is still the game's. Either mod
+    may win a seeder: which one depends only on how their file names sort."""
     bodies: list[bytes] = []
     header: dict[str, str] = {}
     notes: list[str] = []
     for name in GAIA_SEEDERS:
         found = _last_definition(layers, BUILDINGS, name)
+        if found is None or found[0] not in (PLANETARY_DIVERSITY, STELLAR_AI):
+            either = "Planetary Diversity or Stellar AI"
+            notes.append(f"{name} doesn't come from {either} now. Skipped.")
+            continue
+        ours = _layer_definition(layers, PLANETARY_DIVERSITY, BUILDINGS, name)
         theirs = _layer_definition(layers, STELLAR_AI, BUILDINGS, name)
-        if found is None or found[0] != PLANETARY_DIVERSITY:
-            notes.append(f"{name} doesn't come from Planetary Diversity now. Skipped.")
+        if ours is None or theirs is None:
+            mod = "Planetary Diversity" if ours is None else "Stellar AI"
+            notes.append(f"{mod} has no {name} now. Skipped.")
             continue
-        if theirs is None:
-            notes.append(f"Stellar AI has no {name} now. Skipped.")
-            continue
-        _, data, entry = found
+        data, entry = ours
         mods = "Planetary Diversity and Stellar AI"
         try:
             game = _game_entry(layers, BUILDINGS, name)
@@ -3043,10 +3047,7 @@ FIXES: tuple[tuple[int, str, Callable[[Layers], Made], tuple[str, ...]], ...] = 
     ),
     (
         41,
-        (
-            "AI empires don't build or upgrade a Gaia Seeder while short of exotic gases, "
-            "with Stellar AI and Planetary Diversity's Gaia Seeders"
-        ),
+        ("Gaia Seeders keep Planetary Diversity's gaia worlds and Stellar AI's exotic gas guard"),
         fix_gaia_seeders,
         (PLANETARY_DIVERSITY, STELLAR_AI),
     ),
