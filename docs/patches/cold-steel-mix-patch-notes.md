@@ -6,7 +6,7 @@ newest upload here. [patch-notes.md](../patch-notes.md) says how to write
 them.
 
 - **Uploaded** is Steam's time, in the user's time zone (+0100 in October
-  2026). The container runs in UTC, so the version, the build's UTC date,
+  2026, +0000 from 25 October). The container runs in UTC, so the version, the build's UTC date,
   can be the day before.
 - **Built from** is the commit on `main` the build came from: the last merge
   before the upload.
@@ -15,6 +15,19 @@ them.
   10 October, 15:57 were rewritten in this shape on 11 October and pasted
   again with Steam's Edit.
 - The history starts at the 4.5.2 update. Earlier uploads weren't copied.
+
+## 2 November 2026, 18:44
+
+Built from `c420de4`.
+
+```text
+2026.11.02
+
+Checked with Stellar AI 0.14.1. Nothing changes in game.
+
+Stellar AI and Planetary Diversity
+Gaia Seeders still work on Planetary Diversity's cave, wet, dry and cold gaia worlds with Stellar AI 0.14.1: they aren't destroyed there, and can still be built there. AI empires still don't build or upgrade one while short of exotic gases.
+```
 
 ## 13 October 2026, 19:38
 
