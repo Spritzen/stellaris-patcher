@@ -1833,9 +1833,12 @@ def _seeder(name: str, gaia: str, allow: str) -> str:
     return SEEDER.replace("NAME", name).replace("GAIA", gaia).replace("ALLOW", allow)
 
 
-def _gaia_seeders(game: Game, guard: str = GUARD) -> Layers:
+def _gaia_seeders(
+    game: Game, guard: str = GUARD, stellar_ai: str = "02_government_buildings.txt"
+) -> Layers:
     """Seeder 3 has the game's `allow`, which Stellar AI changes. Seeder 4 has
-    none, and Stellar AI adds one."""
+    none, and Stellar AI adds one. Stellar AI's copies win if its file name
+    sorts after Planetary Diversity's."""
     plain = "\tallow = { has_upgraded_capital = yes }\n"
     guarded = f"\tallow = {{ has_upgraded_capital = yes {guard} }}\n" if guard else plain
     added = f"\tallow = {{ {guard} }}\n" if guard else ""
@@ -1848,7 +1851,7 @@ def _gaia_seeders(game: Game, guard: str = GUARD) -> Layers:
         {
             GAME: {"common/buildings/02_government_buildings.txt": seeders(GAIA, plain, "")},
             cold_steel_mix.STELLAR_AI: {
-                "common/buildings/02_government_buildings.txt": seeders(GAIA, guarded, added)
+                f"common/buildings/{stellar_ai}": seeders(GAIA, guarded, added)
             },
             cold_steel_mix.PLANETARY_DIVERSITY: {
                 "common/buildings/pd_buildings_overwrites.txt": seeders(PD_GAIA, plain, "")
@@ -1857,16 +1860,31 @@ def _gaia_seeders(game: Game, guard: str = GUARD) -> Layers:
     )
 
 
-def test_fix_41_gives_planetary_diversitys_seeders_stellar_ais_guard(game: Game) -> None:
-    files, notes = cold_steel_mix.fix_gaia_seeders(_gaia_seeders(game))
+@pytest.mark.parametrize(
+    ("stellar_ai", "path"),
+    [
+        ("02_government_buildings.txt", SEEDERS_COPY),
+        (
+            "~stellarai_government_buildings.txt",
+            "common/buildings/~~_stellaris_patcher_cold_steel_mix_gaia_seeders.txt",
+        ),
+    ],
+    ids=["planetary-diversity-wins", "stellar-ai-wins"],
+)
+def test_fix_41_gives_planetary_diversitys_seeders_stellar_ais_guard(
+    game: Game, stellar_ai: str, path: str
+) -> None:
+    layers = _gaia_seeders(game, stellar_ai=stellar_ai)
+    files, notes = cold_steel_mix.fix_gaia_seeders(layers)
     three = _seeder("3", PD_GAIA, f"\tallow = {{ has_upgraded_capital = yes {GUARD} }}\n")
     four = _seeder("4", PD_GAIA, "").replace(
         f"{{ {PD_GAIA} }}", f"{{ {PD_GAIA} }}\n\n\tallow = {{ {GUARD} }}"
     )
-    assert files == {SEEDERS_COPY: (three.rstrip("\n") + "\n\n" + four).encode()}
+    assert files == {path: (three.rstrip("\n") + "\n\n" + four).encode()}
     assert notes == [
-        "building_gaiaseeders_pc_gaia doesn't come from Planetary Diversity now. Skipped.",
-        "building_gaiaseeders_2 doesn't come from Planetary Diversity now. Skipped.",
+        "building_gaiaseeders_pc_gaia doesn't come from Planetary Diversity or Stellar AI now. "
+        "Skipped.",
+        "building_gaiaseeders_2 doesn't come from Planetary Diversity or Stellar AI now. Skipped.",
         "building_gaiaseeders_3, from Planetary Diversity: gets Stellar AI's allow",
         "building_gaiaseeders_4, from Planetary Diversity: gets Stellar AI's allow",
     ]
