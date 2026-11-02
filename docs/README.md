@@ -57,6 +57,12 @@ it, and what to do. File them under `reports/<playset>/YYYY-MM/`, named
 | [2026-10-18-thirty-eight-years.md](reports/cold-steel-mix/2026-10/2026-10-18-thirty-eight-years.md) | The Divine Elven Order galaxy, 2215 to 2253, the first run with Stellar AI 0.14: the patch held, the override notices didn't change, and no AI empire defaulted in 38 years. 14 Starholds and an arkship logged nothing. Play logged 72 entries, 45 of them the game's own. New: Stellar AI's colony type check on an unowned planet, More Events Mod's unnamed Rebel Yell species and Real Space's microquasar texture, all harmless. No patch fix. Our log reader misfiled paths with `~`; item 42 fixed it |
 | [2026-10-29-4.5.2-update.md](reports/cold-steel-mix/2026-10/2026-10-29-4.5.2-update.md) | Update check. Universal Resource Patch, Diverse Rooms and both soundtracks changed. Diverse Rooms' new country type event uses two effects the game lacks, so it does nothing. Nothing clashes, and the patch's output is unchanged. No fix. The 4.5.3 open beta notes touch fixes 27, 28 and Starbase Extended's. The Cold Steel build predates all four updates |
 
+#### 2026-11
+
+| Report | Summary |
+|---|---|
+| [2026-11-02-4.5.2-update.md](reports/cold-steel-mix/2026-11/2026-11-02-4.5.2-update.md) | Update check. Stellar AI 0.14.1 now overrides buildings by name, so its Gaia Seeders beat Planetary Diversity's and fix 41 is left out. The written patch still wins with both mods' changes, but the next write would drop Planetary Diversity's gaia worlds; a change to fix 41 is proposed. Stellar AI's other changes clash with nothing. Diverse Rooms removed its broken event. The Cold Steel build is current |
+
 The two reports marked "From Cold Steel" were copied from it: "Decision N" in
 them means Cold Steel's decisions, not ours.
 
