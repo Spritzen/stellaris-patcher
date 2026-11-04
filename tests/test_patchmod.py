@@ -623,51 +623,6 @@ def test_fix_16_is_left_out_once_every_range_follows_the_mods_scaling(game: Game
         cold_steel_mix.fix_mutation_ranges(layers)
 
 
-# Fix 17: Real Space's sealed Surveillance Supercomputer system
-
-SPECIAL = "common/solar_system_initializers/special_system_initializers.txt"
-SUPERCOMPUTER = """other_system = { }
-surveillance_supercomputer_system = {
-\tflags = { surveillance_supercomputer_system hostile_system FLAGS ancient_wonders_system }
-\tplanet = { orbit_distance = @base_moon_distance }
-}
-"""
-
-
-def test_fix_17_copies_the_system_without_the_seal_into_a_file_sorting_first(game: Game) -> None:
-    layers = _layers(
-        game,
-        {
-            GAME: {
-                SPECIAL: SUPERCOMPUTER.replace("FLAGS", "crisis_spawn_exclude"),
-                "common/scripted_variables/00_scripted_variables.txt": "@base_moon_distance = 10",
-            },
-            cold_steel_mix.REAL_SPACE: {
-                SPECIAL: SUPERCOMPUTER.replace("FLAGS", "crisis_spawn_exclude sealed_system")
-            },
-        },
-    )
-    files, _ = cold_steel_mix.fix_supercomputer_seal(layers)
-    (path,) = files
-    assert path == (
-        "common/solar_system_initializers/!!_stellaris_patcher_cold_steel_mix_supercomputer.txt"
-    )
-    data = files[path]
-    assert b"sealed_system" not in data.partition(b"\n")[2]
-    assert b"crisis_spawn_exclude ancient_wonders_system }" in data
-    assert b"other_system" not in data
-    assert check_files(files) == []
-
-
-def test_fix_17_is_left_out_once_real_space_drops_the_seal(game: Game) -> None:
-    unsealed = SUPERCOMPUTER.replace("FLAGS", "crisis_spawn_exclude")
-    layers = _layers(
-        game, {GAME: {SPECIAL: unsealed}, cold_steel_mix.REAL_SPACE: {SPECIAL: unsealed}}
-    )
-    with pytest.raises(FixError, match="isn't sealed now"):
-        cold_steel_mix.fix_supercomputer_seal(layers)
-
-
 # Fix 18: trait resources filed under planet_pops
 
 CATEGORIES = {
@@ -1894,6 +1849,147 @@ def test_fix_41_gives_planetary_diversitys_seeders_stellar_ais_guard(
 def test_fix_41_is_left_out_once_stellar_ais_seeders_are_the_games(game: Game) -> None:
     with pytest.raises(FixError, match="Stellar AI's building_gaiaseeders_4 is the game's now"):
         cold_steel_mix.fix_gaia_seeders(_gaia_seeders(game, guard=""))
+
+
+# Fix 42: Planetary Diversity's cyborg traits and 4.5.3's Volcanic Climate Mods
+
+CYBORG = "common/traits/10_species_traits_cyborg.txt"
+WET_MODS = """trait_cyborg_climate_adjustment_wet = {\r
+\topposites = {\r
+\t\t"trait_cyborg_climate_adjustment_cold"OPPOSITE\r
+\t}\r
+\tbound_to_planet_classes = { pc_ocean pc_pd_wet_cave }\r
+\tmodifier = { pc_ocean_habitability = @cyborg_hab_preference }\r
+}\r
+"""
+VOLCANIC_MODS = """trait_cyborg_climate_adjustment_volcanic = {
+\topposites = {
+\t\t"trait_cyborg_climate_adjustment_wet"
+\t}
+\tbound_to_planet_classes = {
+\t\tpc_volcanic
+\t}
+\tmodifier = {
+\t\tpc_volcanic_habitability = @cyborg_hab_preference_volcanic
+\t}
+}
+"""
+PD_VOLCANIC = """pd_is_volcanic = {
+\tOR = {
+\t\tis_planet_class = pc_volcanic
+\t\tis_planet_class = pc_pd_ash
+\t\tis_planet_class = pc_pd_gone
+\t}
+}
+"""
+WET_OPPOSITE = '\r\n\t\t"trait_cyborg_climate_adjustment_volcanic"'
+VOLCANIC_COPY = "common/traits/!!_stellaris_patcher_cold_steel_mix_volcanic_climate_mods.txt"
+
+
+def _volcanic(game: Game, pd_cyborg: str, trigger: str = PD_VOLCANIC) -> Layers:
+    return _layers(
+        game,
+        {
+            GAME: {
+                CYBORG: WET_MODS.replace("OPPOSITE", WET_OPPOSITE) + VOLCANIC_MODS,
+                "common/scripted_variables/08_bio.txt": "@cyborg_hab_preference_volcanic = 0.5",
+                "common/planet_classes/00_planet_classes.txt": "pc_volcanic = { }",
+            },
+            cold_steel_mix.PLANETARY_DIVERSITY: {
+                CYBORG: "@cyborg_hab_preference = 0.70\r\n" + pd_cyborg,
+                "common/scripted_triggers/pd_scripted_triggers.txt": trigger,
+                "common/planet_classes/pd_volcanic.txt": "pc_pd_ash = { }",
+            },
+        },
+    )
+
+
+def test_fix_42_adds_the_trait_with_pds_volcanic_worlds_and_the_opposite(game: Game) -> None:
+    files, notes = cold_steel_mix.fix_volcanic_climate_mods(
+        _volcanic(game, WET_MODS.replace("OPPOSITE", ""))
+    )
+    text = files[VOLCANIC_COPY]
+    assert text.startswith(
+        b"@cyborg_hab_preference = 0.70\n\ntrait_cyborg_climate_adjustment_volcanic"
+    )
+    assert b"\t\tpc_volcanic\n\t\tpc_pd_ash\n\t}" in text
+    assert b"\t\tpc_pd_ash_habitability = @cyborg_hab_preference_volcanic\n\t}" in text
+    assert b"pc_pd_gone" not in text and b"\r" not in text
+    assert (
+        b'\t\t"trait_cyborg_climate_adjustment_cold"\n\t\t"trait_cyborg_climate_adjustment_volcanic"\n'
+        b"\t}\n\tbound_to_planet_classes = { pc_ocean"
+    ) in text
+    assert notes == [
+        "trait_cyborg_climate_adjustment_volcanic, from the game: also on pc_pd_ash, "
+        "Planetary Diversity's pd_is_volcanic",
+        "trait_cyborg_climate_adjustment_wet, from Planetary Diversity: "
+        "trait_cyborg_climate_adjustment_volcanic added to its opposites",
+    ]
+    assert check_files(files) == []
+
+
+def test_fix_42_ships_the_games_trait_as_it_is_without_pds_check(game: Game) -> None:
+    layers = _volcanic(game, WET_MODS.replace("OPPOSITE", ""), trigger="other_trigger = { }")
+    files, notes = cold_steel_mix.fix_volcanic_climate_mods(layers)
+    assert b"pc_pd_ash" not in files[VOLCANIC_COPY]
+    assert notes[0] == "trait_cyborg_climate_adjustment_volcanic, from the game"
+
+
+def test_fix_42_is_left_out_once_planetary_diversity_has_the_trait(game: Game) -> None:
+    pd_cyborg = WET_MODS.replace("OPPOSITE", WET_OPPOSITE)
+    layers = _volcanic(game, pd_cyborg + VOLCANIC_MODS)
+    with pytest.raises(FixError, match="is in use now"):
+        cold_steel_mix.fix_volcanic_climate_mods(layers)
+
+
+# Fix 43: Real Space's star classes and 4.5.3's four-star classes
+
+STARS = "common/star_classes/00_star_classes.txt"
+GAME_STARS = """sc_g = { class = g_star planet = { key = pc_g_star } }
+sc_quaternary_1 = { # four stars
+\tclass = f_star
+\tplanet = { key = pc_f_star }
+\tcrisis_star_class = sc_crisis_quaternary_1
+\tspawn_odds = 0
+}
+sc_crisis_quaternary_1 = {
+\tclass = m_star
+\tplanet = { key = pc_m_star }
+}
+"""
+STAR_PLANETS = {"common/planet_classes/00_star_classes.txt": "pc_f_star = { }\npc_m_star = { }"}
+QUATERNARY_COPY = "common/star_classes/stellaris_patcher_cold_steel_mix_quaternary_stars.txt"
+
+
+def _stars(game: Game, real_space: str) -> Layers:
+    return _layers(
+        game,
+        {GAME: {STARS: GAME_STARS, **STAR_PLANETS}, cold_steel_mix.REAL_SPACE: {STARS: real_space}},
+    )
+
+
+def test_fix_43_ships_the_games_four_star_classes_unchanged(game: Game) -> None:
+    files, notes = cold_steel_mix.fix_quaternary_stars(_stars(game, "sc_g = { icon_scale = 0.7 }"))
+    text = files[QUATERNARY_COPY]
+    assert b"sc_quaternary_1 = { # four stars\n\tclass = f_star" in text
+    assert b"sc_crisis_quaternary_1 = {\n\tclass = m_star" in text
+    assert b"sc_g" not in text
+    assert notes == ["sc_quaternary_1, from the game", "sc_crisis_quaternary_1, from the game"]
+    assert check_files(files) == []
+
+
+def test_fix_43_is_left_out_once_real_space_has_the_classes(game: Game) -> None:
+    with pytest.raises(FixError, match="Every four-star class is in use now"):
+        cold_steel_mix.fix_quaternary_stars(_stars(game, GAME_STARS))
+
+
+def test_fix_43_is_left_out_if_a_class_names_a_missing_planet(game: Game) -> None:
+    layers = _layers(
+        game,
+        {GAME: {STARS: GAME_STARS}, cold_steel_mix.REAL_SPACE: {STARS: "sc_g = { }"}},
+    )
+    with pytest.raises(FixError, match="names planet classes nothing defines: pc_f_star"):
+        cold_steel_mix.fix_quaternary_stars(layers)
 
 
 # Fix 38: More Events Mod's Ancestors' Grudge leader picks

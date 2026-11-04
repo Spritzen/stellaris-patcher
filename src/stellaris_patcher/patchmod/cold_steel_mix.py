@@ -1002,48 +1002,6 @@ def _csv_column(rows: dict[str, tuple[list[bytes], tuple[int, int]]], name: str)
     return header[0].index(name.encode())
 
 
-# 17. Real Space's Surveillance Supercomputer system is still sealed
-
-
-SUPERCOMPUTER = "surveillance_supercomputer_system"
-SEALED = b"sealed_system"
-
-
-def fix_supercomputer_seal(layers: Layers) -> Made:
-    """Real Space's system, without the flag 4.5.2 took off the game's so jump
-    drives can enter, in a file that sorts first: the first initializer by
-    file name wins."""
-    defined = layers.defined(INITIALIZERS)
-    if SUPERCOMPUTER not in defined:
-        raise FixError(f"No system is called {SUPERCOMPUTER} any more.")
-    layer, path = defined[SUPERCOMPUTER]
-    if layer != REAL_SPACE:
-        raise FixError(f"{SUPERCOMPUTER} now comes from {layer}, not Real Space.")
-    data = layers.read(layer, path)
-    entry = next(e for e in scan(data) if e.key == SUPERCOMPUTER.encode() and e.block)
-    if SEALED not in _flags(data, entry):
-        raise FixError(f"Real Space's {SUPERCOMPUTER} isn't sealed now.")
-    if SEALED in _flags(*_game_entry(layers, INITIALIZERS, SUPERCOMPUTER)):
-        raise FixError(f"The game's {SUPERCOMPUTER} is sealed again.")
-    flags = next(c for c in children(data, entry) if c.key == b"flags" and c.block)
-    start, end = flags.inside
-    unsealed = re.sub(rb"[ \t]*\b" + SEALED + rb"\b", b"", data[start:end])
-    body = _mended(data, entry, [(start, end, unsealed)])
-    comment = f"# Real Space's {SUPERCOMPUTER}, without {SEALED.decode()}, as in 4.5.2\n".encode()
-    text = comment + _copy(layers, data, entry, body)
-    return {_first_file(layers, INITIALIZERS, "supercomputer"): text}, [
-        f"{SUPERCOMPUTER}: Real Space's copy, without {SEALED.decode()}"
-    ]
-
-
-def _flags(data: bytes, entry: Entry) -> set[bytes]:
-    found = next((c for c in children(data, entry) if c.key == b"flags" and c.block), None)
-    if found is None:
-        return set()
-    start, end = found.inside
-    return set(_COMMENT.sub(b"", data[start:end]).split())
-
-
 # 18. Trait resources still filed under planet_pops, which 4.5.2 keeps for species
 
 
@@ -2791,19 +2749,175 @@ def fix_gaia_seeders(layers: Layers) -> Made:
     return {_last_file(layers, BUILDINGS, "gaia_seeders"): text + b"\n"}, notes
 
 
+# 42. Planetary Diversity's cyborg traits predate 4.5.3's Volcanic Climate Mods
+
+
+CYBORG_TRAITS = "common/traits/10_species_traits_cyborg.txt"
+VOLCANIC_MODS = "trait_cyborg_climate_adjustment_volcanic"
+PD_VOLCANIC = "pd_is_volcanic"
+# 4.5.3: "Cybernetic empires can now take Volcanic Climate Mods, a fourth Climate
+# Mods trait that adapts a species to Volcanic Worlds." Planetary Diversity's whole
+# copy of the game's file has neither the trait nor the other three's new opposite.
+_PLANET_CLASS = re.compile(rb"is_planet_class\s*=\s*(\w+)")
+
+
+def fix_volcanic_climate_mods(layers: Layers) -> Made:
+    """The game's Volcanic Climate Mods, and each of its opposites in use without
+    it as an opposite, with it added, in a file that sorts first. The new trait
+    also covers Planetary Diversity's other volcanic worlds, as its copies of
+    the other three cover its other worlds of their climates."""
+    traits = layers.defined("common/traits")
+    if VOLCANIC_MODS in traits:
+        raise FixError(
+            f"{VOLCANIC_MODS} is in use now, from {_trait_mod(traits[VOLCANIC_MODS][0])}."
+        )
+    if not layers.has(PLANETARY_DIVERSITY, CYBORG_TRAITS):
+        raise FixError(f"Planetary Diversity has no {CYBORG_TRAITS} now.")
+    game_data, game_entry = _game_entry(layers, "common/traits", VOLCANIC_MODS)
+    edits = []
+    notes = []
+    extra = _pd_volcanic_classes(
+        layers, _block_words(game_data, game_entry, b"bound_to_planet_classes")
+    )
+    if extra:
+        classes = _child(game_data, game_entry, b"bound_to_planet_classes")
+        modifier = _child(game_data, game_entry, b"modifier")
+        lines = [f"{c}_habitability = @cyborg_hab_preference_volcanic" for c in extra]
+        edits += [
+            _append_lines(game_data, classes, extra),
+            _append_lines(game_data, modifier, lines),
+        ]
+        notes.append(
+            f"{VOLCANIC_MODS}, from the game: also on {', '.join(extra)}, "
+            f"Planetary Diversity's {PD_VOLCANIC}"
+        )
+    else:
+        notes.append(f"{VOLCANIC_MODS}, from the game")
+    bodies = [_mended(game_data, game_entry, edits)]
+    header = dict(_copied_variables(layers, game_data, game_entry, bodies[0]))
+    for name in _block_words(game_data, game_entry, b"opposites"):
+        if name not in traits:
+            notes.append(f"{name} isn't in use. Skipped.")
+            continue
+        layer, path = traits[name]
+        data = layers.read(layer, path)
+        entry = next(e for e in scan(data) if e.key == name.encode() and e.block)
+        if VOLCANIC_MODS in _block_words(data, entry, b"opposites"):
+            continue
+        opposites = _child(data, entry, b"opposites")
+        body = _mended(data, entry, [_append_lines(data, opposites, [f'"{VOLCANIC_MODS}"'])])
+        variables = _copied_variables(layers, data, entry, body)
+        if any(header.get(n, value) != value for n, value in variables):
+            raise FixError(f"{name} uses a variable another copied trait defines differently.")
+        header.update(variables)
+        bodies.append(body)
+        notes.append(f"{name}, from {_trait_mod(layer)}: {VOLCANIC_MODS} added to its opposites")
+    top = "".join(f"{n} = {value}\n" for n, value in sorted(header.items()))
+    text = ((top + "\n" if top else "").encode() + b"\n\n".join(bodies)).replace(b"\r\n", b"\n")
+    return {_first_file(layers, "common/traits", "volcanic_climate_mods"): text + b"\n"}, notes
+
+
+def _trait_mod(layer: str) -> str:
+    return "the game" if layer == GAME else TRAIT_MODS.get(layer, layer)
+
+
+def _pd_volcanic_classes(layers: Layers, bound: list[str]) -> list[str]:
+    """The planet classes Planetary Diversity's volcanic check counts, beyond
+    `bound`, that a mod in use defines. Empty if the check is gone."""
+    found = layers.defined("common/scripted_triggers").get(PD_VOLCANIC)
+    if found is None or found[0] != PLANETARY_DIVERSITY:
+        return []
+    data = layers.read(*found)
+    entry = next(e for e in scan(data) if e.key == PD_VOLCANIC.encode() and e.block)
+    defined = layers.defined("common/planet_classes")
+    named = _PLANET_CLASS.findall(_COMMENT.sub(b"", data[entry.start : entry.end]))
+    return [
+        c.decode()
+        for c in dict.fromkeys(named)
+        if c.decode() not in bound and c.decode() in defined
+    ]
+
+
+def _child(data: bytes, entry: Entry, key: bytes) -> Entry:
+    found = next((c for c in children(data, entry) if c.key == key and c.block), None)
+    if found is None:
+        raise FixError(f"{entry.key.decode()} has no {key.decode()} block now.")
+    return found
+
+
+def _block_words(data: bytes, entry: Entry, key: bytes) -> list[str]:
+    """The bare words in `entry`'s `key` block, quotes taken off."""
+    found = next((c for c in children(data, entry) if c.key == key and c.block), None)
+    if found is None:
+        return []
+    start, end = found.inside
+    words = _COMMENT.sub(b"", data[start:end]).split()
+    return [w.strip(b'"').decode() for w in words]
+
+
+def _append_lines(data: bytes, block: Entry, lines: list[str]) -> tuple[int, int, bytes]:
+    """An edit adding `lines` after a block's last line, at its first line's indent."""
+    start, end = block.inside
+    last = data[start:end].rstrip()
+    first = data[start:end].lstrip(b"\r\n")
+    indent = first[: len(first) - len(first.lstrip(b" \t"))]
+    at = start + len(last)
+    eol = b"\r\n" if b"\r\n" in data[start:end] else b"\n"
+    return at, at, b"".join(eol + indent + line.encode() for line in lines)
+
+
+# 43. Real Space's star classes predate 4.5.3's four-star classes
+
+
+STAR_CLASSES = "common/star_classes"
+QUATERNARY = ("sc_quaternary_1", "sc_crisis_quaternary_1")
+# 4.5.3 adds a four-star class and its crisis class for its new Stewart's Resolve
+# system. Real Space's whole copy of the game's 00_star_classes.txt lacks both, so
+# each of the game's is_quaternary_star checks logs them as unknown at load.
+_PLANET_KEY = re.compile(rb"\bkey\s*=\s*(\w+)")
+
+
+def fix_quaternary_stars(layers: Layers) -> Made:
+    """The game's four-star classes the playset lacks, unchanged, in a file of
+    their own. Neither spawns on its own: one has spawn_odds 0, crisis classes
+    have none. Only the game's Stewart's Resolve uses them, and it's missing too."""
+    defined = layers.defined(STAR_CLASSES)
+    missing = [name for name in QUATERNARY if name not in defined]
+    if not missing:
+        raise FixError("Every four-star class is in use now.")
+    planets = layers.defined("common/planet_classes")
+    bodies: list[bytes] = []
+    for name in missing:
+        data, entry = _game_entry(layers, STAR_CLASSES, name)
+        body = data[entry.start : entry.end]
+        unknown = sorted({k.decode() for k in _PLANET_KEY.findall(body)} - set(planets))
+        if unknown:
+            raise FixError(f"{name} names planet classes nothing defines: {', '.join(unknown)}.")
+        bodies.append(_copy(layers, data, entry, body))
+    text = b"# The game's 4.5.3 four-star classes, which Real Space's star classes lack\n"
+    text += b"\n".join(bodies)
+    return {f"{STAR_CLASSES}/{TAIL}_quaternary_stars.txt": text}, [
+        f"{name}, from the game" for name in missing
+    ]
+
+
 # The playset's problems the patch leaves to the mods' authors, for the Workshop
 # page. Each is a mod's own bug, too big to copy or soon to be fixed upstream.
 # Drop a line once its mod has fixed it.
-LEFT_TO_AUTHORS: tuple[str, ...] = ()
+LEFT_TO_AUTHORS: tuple[str, ...] = (
+    "Real Space 4.0 has no Stewart's Resolve, 4.5.3's new four-star system: its copies "
+    "of the game's star class and special system files predate 4.5.3, so the system "
+    "never spawns",
+)
 
 
 # The headings the Workshop page lists the fixes under, in order, by fix number.
 # A fix in none of them is listed last, under "Other".
 FIX_GROUPS: tuple[tuple[str, tuple[int, ...]], ...] = (
-    ("Species and traits", (18, 19, 27)),
+    ("Species and traits", (18, 19, 27, 42)),
     ("Planets and buildings", (37, 41)),
     ("Events and stories", (6, 11, 12, 26, 38, 40)),
-    ("Galaxy and systems", (5, 17, 28)),
+    ("Galaxy and systems", (5, 28, 43)),
     ("Ships and starbases", (2, 3, 15, 16, 29, 30, 31, 32, 33, 34)),
     ("Graphics and camera", (1, 4)),
     ("Text and translations", (7, 10, 25, 36)),
@@ -2896,12 +3010,6 @@ FIXES: tuple[tuple[int, str, Callable[[Layers], Made], tuple[str, ...]], ...] = 
         "Space fauna's Large Mega Bombard gets its 4.5.2 range, at Ships in Scaling's scale",
         fix_mutation_ranges,
         (SHIPS_IN_SCALING,),
-    ),
-    (
-        17,
-        "Fleets with a jump drive can enter the Surveillance Supercomputer system, as in 4.5.2",
-        fix_supercomputer_seal,
-        (REAL_SPACE,),
     ),
     (
         18,
@@ -3050,5 +3158,23 @@ FIXES: tuple[tuple[int, str, Callable[[Layers], Made], tuple[str, ...]], ...] = 
         ("Gaia Seeders keep Planetary Diversity's gaia worlds and Stellar AI's exotic gas guard"),
         fix_gaia_seeders,
         (PLANETARY_DIVERSITY, STELLAR_AI),
+    ),
+    (
+        42,
+        (
+            "Cybernetic species can take 4.5.3's Volcanic Climate Mods with Planetary "
+            "Diversity, on its ash and magma worlds too"
+        ),
+        fix_volcanic_climate_mods,
+        (PLANETARY_DIVERSITY,),
+    ),
+    (
+        43,
+        (
+            "4.5.3's four-star star classes exist with Real Space, so the game's checks for "
+            "them no longer log errors"
+        ),
+        fix_quaternary_stars,
+        (REAL_SPACE,),
     ),
 )
