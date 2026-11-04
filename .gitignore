@@ -7,3 +7,6 @@ __pycache__/
 
 # Claude Code's per-machine settings (project skills in .claude/skills/ are kept)
 .claude/settings.local.json
+
+# KDE Plasma
+.directory
