@@ -19,3 +19,7 @@ Rules from it that are easy to miss:
   `[h2]` heading breaks out of Steam's change note box.
 - Record the upload only after the user says it's done, with Steam's time
   and the notes as they pasted them.
+- After a game update or a change in the number of fixes, update the
+  collection's hand-written description too, in
+  `mods/cold_steel_mix_collection.workshop.txt`: its game version and fix
+  count go stale otherwise.

@@ -109,6 +109,14 @@ next upload
   rsvg-convert -w 195 -h 195 /tmp/brand.svg -o ~/.local/share/stellaris-patcher/mods/cold_steel_mix_collection_branding_195.png
   ```
 
+- The collection's description is written by hand, in
+  `~/.local/share/stellaris-patcher/mods/cold_steel_mix_collection.workshop.txt`,
+  in Steam's BBCode. Its opening line names the game version, and its
+  "It has its own patch" line gives the number of fixes and the game versions
+  they cover. **Update both when the game updates or the number of fixes
+  changes**, then paste the whole file into the collection's description with
+  Edit. A collection has no change notes. The number of fixes is the length
+  of `FIXES`: 31 for the 4 November upload.
 - Write the upload's patch notes as in [patch-notes.md](../patch-notes.md),
   and record the upload in
   [cold-steel-mix-patch-notes.md](cold-steel-mix-patch-notes.md) once it's done.

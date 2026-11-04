@@ -67,7 +67,9 @@ file.
 6. **Remind the user of the Workshop page's Required items** when they
    change. Steam doesn't read `dependencies`. Also remind them to paste the
    [description](patches/cold-steel-mix.md#uploading-it-to-the-workshop) if
-   its fixes changed.
+   its fixes changed. If the game version or the number of fixes changed,
+   update the collection's description too, as the same section says, and
+   remind them to paste it.
 
 7. **Once the user has uploaded, record it.** Add an entry at the top of
    [cold-steel-mix-patch-notes.md](patches/cold-steel-mix-patch-notes.md):
