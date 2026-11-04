@@ -16,6 +16,26 @@ them.
   again with Steam's Edit.
 - The history starts at the 4.5.2 update. Earlier uploads weren't copied.
 
+## 4 November 2026, 22:29
+
+Built from `9bf38b8`.
+
+```text
+2026.11.04
+
+Updated for Stellaris 4.5.3, and checked with Stellar AI 0.14.3 and Real Space 4.0.12. Cybernetic species can take the new Volcanic Climate Mods with Planetary Diversity.
+
+Planetary Diversity
+Cybernetic species can take 4.5.3's new Volcanic Climate Mods. It gives habitability on volcanic worlds, and on Planetary Diversity's ash and magma worlds too, with Adapted Habitability on volcanic worlds. It can't be taken with Wet, Dry or Cold Climate Mods.
+
+Real Space 4.0
+4.5.3's four-star star classes exist again, so the game no longer logs errors for them while loading. Nothing changes in game.
+Fleets with a jump drive can still enter the Surveillance Supercomputer system. Real Space 4.0.12 fixed this itself, so the patch no longer needs to.
+
+Known issues
+Stewart's Resolve, 4.5.3's new four-star system, doesn't appear with Real Space 4.0. Real Space's copies of the game's star and system files predate 4.5.3. This is left to Real Space's author.
+```
+
 ## 2 November 2026, 18:44
 
 Built from `c420de4`.
