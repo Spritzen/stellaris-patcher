@@ -121,10 +121,10 @@ next upload
 
 ### Left to the authors
 
-**The list is empty, so the description has no known issues section.**
-When it has lines, the description lists the playset's known problems that
-the patch doesn't fix, under "Known issues, waiting for the mod authors"
-([decision 33](../decisions.md)). They're in `LEFT_TO_AUTHORS` in
+**The list has one line: Real Space's missing Stewart's Resolve**
+([decision 62](../decisions.md)). The description lists the playset's known
+problems that the patch doesn't fix, under "Known issues, waiting for the mod
+authors" ([decision 33](../decisions.md)). They're in `LEFT_TO_AUTHORS` in
 [cold_steel_mix.py](../../src/stellaris_patcher/patchmod/cold_steel_mix.py),
 written by hand, one line per problem.
 
@@ -148,7 +148,6 @@ written by hand, one line per problem.
 | `events/!!_stellaris_patcher_cold_steel_mix_stuck_in_glacier.txt` | One of More Events Mod's events, with one word changed |
 | `localisation/replace/stellaris_patcher_cold_steel_mix_l_english.yml` | Three of Planetary Diversity's and Ascension Worlds' necro world tooltips, with one call changed in each |
 | `common/component_templates/mutation_weapon_components.csv` | Real Space - Ships in Scaling's whole file, with one range changed |
-| `common/solar_system_initializers/!!_stellaris_patcher_cold_steel_mix_supercomputer.txt` | One of Real Space 4.0's systems, with one flag removed |
 | `common/traits/!!_stellaris_patcher_cold_steel_mix_lithoid_budding.txt` | Lithoid Budding from Ascension Worlds, or from Planetary Diversity while Ascension Worlds is off, with one line added |
 | `common/game_rules/zz_stellaris_patcher_cold_steel_mix_terraform.txt` | Ascension Worlds' terraforming rule, with two of the game's checks added |
 | Seven `localisation/<language>/planetarydiversity_…` files | Planetary Diversity's whole files, with broken lines mended |
@@ -170,9 +169,10 @@ written by hand, one line per problem.
 | `common/inline_scripts/mem_ancestors_grudge/random_leader.txt` | More Events Mod's whole file, with 4 lines added |
 | `events/!!_stellaris_patcher_cold_steel_mix_astral_tales.txt` | One of More Events Mod's events, with one line added |
 | `common/buildings/~~_stellaris_patcher_cold_steel_mix_gaia_seeders.txt` | Planetary Diversity's four Gaia Seeders, with Stellar AI's `allow` in each |
+| `common/traits/!!_stellaris_patcher_cold_steel_mix_volcanic_climate_mods.txt` | Planetary Diversity's Wet, Dry and Cold Climate Mods, with one opposite added in each, beside the game's Volcanic Climate Mods |
 
 The game's own files are fine to ship in a mod. The others need their
-authors' permission, or fixes 3, 5, 10–12, 16–19, 25–34, 36–38, 40 and 41 left out.
+authors' permission, or fixes 3, 5, 10–12, 16, 18, 19, 25–34, 36–38, 40–42 left out.
 
 ## What each fix does
 
@@ -190,7 +190,6 @@ authors' permission, or fixes 3, 5, 10–12, 16–19, 25–34, 36–38, 40 and 4
 | 12 | More Events Mod's `mem_stuck_in_glacier.22` makes an official with Iron Fist, a commander-only trait since 4.0, so the leader gets no trait | A copy of that one event, the same way as fix 11. That leader is a commander, the one class the game's Iron Fist allows ([decision 24](../decisions.md)) |
 | 15 | More Events Mod's three Progenitor shields use `@shield_*_t7_upkeep_*`, which 4.5.2 renamed to `@defense_*_t7_upkeep_*`, so they have no upkeep | A `common/scripted_variables/` file that defines each old name a component still uses, with the game's value for its new name |
 | 16 | Ships in Scaling's copy of `mutation_weapon_components.csv` predates 4.5.2, so the Large Mega Bombard keeps a range of 2 | Ships in Scaling's whole file, with each range it missed set to the one it gives every other weapon with the same game range: 100 → 17. A range is only changed when at least two other rows agree ([decision 31](../decisions.md)) |
-| 17 | Real Space 4.0's copy of the Surveillance Supercomputer system keeps the `sealed_system` flag 4.5.2 removed, so jump drive fleets can't enter | A copy of that one system without the flag, in a file whose name starts `!!_`. Initializers go to the first file by name |
 | 18 | Planetary Diversity's, Ascension Worlds' and More Events Mod's traits file their resources under `planet_pops`, which 4.5.2 keeps for a species' archetype. An `_add` modifier on `planet_pops` applies once per resource table, so Unemployment Benefits and the Shroud-Warped leader's psionic unity count once per trait | A copy of each trait in use with `category = planet_pops`, in one `!!_` file, with the game's `planet_pops_traits` instead. 15 today: 7 from Planetary Diversity (among them Organic, Lithoid, Mechanical and Machine Unit), 5 from Ascension Worlds and 3 from More Events Mod. A trait fix 19 or 27 copies is left to it ([decision 43](../decisions.md)) |
 | 19 | Planetary Diversity's and Ascension Worlds' Lithoid Budding lack 4.5.2's `divide_over_pop_groups = no` on the Massive Crater bonus. Ascension Worlds' terraforming rule lacks the game's checks for a consecrated world and a Knights detox in progress | A copy of the trait in use, with the game's line added, in a `!!_` file. Both mods ship a whole `04_species_traits.txt`, and Ascension Worlds' replaces Planetary Diversity's, so the copy is from whichever is on ([decision 37](../decisions.md)). Only Ascension Worlds has the rule: a copy of it, with the two checks added, in a `zz_` file: game rules go to the last file by name. The legendary leader check Ascension Worlds comments out on purpose stays out ([decision 32](../decisions.md)) |
 | 25 | Lines in Planetary Diversity's, Ascension Worlds' and More Arcologies' translations the game can't read: quotes missing (German, Russian, Polish), text with no key (German, and Ascension Worlds' flooded world tooltip in all nine translations), and German obsidian world text pasted in after its own key (also Japanese, Korean and Russian, which read but show the key) | Each broken file whole, at its own path, with the lines mended. The keyless line takes the key the mod's English file has in its place ([decision 39](../decisions.md)). A file whose line no rule mends is skipped |
@@ -208,6 +207,8 @@ authors' permission, or fixes 3, 5, 10–12, 16–19, 25–34, 36–38, 40 and 4
 | 38 | More Events Mod's Ancestors' Grudge picks the leader for a relic's trait with no check that the game lets them take a normal trait. In a gestalt empire it can pick a councilor, and the relic's owner gets no trait | More Events Mod's `common/inline_scripts/mem_ancestors_grudge/random_leader.txt`, whole at its own path: an inline script is replaced as a whole file, and the patch loads last. Each of its 4 picks, the relic planet's governor and `leader_1`–`3`, gets the game's `can_leader_get_normal_trait_trigger`, as fix 26's do ([decision 57](../decisions.md)). Event `mem_ancestors_grudge.45` always keeps a scrap or archeotech option, so the story still ends if no leader is left |
 | 40 | More Events Mod's Astral Tales event `mem_astral_tales.8` gives the ruler a 33% chance of Substance Abuser with no check that the game lets them take a normal trait. An autocracy's ruler can't, so the option's tooltip offers a risk that can't happen, and the log has `rules_leader_cannot_get_normal_trait` | A copy of the event in a `!!_` file, with the game's `can_leader_get_normal_trait_trigger` in the `limit` on the ruler before the roll, as fix 26 does. An autocracy's ruler is then offered no roll ([decision 59](../decisions.md)) |
 | 41 | Stellar AI adds an AI-only guard to the four Gaia Seeders' `allow`: no new one, or upgrade, while the empire is short of exotic gases. Planetary Diversity's copies add its four extra gaia world types. Whichever mod's file sorts last drops the other's change: Stellar AI's `~stellarai_government_buildings.txt` since 0.14.1, which destroys a Gaia Seeder on Planetary Diversity's extra gaia worlds and stops one being built there | Planetary Diversity's four copies in a `~~_` file, each with every block Stellar AI changed from the game's or added: its `allow`. Fix 37's merge with the mods the other way round, and a block the game lacks is added after the one it follows in Stellar AI's copy. Built whichever of the two mods wins. Each Gaia Seeder is left out on its own if another mod wins it, or both mods change the same block ([decision 60](../decisions.md)) |
+| 42 | Planetary Diversity ships a whole copy of the game's `10_species_traits_cyborg.txt` from before 4.5.3, so 4.5.3's Volcanic Climate Mods (`trait_cyborg_climate_adjustment_volcanic`) is missing, and Wet, Dry and Cold Climate Mods don't list it as an opposite | The game's trait, and each of the other three in use without it as an opposite, with it added, in a `!!_` file, as for fix 27. The new trait also covers the planet classes Planetary Diversity's `pd_is_volcanic` counts, ash and magma worlds, as its copies of the other three cover its worlds of their climates. Adapted Habitability stays on `pc_volcanic`, the one class the game's rule names. Left out once a mod in use ships the trait ([decision 61](../decisions.md)) |
+| 43 | Real Space 4.0 ships a whole copy of the game's `00_star_classes.txt` from before 4.5.3, so 4.5.3's four-star classes, `sc_quaternary_1` and `sc_crisis_quaternary_1`, are missing. Each of the game's `is_quaternary_star` checks, and its Vacuum Flower relic, logs them as unknown at load (53 entries) | The game's two classes, unchanged, in a file of their own. Neither spawns on its own, and Stewart's Resolve, which uses them, stays missing, so play doesn't change. Left out once the playset defines both, or if a planet class they name is missing ([decision 63](../decisions.md)) |
 
 ### Notes
 
@@ -222,9 +223,8 @@ authors' permission, or fixes 3, 5, 10–12, 16–19, 25–34, 36–38, 40 and 4
   copy must be the one the game uses.
 - **Fixes 11, 12 and 26 copy whole events**, and the game then has two
   events with one id. More Events Mod's copy is still loaded, but never
-  used. Fixes 17, 18, 19, 27, 28, 29, 34, 37 and 41 do the same for a system,
-  traits, a rule, a megastructure, starbase modules, starbase sizes and
-  buildings.
+  used. Fixes 18, 19, 27, 28, 29, 34, 37, 41 and 42 do the same for traits,
+  a rule, a megastructure, starbase modules, starbase sizes and buildings.
 - **Fix 15 doesn't name More Events Mod.** It defines every old shield upkeep
   name any component uses and nothing defines.
 - **Fix 18 copies 15 traits, not 18.** Three of More Events Mod's six are
@@ -264,13 +264,6 @@ These weren't seen in game yet:
   [pre-upload run](../reports/cold-steel-mix/2026-10/2026-10-07-pre-upload.md#the-patchs-fixes)
   had none.
 - A Large Mega Bombard on space fauna fires in combat (fix 16).
-- A jump drive fleet can jump into the Surveillance Supercomputer system
-  (fix 17). The log has one notice, `An initializer called
-  "surveillance_supercomputer_system" already exists`, naming Real Space's
-  `special_system_initializers.txt`. That's the check that the patch's copy
-  won, as for fixes 11 and 12. The
-  [pre-upload run](../reports/cold-steel-mix/2026-10/2026-10-07-pre-upload.md#the-patchs-fixes)
-  had it.
 - A lithoid species with Lithoid Budding on a Massive Crater gets the full
   bonus (fix 19). That traits go to the first file by name hasn't been
   checked either.
@@ -337,3 +330,15 @@ These weren't seen in game yet:
   has no `rules_leader_cannot_get_normal_trait` for `mem_astral_tales.txt`,
   and a duplicate event notice for `mem_astral_tales.8` names More Events
   Mod's file, so the patch's copy wins.
+- A cybernetic species can take Volcanic Climate Mods, and not beside Wet,
+  Dry or Cold Climate Mods. It gets 50% habitability on volcanic, ash and
+  magma worlds, and Adapted Habitability on volcanic worlds only (fix 42).
+  The log has no unknown `trait_cyborg_climate_adjustment_volcanic` or
+  `@cyborg_hab_preference_volcanic`. Traits log no duplicate notice, so it
+  can't show which copy won. The log half was **seen** in the
+  [two years on 4.5.3](../reports/cold-steel-mix/2026-11/2026-11-04-two-years-4.5.3.md#the-patchs-fixes)
+  run.
+- Loading logs no `Failed to deferred read key reference` for
+  `sc_quaternary_1` or `sc_crisis_quaternary_1` (fix 43). The
+  [two years on 4.5.3](../reports/cold-steel-mix/2026-11/2026-11-04-two-years-4.5.3.md#real-space-and-the-four-star-classes-53)
+  run had 53.

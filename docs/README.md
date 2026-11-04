@@ -62,6 +62,8 @@ it, and what to do. File them under `reports/<playset>/YYYY-MM/`, named
 | Report | Summary |
 |---|---|
 | [2026-11-02-4.5.2-update.md](reports/cold-steel-mix/2026-11/2026-11-02-4.5.2-update.md) | Update check. Stellar AI 0.14.1 now overrides buildings by name, so its Gaia Seeders beat Planetary Diversity's and fix 41 is left out. The written patch still wins with both mods' changes, but the next write would drop Planetary Diversity's gaia worlds; a change to fix 41 is proposed. Stellar AI's other changes clash with nothing. Diverse Rooms removed its broken event. The Cold Steel build is current |
+| [2026-11-04-4.5.3-update.md](reports/cold-steel-mix/2026-11/2026-11-04-4.5.3-update.md) | Update check. Stellaris 4.5.3, Stellar AI 0.14.3 and Real Space 4.0.12. Real Space unsealed its Surveillance Supercomputer system, so fix 17 is left out; dropping it is proposed. Planetary Diversity's cyborg traits file loses 4.5.3's Volcanic Climate Mods (a fix is proposed), and Real Space's files lose the new Stewart's Resolve system (proposed for the authors' list). Nothing else clashes, and no other fix overrides anything 4.5.3 changed. The Cold Steel build predates all three updates |
+| [2026-11-04-two-years-4.5.3.md](reports/cold-steel-mix/2026-11/2026-11-04-two-years-4.5.3.md) | New galaxy as United Nations of Earth, two years, the first run on 4.5.3: play logged nothing, and the patch held. 53 new load entries come from 4.5.3's four-star star classes, which Real Space's star class file lacks; fix 43 would ship the game's two classes. Fix 42 worked at load, fix 17 isn't missed, and fix 5 held on a Sol start |
 
 The two reports marked "From Cold Steel" were copied from it: "Decision N" in
 them means Cold Steel's decisions, not ours.
