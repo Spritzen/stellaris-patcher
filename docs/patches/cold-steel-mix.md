@@ -116,7 +116,7 @@ next upload
   they cover. **Update both when the game updates or the number of fixes
   changes**, then paste the whole file into the collection's description with
   Edit. A collection has no change notes. The number of fixes is the length
-  of `FIXES`: 31 for the 4 November upload, 32 since fix 44.
+  of `FIXES`: 32 for the 21 November upload.
 - Write the upload's patch notes as in [patch-notes.md](../patch-notes.md),
   and record the upload in
   [cold-steel-mix-patch-notes.md](cold-steel-mix-patch-notes.md) once it's done.
