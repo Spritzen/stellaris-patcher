@@ -1992,6 +1992,94 @@ def test_fix_43_is_left_out_if_a_class_names_a_missing_planet(game: Game) -> Non
         cold_steel_mix.fix_quaternary_stars(layers)
 
 
+# Fix 44: Starbase Extended's starbase trigger, the game's arkships and ACoT's sizes
+
+GAME_TRIGGERS = "common/scripted_triggers/07_scripted_triggers_ships.txt"
+NOMAD_TRIGGERS = "common/scripted_triggers/09_scripted_triggers_nomads.txt"
+GAME_ARKSHIPS = """is_arkship_ship = {
+	OR = {
+		is_ship_size = civilian_arkship_tier_3 # top tier
+		is_ship_size = military_arkship_tier_3
+	}
+}
+"""
+SBX_TRIGGERS = "common/scripted_triggers/sbx_scripted_triggers.txt"
+SBX_STARBASE = """ship_uses_starbase_components = {
+	OR = {
+		is_ship_size = starbase_citadel
+		is_ship_size = starbase_stronghold
+		is_ship_size = civilian_arkship_tier_3
+		is_ship_size = acot_civilian_arkship_tier_4
+		is_ship_size = military_arkship_tier_3
+	}
+}
+"""
+
+
+F44_GAME_SIZES = {
+    "common/ship_sizes/00_starbases.txt": "starbase_citadel = { }",
+    "common/ship_sizes/29_nomads_dlc_ships.txt": (
+        "civilian_arkship_tier_3 = { }\nmilitary_arkship_tier_3 = { }"
+    ),
+}
+F44_SBX_SIZES = {"common/ship_sizes/sbx_3_0_starbases.txt": "starbase_stronghold = { }"}
+F44_ACOT_SIZES = {"common/ship_sizes/acot_arkships.txt": "acot_civilian_arkship_tier_4 = { }"}
+
+
+def _starbase_trigger(game: Game, sbx: str, *, acot: bool = False) -> Layers:
+    game_files = {
+        GAME_TRIGGERS: "ship_uses_starbase_components = { is_ship_size = starbase_citadel }",
+        NOMAD_TRIGGERS: GAME_ARKSHIPS,
+        **F44_GAME_SIZES,
+    }
+    mods = {
+        GAME: game_files,
+        cold_steel_mix.STARBASE_EXTENDED: {SBX_TRIGGERS: sbx, **F44_SBX_SIZES},
+    }
+    if acot:
+        mods["workshop:1"] = F44_ACOT_SIZES
+    return _layers(game, mods)
+
+
+def test_fix_44_takes_the_arkships_and_undefined_sizes_out_of_the_trigger(game: Game) -> None:
+    files, notes = cold_steel_mix.fix_starbase_components(_starbase_trigger(game, SBX_STARBASE))
+    ((path, text),) = files.items()
+    assert path.endswith("z_stellaris_patcher_cold_steel_mix_starbase_components.txt")
+    assert path.removeprefix("common/scripted_triggers/") > "sbx_scripted_triggers.txt"
+    assert (
+        b"\t\tis_ship_size = starbase_citadel\n\t\tis_ship_size = starbase_stronghold\n\t}" in text
+    )
+    assert b"arkship" not in text.split(b"\n", 1)[1]
+    assert notes == [
+        "civilian_arkship_tier_3, from the game, taken out",
+        "military_arkship_tier_3, from the game, taken out",
+        "1 sizes nothing defines taken out: acot_civilian_arkship_tier_4",
+    ]
+    assert check_files(files) == []
+
+
+def test_fix_44_keeps_a_size_a_mod_in_use_defines(game: Game) -> None:
+    layers = _starbase_trigger(game, SBX_STARBASE, acot=True)
+    files, notes = cold_steel_mix.fix_starbase_components(layers)
+    (text,) = files.values()
+    assert b"\t\tis_ship_size = acot_civilian_arkship_tier_4\n\t}" in text
+    assert b"= civilian_arkship_tier_3" not in text
+    assert len(notes) == 2
+
+
+def test_fix_44_is_left_out_once_every_size_is_defined_and_no_arkship(game: Game) -> None:
+    sbx = SBX_STARBASE.replace("\t\tis_ship_size = civilian_arkship_tier_3\n", "").replace(
+        "\t\tis_ship_size = military_arkship_tier_3\n", ""
+    )
+    with pytest.raises(FixError, match="names none of the game's arkships, and no size"):
+        cold_steel_mix.fix_starbase_components(_starbase_trigger(game, sbx, acot=True))
+
+
+def test_fix_44_is_left_out_once_starbase_extendeds_trigger_is_gone(game: Game) -> None:
+    with pytest.raises(FixError, match="isn't the one in use now"):
+        cold_steel_mix.fix_starbase_components(_starbase_trigger(game, "other_trigger = { }"))
+
+
 # Fix 38: More Events Mod's Ancestors' Grudge leader picks
 
 GRUDGE = "common/inline_scripts/mem_ancestors_grudge/random_leader.txt"

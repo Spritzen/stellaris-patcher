@@ -2901,6 +2901,61 @@ def fix_quaternary_stars(layers: Layers) -> Made:
     ]
 
 
+# 44. Starbase Extended's starbase trigger counts the game's arkships
+
+
+TRIGGERS = "common/scripted_triggers"
+STARBASE_COMPONENTS, ARKSHIPS = "ship_uses_starbase_components", "is_arkship_ship"
+# Starbase Extended 1.3.6 adds the game's tier-3 arkships to its copy of the game's
+# trigger, next to ACoT's tier-4 ones. The trigger offers the game's starbase
+# combat computers, and an arkship's actions are all on its own computer. ACoT's
+# 28 sizes, without ACoT, each log at every one of the trigger's 61 uses.
+_SHIP_SIZE = re.compile(rb"\bis_ship_size\s*=\s*(\w+)")
+
+
+def fix_starbase_components(layers: Layers) -> Made:
+    """Starbase Extended's ship_uses_starbase_components, with each line in its
+    OR naming one of the game's arkships, or a ship size nothing defines, taken
+    out, in a file that sorts last."""
+    found = _last_definition(layers, TRIGGERS, STARBASE_COMPONENTS)
+    if found is None or found[0] != STARBASE_EXTENDED:
+        raise FixError(f"Starbase Extended's {STARBASE_COMPONENTS} isn't the one in use now.")
+    _, data, entry = found
+    game_data, game_entry = _game_entry(layers, TRIGGERS, ARKSHIPS)
+    game_body = _COMMENT.sub(b"", game_data[game_entry.start : game_entry.end])
+    arkships = set(_SHIP_SIZE.findall(game_body))
+    if not arkships:
+        raise FixError(f"The game's {ARKSHIPS} names no ship sizes now.")
+    sizes = layers.defined("common/ship_sizes")
+    edits: list[tuple[int, int, bytes]] = []
+    notes: list[str] = []
+    undefined: list[str] = []
+    for line in children(data, _child(data, entry, b"OR")):
+        name = data[line.value : line.end].strip()
+        if line.key != b"is_ship_size":
+            continue
+        if name in arkships:
+            notes.append(f"{name.decode()}, from the game, taken out")
+        elif name.decode() not in sizes:
+            undefined.append(name.decode())
+        else:
+            continue
+        start, end = data.rfind(b"\n", 0, line.start) + 1, data.find(b"\n", line.end) + 1
+        if data[start : line.start].strip() or data[line.end : end].strip():
+            start, end = line.start, line.end  # not alone on its line
+        edits.append((start, end, b""))
+    if undefined:
+        notes.append(f"{len(undefined)} sizes nothing defines taken out: {', '.join(undefined)}")
+    if not edits:
+        raise FixError(
+            f"Starbase Extended's {STARBASE_COMPONENTS} names none of the game's arkships, "
+            "and no size that nothing defines."
+        )
+    text = b"# Starbase Extended's trigger, without the game's arkships or undefined sizes\n"
+    text += _copy(layers, data, entry, _mended(data, entry, edits))
+    return {_last_file(layers, TRIGGERS, "starbase_components"): text}, notes
+
+
 # The playset's problems the patch leaves to the mods' authors, for the Workshop
 # page. Each is a mod's own bug, too big to copy or soon to be fixed upstream.
 # Drop a line once its mod has fixed it.
@@ -2918,7 +2973,7 @@ FIX_GROUPS: tuple[tuple[str, tuple[int, ...]], ...] = (
     ("Planets and buildings", (37, 41)),
     ("Events and stories", (6, 11, 12, 26, 38, 40)),
     ("Galaxy and systems", (5, 28, 43)),
-    ("Ships and starbases", (2, 3, 15, 16, 29, 30, 31, 32, 33, 34)),
+    ("Ships and starbases", (2, 3, 15, 16, 29, 30, 31, 32, 33, 34, 44)),
     ("Graphics and camera", (1, 4)),
     ("Text and translations", (7, 10, 25, 36)),
 )
@@ -3176,5 +3231,15 @@ FIXES: tuple[tuple[int, str, Callable[[Layers], Made], tuple[str, ...]], ...] = 
         ),
         fix_quaternary_stars,
         (REAL_SPACE,),
+    ),
+    (
+        44,
+        (
+            "Tier-3 arkships keep their own combat computer and reactor with Starbase "
+            "Extended, so they keep every arkship action, and its ACoT ship sizes no longer "
+            "log errors without ACoT"
+        ),
+        fix_starbase_components,
+        (STARBASE_EXTENDED,),
     ),
 )

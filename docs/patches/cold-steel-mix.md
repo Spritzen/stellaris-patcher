@@ -1,6 +1,6 @@
 # Cold Steel Mix patch
 
-**A mod named "Cold Steel Mix patch" that fixes 28 problems in the Cold
+**A mod named "Cold Steel Mix patch" that fixes 32 problems in the Cold
 Steel Mix playset.** [What each fix does](#what-each-fix-does) lists them.
 Most were proposed in a [report](../README.md#reports). Problems it leaves to
 the mods' authors are listed on its Workshop page
@@ -116,7 +116,7 @@ next upload
   they cover. **Update both when the game updates or the number of fixes
   changes**, then paste the whole file into the collection's description with
   Edit. A collection has no change notes. The number of fixes is the length
-  of `FIXES`: 31 for the 4 November upload.
+  of `FIXES`: 31 for the 4 November upload, 32 since fix 44.
 - Write the upload's patch notes as in [patch-notes.md](../patch-notes.md),
   and record the upload in
   [cold-steel-mix-patch-notes.md](cold-steel-mix-patch-notes.md) once it's done.
@@ -178,9 +178,10 @@ written by hand, one line per problem.
 | `events/!!_stellaris_patcher_cold_steel_mix_astral_tales.txt` | One of More Events Mod's events, with one line added |
 | `common/buildings/~~_stellaris_patcher_cold_steel_mix_gaia_seeders.txt` | Planetary Diversity's four Gaia Seeders, with Stellar AI's `allow` in each |
 | `common/traits/!!_stellaris_patcher_cold_steel_mix_volcanic_climate_mods.txt` | Planetary Diversity's Wet, Dry and Cold Climate Mods, with one opposite added in each, beside the game's Volcanic Climate Mods |
+| `common/scripted_triggers/zzzz_stellaris_patcher_cold_steel_mix_starbase_components.txt` | Starbase Extended 3.0's `ship_uses_starbase_components`, with 31 lines taken out |
 
 The game's own files are fine to ship in a mod. The others need their
-authors' permission, or fixes 3, 5, 10–12, 16, 18, 19, 25–34, 36–38, 40–42 left out.
+authors' permission, or fixes 3, 5, 10–12, 16, 18, 19, 25–34, 36–38, 40–42, 44 left out.
 
 ## What each fix does
 
@@ -217,6 +218,7 @@ authors' permission, or fixes 3, 5, 10–12, 16, 18, 19, 25–34, 36–38, 40–
 | 41 | Stellar AI adds an AI-only guard to the four Gaia Seeders' `allow`: no new one, or upgrade, while the empire is short of exotic gases. Planetary Diversity's copies add its four extra gaia world types. Whichever mod's file sorts last drops the other's change: Stellar AI's `~stellarai_government_buildings.txt` since 0.14.1, which destroys a Gaia Seeder on Planetary Diversity's extra gaia worlds and stops one being built there | Planetary Diversity's four copies in a `~~_` file, each with every block Stellar AI changed from the game's or added: its `allow`. Fix 37's merge with the mods the other way round, and a block the game lacks is added after the one it follows in Stellar AI's copy. Built whichever of the two mods wins. Each Gaia Seeder is left out on its own if another mod wins it, or both mods change the same block ([decision 60](../decisions.md)) |
 | 42 | Planetary Diversity ships a whole copy of the game's `10_species_traits_cyborg.txt` from before 4.5.3, so 4.5.3's Volcanic Climate Mods (`trait_cyborg_climate_adjustment_volcanic`) is missing, and Wet, Dry and Cold Climate Mods don't list it as an opposite | The game's trait, and each of the other three in use without it as an opposite, with it added, in a `!!_` file, as for fix 27. The new trait also covers the planet classes Planetary Diversity's `pd_is_volcanic` counts, ash and magma worlds, as its copies of the other three cover its worlds of their climates. Adapted Habitability stays on `pc_volcanic`, the one class the game's rule names. Left out once a mod in use ships the trait ([decision 61](../decisions.md)) |
 | 43 | Real Space 4.0 ships a whole copy of the game's `00_star_classes.txt` from before 4.5.3, so 4.5.3's four-star classes, `sc_quaternary_1` and `sc_crisis_quaternary_1`, are missing. Each of the game's `is_quaternary_star` checks, and its Vacuum Flower relic, logs them as unknown at load (53 entries) | The game's two classes, unchanged, in a file of their own. Neither spawns on its own, and Stewart's Resolve, which uses them, stays missing, so play doesn't change. Left out once the playset defines both, or if a planet class they name is missing ([decision 63](../decisions.md)) |
+| 44 | Starbase Extended 3.0's copy of the game's `ship_uses_starbase_components` wins over the game's. Since 1.3.6 it names the game's three tier-3 arkships, beside ACoT's tier-4 ones. So a tier-3 arkship is offered the game's starbase combat computers, which lack all 22 arkship actions, its starbase reactors, at half a juggernaut reactor's power, and the Hyperlane aura. The game makes an arkship's design itself. It also names 28 of ACoT's sizes, which no mod in the playset defines, and the game logs each at every one of the trigger's 61 uses: 1,708 entries at load | A copy of Starbase Extended's trigger, in a `zz_` file: scripted triggers go to the last file by name. Each `is_ship_size` line in its `OR` naming a ship size the game's `is_arkship_ship` lists, or one no ship size file in the playset defines, is taken out. Its own sizes stay, and ACoT's do with ACoT. Left out once Starbase Extended's trigger isn't the one in use, or names neither ([decision 64](../decisions.md)) |
 
 ### Notes
 
@@ -231,8 +233,9 @@ authors' permission, or fixes 3, 5, 10–12, 16, 18, 19, 25–34, 36–38, 40–
   copy must be the one the game uses.
 - **Fixes 11, 12 and 26 copy whole events**, and the game then has two
   events with one id. More Events Mod's copy is still loaded, but never
-  used. Fixes 18, 19, 27, 28, 29, 34, 37, 41 and 42 do the same for traits,
-  a rule, a megastructure, starbase modules, starbase sizes and buildings.
+  used. Fixes 18, 19, 27, 28, 29, 34, 37, 41, 42 and 44 do the same for
+  traits, a rule, a megastructure, starbase modules, starbase sizes,
+  buildings and a scripted trigger.
 - **Fix 15 doesn't name More Events Mod.** It defines every old shield upkeep
   name any component uses and nothing defines.
 - **Fix 18 copies 15 traits, not 18.** Three of More Events Mod's six are
@@ -350,3 +353,10 @@ These weren't seen in game yet:
   `sc_quaternary_1` or `sc_crisis_quaternary_1` (fix 43). The
   [two years on 4.5.3](../reports/cold-steel-mix/2026-11/2026-11-04-two-years-4.5.3.md#real-space-and-the-four-star-classes-53)
   run had 53.
+- A Nomadic empire's tier-3 arkship keeps its actions, such as settle and
+  survey, and its design has the arkship combat computer and a juggernaut
+  reactor (fix 44). The log's duplicate notice for
+  `ship_uses_starbase_components` names the patch's file, so its copy wins,
+  and the log has no `acot_` sizes. The designs and the notice were **seen**
+  in the [two years as a Nomadic empire](../reports/cold-steel-mix/2026-11/2026-11-21-two-years-nomadic.md#the-patchs-fixes)
+  run, before the ACoT sizes were taken out.

@@ -11,8 +11,9 @@ Rules from it that are easy to miss:
 
 - Propose fixes in the report and wait for the user before adding any
   ([decision 25](../../../docs/decisions.md)).
-- Ask the user to close the game and the launcher before the rebuild's
-  `cold-steel-mix --write`. The container can't see them.
+- Don't ask whether the game and the launcher are closed before the rebuild's
+  `cold-steel-mix --write`. They always are
+  ([decision 65](../../../docs/decisions.md)).
 - Run with `--notes`, and read "Older mod copies" against the notes, not
   only what changed since the baseline. Most mods lag a release, and an
   older copy undoes a game fix without logging anything.
