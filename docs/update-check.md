@@ -68,9 +68,9 @@ PYTHONPATH=src python3 -m stellaris_patcher check-update --accept  # 8. once rev
    [cold-steel-mix.md](patches/cold-steel-mix.md), with tests. `make check`
    must pass.
 
-7. **Rebuild, once the user says the game and launcher are closed.** Run
-   `cold-steel-mix --write`, then rebuild the playset in Cold Steel. The
-   container can't see the game's process, so ask first.
+7. **Rebuild.** Run `cold-steel-mix --write`, then rebuild the playset in
+   Cold Steel. Don't ask whether the game and the launcher are closed: they
+   always are when the user asks ([decision 65](decisions.md)).
 
 8. **Accept the check.** `check-update --accept` saves the game and every
    mod as they are now, as the next check's baseline. It also marks every

@@ -8,8 +8,9 @@ docs/patches/cold-steel-mix.md.
 
 - Run it without `--write` first, and show the user which fixes are written
   and which are left out, with the reasons.
-- Ask the user to close the game and the launcher before `--write`. The
-  container can't see them.
+- Don't ask whether the game and the launcher are closed. They always are
+  when the user asks for a build: run `--write` straight after the dry run
+  ([decision 65](../../../docs/decisions.md)).
 - `--add-to-playset` writes Cold Steel's files: pass `--cold-steel-closed`
   only after the user says Cold Steel is closed.
 - End by reminding the user to **rebuild Cold Steel Mix in Cold Steel**. The
