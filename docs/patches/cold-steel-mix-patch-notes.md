@@ -16,6 +16,20 @@ them.
   again with Steam's Edit.
 - The history starts at the 4.5.2 update. Earlier uploads weren't copied.
 
+## 21 November 2026, 22:23
+
+Built from `edf3554`.
+
+```text
+2026.11.21
+
+Updated for Stellaris 4.5.4, and checked with Stellar AI 0.14.4 and Starbase Extended 1.3.6. Tier-3 arkships keep all their actions with Starbase Extended.
+
+Starbase Extended 3.0
+Tier-3 arkships keep their own combat computer and reactor, as in 4.5.4. Starbase Extended 1.3.6 offers them starbase combat computers, which have none of an arkship's actions, such as settle, survey or build megastructures, and starbase reactors at half the power.
+The game no longer logs about 1,700 errors while loading for the Ancient Cache of Technologies ship sizes Starbase Extended 1.3.6 names. They only exist with that mod, so nothing changes in game.
+```
+
 ## 4 November 2026, 22:29
 
 Built from `9bf38b8`.
