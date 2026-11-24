@@ -47,6 +47,7 @@ MORE_ARCOLOGIES = "workshop:1732447147"  # Planetary Diversity - More Arcologies
 SHRIMPAI = "workshop:2815767345"  # Smarter Hyper Relays: Improved AI (shrimpAI)
 UI_OVERHAUL = "workshop:1623423360"  # UI Overhaul Dynamic
 STELLAR_AI = "workshop:3610149307"
+DIVERSE_ROOMS = "workshop:3811388854"  # Diverse Rooms (All in One)
 
 
 class FixError(Exception):
@@ -153,9 +154,28 @@ ASSETS = (
 )
 
 
+# System Scale changes more than sizes in these: ring world locators and cull
+# radii. So the fix keeps its whole file and adds only the entities it lacks.
+ADDED_ASSETS = ("gfx/models/planets/_planetary_entities.asset",)
+
+
 def fix_system_scale_assets(layers: Layers) -> Made:
     files: dict[str, bytes] = {}
     notes: list[str] = []
+    for path in ADDED_ASSETS:
+        _expect_winner(layers, path, SYSTEM_SCALE, "Real Space - System Scale")
+        data, added, skipped = add_missing_entities(
+            layers.read(GAME, path), layers.read(SYSTEM_SCALE, path)
+        )
+        if added:
+            files[path] = data
+            notes.append(f"{path}: {len(added)} entities back, as System Scale sizes their parts")
+        else:
+            notes.append(f"{path}: System Scale's copy has every game entity it can take now.")
+        notes += [
+            f"{path}: {name}: System Scale changes more than its size in most styles. Skipped."
+            for name in skipped
+        ]
     for path in ASSETS:
         _expect_winner(layers, path, SYSTEM_SCALE, "Real Space - System Scale")
         game, mod = layers.read(GAME, path), layers.read(SYSTEM_SCALE, path)
@@ -168,6 +188,99 @@ def fix_system_scale_assets(layers: Layers) -> Made:
     if not files:
         raise FixError("System Scale's copies have every game entity now.")
     return files, notes
+
+
+def add_missing_entities(game: bytes, mod: bytes) -> tuple[bytes, list[str], list[str]]:
+    """The mod's copy of a graphics file, with each entity the game has and it
+    lacks added at the end. Returns it, the names added, and those skipped.
+
+    A newer style's entity that's an older style's with the style renamed is
+    the mod's copy of that older one, renamed. Any other is the game's, with the
+    one-line values the mod changes in most styles of the same part, so long as
+    it changes no block in them. Otherwise it's skipped.
+    """
+    theirs = {e.name: e for e in _entities(mod)}
+    entities = _entities(game)
+    blocks: list[bytes] = []
+    added: list[str] = []
+    skipped: list[str] = []
+    for entity in entities:
+        if entity.name in theirs:
+            continue
+        part = _part(entity.name)
+        style = entity.name[: len(entity.name) - len(part)].encode()
+        older = [e for e in entities if e.name in theirs and _part(e.name) == part]
+        block = None
+        for other in older:
+            was = other.name[: len(other.name) - len(part)].encode()
+            if was and _words(game, other.entry).replace(was, style) == _words(game, entity.entry):
+                copy = theirs[other.name]
+                block = mod[copy.entry.start : copy.entry.end].replace(was, style)
+                break
+        if block is None:
+            block = _changed_like(game, mod, entity, [(e, theirs[e.name]) for e in older])
+        if block is None:
+            skipped.append(entity.name)
+            continue
+        blocks.append(block)
+        added.append(entity.name)
+    eol = b"\r\n" if b"\r\n" in mod else b"\n"
+    tail = b"".join(eol + eol + b.replace(b"\r\n", b"\n").replace(b"\n", eol) for b in blocks)
+    return mod.rstrip() + tail + eol, added, skipped
+
+
+def _words(data: bytes, entry: Entry) -> bytes:
+    """An entry's text without comments, whitespace as single spaces."""
+    return b" ".join(_COMMENT.sub(b"", data[entry.start : entry.end]).split())
+
+
+def _changed_like(
+    game: bytes, mod: bytes, entity: _Entity, older: list[tuple[_Entity, _Entity]]
+) -> bytes | None:
+    """The game's `entity`, with the one-line values (`scale`, `cull_radius`)
+    the mod changes in most of `older`, the same part in other styles: (the
+    game's, the mod's). None if most of them don't share one change, or the mod
+    changes a block in them."""
+
+    def values(data: bytes, e: _Entity) -> dict[bytes, Entry]:
+        return {c.key: c for c in children(data, e.entry) if not c.block}
+
+    def blocks(data: bytes, e: _Entity) -> list[bytes]:
+        return [_words(data, c) for c in children(data, e.entry) if c.block]
+
+    def text(data: bytes, found: dict[bytes, Entry], key: bytes) -> bytes:
+        return data[found[key].value : found[key].end].strip() if key in found else b""
+
+    changes: list[frozenset[tuple[bytes, bytes, bytes]]] = []
+    for ours, theirs in older:
+        if blocks(game, ours) != blocks(mod, theirs):
+            continue
+        before, after = values(game, ours), values(mod, theirs)
+        changes.append(
+            frozenset(
+                (k, text(game, before, k), text(mod, after, k))
+                for k in before.keys() | after.keys()
+                if text(game, before, k) != text(mod, after, k)
+            )
+        )
+    if not changes:
+        return None
+    change = max(set(changes), key=changes.count)
+    if changes.count(change) * 2 <= len(older):
+        return None
+    own = values(game, entity)
+    at = entity.entry.start
+    edits: list[tuple[int, int, bytes]] = []
+    for key, was, now in sorted(change):
+        if text(game, own, key) != was or not now:  # a value taken out: not a size
+            return None
+        if key in own:
+            spaced = game[own[key].value : own[key].value + 1].isspace()
+            edits.append((own[key].value - at, own[key].end - at, b" " * spaced + now))
+        else:
+            end = entity.name_entry.end - at
+            edits.append((end, end, b"\n\t" + key + b" = " + now))
+    return _edit(game[entity.entry.start : entity.entry.end], edits)
 
 
 @dataclass(frozen=True)
@@ -508,6 +621,9 @@ SOL_NEIGHBOURS = {
     "sol_neighbor_t1": "bernards_star_mediumsector",
     "sol_neighbor_t2": "procyon_mediumsector",
     "sol_neighbor_t1_no_guaranteed_colony": "alpha_centauri_mediumsector_no_col",
+    # Planetary Diversity's habitat start and More Events Mod's Eden Protocol name it.
+    # Real Space's system has its neighbor_t1_first_colony flag too.
+    "sol_neighbor_t1_first_colony": "alpha_centauri_mediumsector",
 }
 _INITIALIZER = re.compile(rb'\binitializer\s*=\s*"?(\w+)')
 
@@ -802,6 +918,20 @@ def _first_file(layers: Layers, folder: str, what: str) -> str:
     return f"{folder}/{name}"
 
 
+TRAITS = "common/traits"
+
+
+def _trait_files(layers: Layers, what: str, text: bytes) -> dict[str, bytes]:
+    """`text`, trait copies, in a file that sorts first and in one that sorts
+    last. Up to 4.5.4 the first copy of a trait won. 4.6 logs a duplicate trait
+    the way it does a building, where the last wins. Which rule it follows is
+    unknown, so a patch copy wins under either (decision 71)."""
+    return {
+        _first_file(layers, TRAITS, what): text,
+        _last_file(layers, TRAITS, what): text,
+    }
+
+
 def _blocks(data: bytes, entry: Entry) -> list[Entry]:
     """Every named block inside `entry`, at any depth, in order."""
     found: list[Entry] = []
@@ -897,46 +1027,6 @@ def _mended(data: bytes, entry: Entry, edits: list[tuple[int, int, bytes]]) -> b
     """`entry`, key and all, with `edits` made inside it."""
     grown = sum(len(new) - (end - start) for start, end, new in edits)
     return _edit(data, edits)[entry.start : entry.end + grown]
-
-
-# 15. More Events Mod's shield upkeep, by the names 4.5.2 renamed
-
-
-COMPONENTS = "common/component_templates"
-# 4.5.2: "Shield upkeep scripted variables are renamed to the shared
-# @defense_<size>_t<N>_upkeep_* family."
-_OLD_UPKEEP = re.compile(r"^@shield_(\w+_upkeep_\w+)$")
-
-
-def fix_shield_upkeep(layers: Layers) -> Made:
-    """Defines each old shield upkeep name a component still uses, with the
-    game's value for its new name."""
-    shared = layers.defined("common/scripted_variables")
-    used: dict[str, set[str]] = {}  # old name -> the mods that use it
-    for layer, path in layers.ordered(COMPONENTS):
-        data = layers.read(layer, path)
-        own = _variables(data)
-        for match in _VARIABLE.findall(_COMMENT.sub(b"", data)):
-            name = "@" + match.decode()
-            if _OLD_UPKEEP.match(name) and name not in own and name not in shared:
-                used.setdefault(name, set()).add(layer)
-    if not used:
-        raise FixError("No component uses an old shield upkeep name now.")
-    game: dict[str, str] = {}
-    for path in layers.paths(GAME, "common/scripted_variables"):
-        data = layers.read(GAME, path)
-        game |= {k: _text(data, e) for k, e in _variables(data).items()}
-    lines: list[str] = []
-    for old in sorted(used):
-        new = _OLD_UPKEEP.sub(r"@defense_\1", old)
-        if not re.fullmatch(r"[\d.]+", game.get(new, "")):
-            raise FixError(f"The game has no number for {new}, which {old} became.")
-        lines.append(f"{old} = {game[new]}\n")
-    header = "# Old names some mods still use: the game's values for their 4.5.2 names.\n"
-    notes = [f"{len(lines)} names: {', '.join(sorted(used))}"]
-    return {
-        f"common/scripted_variables/{TAIL}_shield_upkeep.txt": (header + "".join(lines)).encode()
-    }, notes
 
 
 # 16. Ships in Scaling's range for the Large Mega Bombard
@@ -1061,7 +1151,7 @@ def fix_trait_categories(layers: Layers) -> Made:
     text = ((top + "\n" if top else "").encode() + b"\n\n".join(bodies)).replace(b"\r\n", b"\n")
     mended = ", ".join(f"{n} from {mod}" for mod, n in counts.items())
     notes.insert(0, f"{sum(counts.values())} traits ({mended}) use {POPS_TRAITS.decode()}")
-    return {_first_file(layers, "common/traits", "trait_categories"): text + b"\n"}, notes
+    return _trait_files(layers, "trait_categories", text + b"\n"), notes
 
 
 # 19. Planetary Diversity's and Ascension Worlds' copies miss two of the game's fixes
@@ -1084,18 +1174,18 @@ def fix_ascension_worlds(layers: Layers) -> Made:
     notes: list[str] = []
     for part in (_budding, _terraform):
         try:
-            path, data, note = part(layers)
+            made, note = part(layers)
         except FixError as why:
             notes.append(f"{why} Skipped.")
             continue
-        files[path] = data
+        files |= made
         notes.append(note)
     if not files:
         raise FixError("The trait and rule match the game's now.")
     return files, notes
 
 
-def _budding(layers: Layers) -> tuple[str, bytes, str]:
+def _budding(layers: Layers) -> tuple[dict[str, bytes], str]:
     """Each of the trait's pop modifiers gets the game's `divide_over_pop_groups`
     where it lacks one. 4.5.2 gave the Massive Crater's its full bonus."""
     traits = layers.defined("common/traits")
@@ -1124,10 +1214,10 @@ def _budding(layers: Layers) -> tuple[str, bytes, str]:
         f"{BUDDING}, from {BUDDING_MODS[owner]}: {len(edits)} pop modifier gets the game's "
         f"{DIVIDE.decode()}"
     )
-    return _first_file(layers, "common/traits", "lithoid_budding"), text, note
+    return _trait_files(layers, "lithoid_budding", text), note
 
 
-def _terraform(layers: Layers) -> tuple[str, bytes, str]:
+def _terraform(layers: Layers) -> tuple[dict[str, bytes], str]:
     """The rule gets each of the game's custom tooltips it lacks, by fail
     text. One it has in a comment was taken out on purpose, and stays out."""
     found = _game_rule(layers, TERRAFORM)
@@ -1155,7 +1245,7 @@ def _terraform(layers: Layers) -> tuple[str, bytes, str]:
     note = f"{TERRAFORM}: adds {', '.join(added)}"
     if kept_out:
         note += f"; keeps out {', '.join(kept_out)}, as Ascension Worlds chose"
-    return _last_file(layers, GAME_RULES, "terraform"), _copy(layers, data, entry, body), note
+    return {_last_file(layers, GAME_RULES, "terraform"): _copy(layers, data, entry, body)}, note
 
 
 def _game_rule(layers: Layers, rule: str) -> tuple[str, bytes, Entry] | None:
@@ -1235,8 +1325,8 @@ def mend_text(data: bytes, english: Sequence[list[str]]) -> tuple[bytes, list[st
     was done. Text that starts with its own key again, as a bad paste left in
     several of Planetary Diversity's translations, loses the copy. `english` is
     the mod's English keys, file by file, in order: a line of text with no key
-    gets the key the English file has in its place. Raises FixError for a line
-    no rule mends."""
+    gets the key the English file has in its place, or is taken out if the file
+    has that key elsewhere. Raises FixError for a line no rule mends."""
     start = len(BOM) if data.startswith(BOM) else 0
     try:
         lines = data[start:].decode("utf-8").splitlines(keepends=True)
@@ -1281,24 +1371,28 @@ def mend_text(data: bytes, english: Sequence[list[str]]) -> tuple[bytes, list[st
         else:
             before = next((k for k in reversed(named[:i]) if k), None)
             after = next((k for k in named[i + 1 :] if k), None)
-            key = _english_key(english, before, after, have)
+            key = _english_key(english, before, after)
             if key is None:
                 raise FixError(f"Line {n} has no key, and the English text doesn't say which.")
+            if key in have:  # the mod added the key elsewhere, and left this line
+                changes.append(
+                    f"line {n}: text with no key taken out, as {key} is on line "
+                    f"{named.index(key) + 1}"
+                )
+                continue
             indent, text = body[: len(body) - len(body.lstrip())], stripped.strip('"')
             out.append(f'{indent}{key}: "{text}"{end}')
             changes.append(f"line {n}: the text gets its key, {key}, from the English file")
     return data[:start] + "".join(out).encode(), changes
 
 
-def _english_key(
-    english: Sequence[list[str]], before: str | None, after: str | None, have: set[str]
-) -> str | None:
-    """The key an English file has between `before` and `after`, if this file lacks it."""
+def _english_key(english: Sequence[list[str]], before: str | None, after: str | None) -> str | None:
+    """The key an English file has between `before` and `after`."""
     for order in english:
         if before is None or before not in order:
             continue
         at = order.index(before) + 1
-        if at < len(order) and order[at] not in have and order[at + 1 : at + 2] in ([after], []):
+        if at < len(order) and order[at + 1 : at + 2] in ([after], []):
             return order[at]
     return None
 
@@ -1432,10 +1526,9 @@ def fix_aquatic(layers: Layers) -> Made:
     if _weight_words(without) != _weight_words(their_text):
         raise FixError(f"{AQUATIC}'s ai_weight differs from the game's in more than its traits.")
     body = _mended(data, entry, [(theirs.start, theirs.end, game_data[ours.start : ours.end])])
-    path = _first_file(layers, "common/traits", "aquatic")
     named = ", ".join(t.decode() for t in added)
     note = f"{AQUATIC}, from Planetary Diversity: its ai_weight gets the game's {named}"
-    return {path: _copy(layers, data, entry, body)}, [note]
+    return _trait_files(layers, "aquatic", _copy(layers, data, entry, body)), [note]
 
 
 def _weight_words(text: bytes) -> list[bytes]:
@@ -1459,12 +1552,16 @@ HYPER_RELAY = "hyper_relay"
 # 4.5.2: "Fixed Gateways, Hyper-Relays and the Grand Archive not being buildable by
 # Nomadic empires in some cases." The game's surveyed-system check lets an empire
 # build at its own waystation. shrimpAI's copy, from 4.5.1, doesn't.
+# 4.6: "Starbases and some megastructures now provide Ideological Push." The game's
+# Hyper Relay has it in these blocks, and Networked Movement's edict raises it.
+STATION_MODIFIERS = (b"station_modifier", b"triggered_station_modifier")
 
 
 def fix_hyper_relay(layers: Layers) -> Made:
     """A copy of shrimpAI's Hyper Relay, in a file that sorts last, with each
     clause it lacks from the game's own `possible` checks: in each custom
-    tooltip's OR, matched by fail text. shrimpAI's own clauses stay."""
+    tooltip's OR, matched by fail text. shrimpAI's own clauses stay. It also
+    gets the game's STATION_MODIFIERS blocks it lacks."""
     found = _last_definition(layers, MEGASTRUCTURES, HYPER_RELAY)
     if found is None or found[0] != SHRIMPAI:
         raise FixError(f"{HYPER_RELAY} doesn't come from shrimpAI now.")
@@ -1489,13 +1586,45 @@ def fix_hyper_relay(layers: Layers) -> Made:
             indent = _indent(data, first) if first else b"\t"
             edits.append((at, at, b"\n" + indent + game_data[clause.start : clause.end]))
             added.append(text)
-    if not edits:
-        raise FixError(f"{HYPER_RELAY}'s checks have every clause the game's do now.")
-    body = _mended(data, entry, edits)
+    blocks, names = _lacked_blocks(data, entry, game_data, game_entry, STATION_MODIFIERS)
+    if not edits and not blocks:
+        raise FixError(f"{HYPER_RELAY} has every clause and block of the game's it needs now.")
+    body = _mended(data, entry, edits + blocks)
     path = _last_file(layers, MEGASTRUCTURES, "hyper_relay")
-    tooltips = ", ".join(sorted(set(added)))
-    note = f"{HYPER_RELAY}, from shrimpAI: adds the game's clause to {tooltips}"
-    return {path: _copy(layers, data, entry, body)}, [note]
+    notes = []
+    if added:
+        tooltips = ", ".join(sorted(set(added)))
+        notes.append(f"{HYPER_RELAY}, from shrimpAI: adds the game's clause to {tooltips}")
+    if names:
+        notes.append(f"{HYPER_RELAY}, from shrimpAI: gets the game's {', '.join(names)}")
+    return {path: _copy(layers, data, entry, body)}, notes
+
+
+def _lacked_blocks(
+    data: bytes, entry: Entry, game_data: bytes, game_entry: Entry, keys: Sequence[bytes]
+) -> tuple[list[tuple[int, int, bytes]], list[str]]:
+    """Edits adding the game's blocks named in `keys` that a mod's copy lacks, each
+    after the last block before it in the game's that the copy has, and their names."""
+    mine = children(data, entry)
+    have = {c.key for c in mine}
+    inserts: dict[int, list[bytes]] = {}
+    names: list[str] = []
+    anchor: Entry | None = None
+    for block in children(game_data, game_entry):
+        if block.key in have:
+            anchor = next(c for c in mine if c.key == block.key)
+        elif block.key in keys:
+            at = anchor.end if anchor else entry.inside[0]
+            inserts.setdefault(at, []).append(game_data[block.start : block.end])
+            names.append(block.key.decode())
+    if not inserts:
+        return [], []
+    indent = _indent(data, mine[0]) if mine else b"\t"
+    edits = [
+        (at, at, b"".join(b"\n\n" + indent + text for text in texts))
+        for at, texts in inserts.items()
+    ]
+    return edits, names
 
 
 def _tooltip_ors(data: bytes, entry: Entry) -> dict[str, Entry]:
@@ -2194,12 +2323,20 @@ def fix_sbx_checks(layers: Layers) -> Made:
     merged into the first, a `category` line taken out of a `potential`, and
     `exists = solar_system` before a `potential` scopes to the system, which
     an arkship's starbase lacks. Its hangar bay gets 4.5's hangars, bio-ship
-    upkeep and tooltips. Whole files, so the game never reads the duplicate
-    blocks (item 35 of the Starbase Extended back report). A module fix 29
-    copies is left to it."""
+    upkeep and tooltips, and a copy of the game's object gets the game's 4.6
+    Ideological Push blocks it lacks. Whole files, so the game never reads the
+    duplicate blocks (item 35 of the Starbase Extended back report). A module
+    fix 29 copies is left to it."""
     files: dict[str, bytes] = {}
     notes: list[str] = []
     for folder in (STARBASE_MODULES, STARBASE_BUILDINGS):
+        game = {
+            e.key: (data, e)
+            for game_path in layers.paths(GAME, folder)
+            for data in [layers.read(GAME, game_path)]
+            for e in scan(data)
+            if e.block
+        }
         for path in layers.paths(STARBASE_EXTENDED, folder):
             if layers.winner(path) != STARBASE_EXTENDED:
                 continue
@@ -2216,6 +2353,10 @@ def fix_sbx_checks(layers: Layers) -> Made:
                     more, hangar = _hangar_edits(layers, data, entry)
                     mends += more
                     done += hangar
+                if entry.key in game:
+                    more, names = _lacked_blocks(data, entry, *game[entry.key], STATION_MODIFIERS)
+                    mends += more
+                    done += [f"gets the game's {', '.join(names)}"] if names else []
                 if mends:
                     edits += mends
                     notes.append(f"{entry.key.decode()}: {', '.join(done)}")
@@ -2368,6 +2509,9 @@ SIZE_FIELDS = (
     b"is_orbital_ring",
     b"flip_control_on_disable",
 )
+# Lines in a size's `modifier` that a later version added. Starbase Extended's copy
+# gets those it lacks. 4.6: "Starbases and orbital rings now provide Ideological Push."
+SIZE_MODIFIERS = (b"ideological_push_mult",)
 # The game's conditions for building a size, such as 4.5's "not at a waystation or an
 # arkship" on the Ion Cannon. Those Starbase Extended's copy lacks are added.
 CONSTRUCTION = b"potential_construction"
@@ -2410,6 +2554,7 @@ def fix_starbase_sizes(layers: Layers) -> Made:
                 added.append(field_name + b" = " + value)
             elif data[have.value : have.end].strip() != value:
                 edits.append((have.value, have.end, value))
+        edits += _modifier_edits(data, entry, game_data, game_entry, added)
         if key not in NEW_SIZES:
             edits += _construction_edits(data, entry, game_data, game_entry)
         if not edits and not added:
@@ -2421,14 +2566,36 @@ def fix_starbase_sizes(layers: Layers) -> Made:
         bodies.append(body)
         changed.append(key.decode())
     if not bodies:
-        raise FixError("Starbase Extended's starbase sizes have the game's 4.5 values now.")
+        raise FixError("Starbase Extended's starbase sizes have the game's values now.")
     top = "".join(f"{n} = {v}\n" for n, v in sorted(header.items()))
     text = ((top + "\n" if top else "").encode() + b"\n\n".join(bodies)).replace(b"\r\n", b"\n")
     note = (
-        f"{len(changed)} sizes get the game's 4.5 values and construction conditions, "
-        "the new tiers the Citadel's values"
+        f"{len(changed)} sizes get the game's 4.5 values, 4.6's Ideological Push and the "
+        "game's construction conditions, the new tiers the Citadel's values"
     )
     return {_last_file(layers, SHIP_SIZES, "starbase_sizes"): text + b"\n"}, [note]
+
+
+def _modifier_edits(
+    data: bytes, entry: Entry, game_data: bytes, game_entry: Entry, added: list[bytes]
+) -> list[tuple[int, int, bytes]]:
+    """An edit adding the game's SIZE_MODIFIERS lines Starbase Extended's size lacks
+    to its `modifier`. With no `modifier`, one is added to `added`."""
+    theirs = next((c for c in children(game_data, game_entry) if c.key == b"modifier"), None)
+    if theirs is None or not theirs.block:
+        return []
+    mine = next((c for c in children(data, entry) if c.key == b"modifier" and c.block), None)
+    have = set() if mine is None else {c.key for c in children(data, mine)}
+    lacked = [
+        b" ".join(game_data[c.start : c.end].split())
+        for c in children(game_data, theirs)
+        if c.key in SIZE_MODIFIERS and c.key not in have and not c.block
+    ]
+    if mine is None:
+        if lacked:
+            added.append(b"modifier = { " + b" ".join(lacked) + b" }")
+        return []
+    return _added(data, mine, lacked)
 
 
 def _construction_edits(
@@ -2762,40 +2929,49 @@ _PLANET_CLASS = re.compile(rb"is_planet_class\s*=\s*(\w+)")
 
 
 def fix_volcanic_climate_mods(layers: Layers) -> Made:
-    """The game's Volcanic Climate Mods, and each of its opposites in use without
-    it as an opposite, with it added, in a file that sorts first. The new trait
-    also covers Planetary Diversity's other volcanic worlds, as its copies of
-    the other three cover its other worlds of their climates."""
+    """Volcanic Climate Mods, and each of its opposites in use without it as an
+    opposite, with it added, in a file that sorts first. The trait is the game's,
+    or Planetary Diversity's copy once it ships one. It also covers Planetary
+    Diversity's other volcanic worlds, as its copies of the other three cover its
+    other worlds of their climates."""
     traits = layers.defined("common/traits")
-    if VOLCANIC_MODS in traits:
-        raise FixError(
-            f"{VOLCANIC_MODS} is in use now, from {_trait_mod(traits[VOLCANIC_MODS][0])}."
-        )
     if not layers.has(PLANETARY_DIVERSITY, CYBORG_TRAITS):
         raise FixError(f"Planetary Diversity has no {CYBORG_TRAITS} now.")
-    game_data, game_entry = _game_entry(layers, "common/traits", VOLCANIC_MODS)
-    edits = []
-    notes = []
+    source = traits[VOLCANIC_MODS][0] if VOLCANIC_MODS in traits else GAME
+    if source not in (GAME, PLANETARY_DIVERSITY):
+        raise FixError(f"{VOLCANIC_MODS} is in use now, from {_trait_mod(source)}.")
+    if source == GAME:
+        trait_data, trait_entry = _game_entry(layers, "common/traits", VOLCANIC_MODS)
+    else:
+        trait_data = layers.read(*traits[VOLCANIC_MODS])
+        trait_entry = next(
+            e for e in scan(trait_data) if e.key == VOLCANIC_MODS.encode() and e.block
+        )
+    edits: list[tuple[int, int, bytes]] = []
+    notes: list[str] = []
     extra = _pd_volcanic_classes(
-        layers, _block_words(game_data, game_entry, b"bound_to_planet_classes")
+        layers, _block_words(trait_data, trait_entry, b"bound_to_planet_classes")
     )
     if extra:
-        classes = _child(game_data, game_entry, b"bound_to_planet_classes")
-        modifier = _child(game_data, game_entry, b"modifier")
+        classes = _child(trait_data, trait_entry, b"bound_to_planet_classes")
+        modifier = _child(trait_data, trait_entry, b"modifier")
         lines = [f"{c}_habitability = @cyborg_hab_preference_volcanic" for c in extra]
         edits += [
-            _append_lines(game_data, classes, extra),
-            _append_lines(game_data, modifier, lines),
+            _append_lines(trait_data, classes, extra),
+            _append_lines(trait_data, modifier, lines),
         ]
         notes.append(
-            f"{VOLCANIC_MODS}, from the game: also on {', '.join(extra)}, "
+            f"{VOLCANIC_MODS}, from {_trait_mod(source)}: also on {', '.join(extra)}, "
             f"Planetary Diversity's {PD_VOLCANIC}"
         )
-    else:
+    elif source == GAME:
         notes.append(f"{VOLCANIC_MODS}, from the game")
-    bodies = [_mended(game_data, game_entry, edits)]
-    header = dict(_copied_variables(layers, game_data, game_entry, bodies[0]))
-    for name in _block_words(game_data, game_entry, b"opposites"):
+    bodies: list[bytes] = []
+    header: dict[str, str] = {}
+    if edits or source == GAME:  # Planetary Diversity's own copy is in use as it is
+        bodies.append(_mended(trait_data, trait_entry, edits))
+        header.update(_copied_variables(layers, trait_data, trait_entry, bodies[0]))
+    for name in _block_words(trait_data, trait_entry, b"opposites"):
         if name not in traits:
             notes.append(f"{name} isn't in use. Skipped.")
             continue
@@ -2812,9 +2988,14 @@ def fix_volcanic_climate_mods(layers: Layers) -> Made:
         header.update(variables)
         bodies.append(body)
         notes.append(f"{name}, from {_trait_mod(layer)}: {VOLCANIC_MODS} added to its opposites")
+    if not bodies:
+        raise FixError(
+            f"{VOLCANIC_MODS} is in use now, from {_trait_mod(source)}, "
+            "on every volcanic world it has, and its opposites list it."
+        )
     top = "".join(f"{n} = {value}\n" for n, value in sorted(header.items()))
     text = ((top + "\n" if top else "").encode() + b"\n\n".join(bodies)).replace(b"\r\n", b"\n")
-    return {_first_file(layers, "common/traits", "volcanic_climate_mods"): text + b"\n"}, notes
+    return _trait_files(layers, "volcanic_climate_mods", text + b"\n"), notes
 
 
 def _trait_mod(layer: str) -> str:
@@ -2956,6 +3137,47 @@ def fix_starbase_components(layers: Layers) -> Made:
     return {_last_file(layers, TRIGGERS, "starbase_components"): text}, notes
 
 
+# 45. The game's Megacorp triggers, by the names 4.6 renamed
+
+
+# 4.6 renamed these two scripted triggers, without a line in its notes. Real Space's
+# Caravaneer home system and Diverse Rooms' prescripted empires still use the old ones.
+RENAMED_TRIGGERS = {
+    "has_megacorp": "has_megacorp_dlc",
+    "has_not_megacorp": "has_not_megacorp_dlc",
+}
+MEGACORP_FOLDERS = ("common", "events", "prescripted_countries")
+MEGACORP_MODS = {REAL_SPACE: "Real Space", DIVERSE_ROOMS: "Diverse Rooms"}
+
+
+def fix_megacorp_triggers(layers: Layers) -> Made:
+    """Each old name a mod still uses, as a scripted trigger that calls the
+    game's new one. The game's names only, so no mod's work is shipped."""
+    defined = layers.defined(TRIGGERS)
+    names = rb"\b(" + b"|".join(re.escape(n.encode()) for n in RENAMED_TRIGGERS) + rb")\b"
+    used: dict[str, set[str]] = {}  # old name -> the mods that use it
+    for folder in MEGACORP_FOLDERS:
+        for layer, path in layers.ordered(folder):
+            if layer == GAME:
+                continue
+            for found in re.findall(names, _COMMENT.sub(b"", layers.read(layer, path))):
+                used.setdefault(found.decode(), set()).add(layer)
+    blocks: list[str] = []
+    notes: list[str] = []
+    for old, new in RENAMED_TRIGGERS.items():
+        if old not in used or old in defined:
+            continue
+        if new not in defined:
+            raise FixError(f"{new} isn't defined any more.")
+        blocks.append(f"{old} = {{\n\t{new} = yes\n}}\n")
+        mods = sorted(MEGACORP_MODS.get(layer, layer) for layer in used[old])
+        notes.append(f"{old} calls {new}, for {', '.join(mods)}")
+    if not blocks:
+        raise FixError("No mod uses a Megacorp trigger's old name now, or it's defined.")
+    text = "# Names 4.6 renamed, which some mods still use.\n" + "\n".join(blocks)
+    return {f"{TRIGGERS}/{TAIL}_megacorp.txt": text.encode()}, notes
+
+
 # The playset's problems the patch leaves to the mods' authors, for the Workshop
 # page. Each is a mod's own bug, too big to copy or soon to be fixed upstream.
 # Drop a line once its mod has fixed it.
@@ -2963,6 +3185,12 @@ LEFT_TO_AUTHORS: tuple[str, ...] = (
     "Real Space 4.0 has no Stewart's Resolve, 4.5.3's new four-star system: its copies "
     "of the game's star class and special system files predate 4.5.3, so the system "
     "never spawns",
+    "UI Overhaul Dynamic's bottom bar has no button for 4.6's ideology map mode",
+    "Real Space 4.0's shader file predates 4.6, so the Unbidden's ships and anchor "
+    "stations lack the shader their models now use",
+    "Real Space 4.0's Fallen Empire systems predate 4.6: its two Scion Fallen Empires "
+    "don't get their Absolute ethic with Willpower, and buildings are placed in the old "
+    "order",
 )
 
 
@@ -2972,8 +3200,8 @@ FIX_GROUPS: tuple[tuple[str, tuple[int, ...]], ...] = (
     ("Species and traits", (18, 19, 27, 42)),
     ("Planets and buildings", (37, 41)),
     ("Events and stories", (6, 11, 12, 26, 38, 40)),
-    ("Galaxy and systems", (5, 28, 43)),
-    ("Ships and starbases", (2, 3, 15, 16, 29, 30, 31, 32, 33, 34, 44)),
+    ("Galaxy and systems", (5, 28, 43, 45)),
+    ("Ships and starbases", (2, 3, 16, 29, 30, 31, 32, 33, 34, 44)),
     ("Graphics and camera", (1, 4)),
     ("Text and translations", (7, 10, 25, 36)),
 )
@@ -2990,8 +3218,9 @@ FIXES: tuple[tuple[int, str, Callable[[Layers], Made], tuple[str, ...]], ...] = 
     (
         1,
         (
-            "Newer-style Dyson spheres, quantum catapults, Starlit systems and Voidspawn "
-            "storms have models again, at System Scale's size"
+            "Newer-style Dyson spheres, quantum catapults, Starlit systems, Voidspawn storms, "
+            "and the Inquisitor style's ring worlds and city planet, have models again, at "
+            "System Scale's size"
         ),
         fix_system_scale_assets,
         (SYSTEM_SCALE,),
@@ -3052,12 +3281,6 @@ FIXES: tuple[tuple[int, str, Callable[[Layers], Made], tuple[str, ...]], ...] = 
         12,
         "More Events Mod's glacier AI leader with Iron Fist keeps the trait, as a commander",
         fix_glacier_leader,
-        (MORE_EVENTS,),
-    ),
-    (
-        15,
-        "More Events Mod's three Progenitor shields cost upkeep again, at the game's 4.5.2 rates",
-        fix_shield_upkeep,
         (MORE_EVENTS,),
     ),
     (
@@ -3217,8 +3440,8 @@ FIXES: tuple[tuple[int, str, Callable[[Layers], Made], tuple[str, ...]], ...] = 
     (
         42,
         (
-            "Cybernetic species can take 4.5.3's Volcanic Climate Mods with Planetary "
-            "Diversity, on its ash and magma worlds too"
+            "Volcanic Climate Mods adapts cybernetic species to Planetary Diversity's ash and "
+            "magma worlds too, as its other Climate Mods cover its worlds of their climates"
         ),
         fix_volcanic_climate_mods,
         (PLANETARY_DIVERSITY,),
@@ -3241,5 +3464,15 @@ FIXES: tuple[tuple[int, str, Callable[[Layers], Made], tuple[str, ...]], ...] = 
         ),
         fix_starbase_components,
         (STARBASE_EXTENDED,),
+    ),
+    (
+        45,
+        (
+            "The Caravaneers' home system can spawn again with Real Space, and Diverse Rooms' "
+            "prescripted empires are offered as they should be: both check for Megacorp by its "
+            "name before 4.6"
+        ),
+        fix_megacorp_triggers,
+        (REAL_SPACE, DIVERSE_ROOMS),
     ),
 )

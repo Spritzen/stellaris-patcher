@@ -344,3 +344,14 @@ def test_accepting_a_check_marks_its_findings_as_reviewed(game: Game) -> None:
     assert not any(name.startswith("older__") for name in report.diffs)
     assert report.notes == []  # read already, with the copies they were matched to
     assert "0 new, 1 reviewed" in check.render(report)
+
+
+def test_a_release_is_told_by_its_title_its_headings_or_a_modding_section() -> None:
+    def note(title: str, text: str = "") -> Note:
+        return Note(datetime(2026, 11, 23, tzinfo=UTC), title, text, "")
+
+    assert notes.is_release(note("Stellaris 4.5.4 patch released"))
+    assert notes.is_release(note("Willpower now available!", "## Free 4.6 'Corona Borealis'\n"))
+    assert notes.is_release(note("Dev Diary #441", "## Preliminary Release Notes​\n"))
+    assert notes.is_release(note("Dev Diary #441", "Modding​\n- `include` renamed\n"))
+    assert not notes.is_release(note("Dev Diary #440", "## The Inquisitor Shipset\n4.6 soon\n"))

@@ -20,7 +20,7 @@ from stellaris_patcher.paradox.script import scan
 from stellaris_patcher.patchmod.cold_steel_mix import Outcome
 from stellaris_patcher.patchmod.layers import GAME, Layers
 from stellaris_patcher.update import snapshot
-from stellaris_patcher.update.notes import Note
+from stellaris_patcher.update.notes import Note, is_release
 from stellaris_patcher.update.older import NoteUse, OlderCopy, diff_text, note_uses, older_copies
 from stellaris_patcher.update.snapshot import Baseline, Manifest
 
@@ -28,8 +28,6 @@ _COMMENT = re.compile(rb"#[^\n]*")
 # A variable use: not part of a word or a $parameter$, and not a name built from one.
 _VARIABLE_USE = re.compile(rb"(?<![\w$])@([A-Za-z_]\w*)(?![\w$])")
 _VARIABLE_DEF = re.compile(rb"^\s*(@\w+)\s*=", re.MULTILINE)
-# A release's announcement names its version: "Stellaris 4.5.2 released", "4.5 'Cygnus' ...".
-_RELEASE = re.compile(r"\b\d+\.\d+")
 UPDATE_WINDOW = 3600.0  # seconds: game files this close to the program's time came with it
 # The patch's own files that Cold Steel's build leaves out, as for every mod. The
 # launcher writes the Workshop id into the descriptor at an upload.
@@ -115,7 +113,7 @@ def check(
         Use(u.name, u.key, u.path, u.ident not in known) for u in undefined_variables(layers)
     ]
     updated = updated or {}
-    kept_notes = [n for n in kept_notes or [] if _RELEASE.search(n.title)]
+    kept_notes = [n for n in kept_notes or [] if is_release(n)]
     older = older_copies(layers, now, updated, diffs, known)
     since = notes_since(older, base)
     to_read = [n for n in kept_notes if since is None or n.date.timestamp() > since]

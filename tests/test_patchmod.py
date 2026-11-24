@@ -10,6 +10,7 @@ from stellaris_patcher.paradox.script import scan, value_of
 from stellaris_patcher.patchmod import cold_steel_mix
 from stellaris_patcher.patchmod.cold_steel_mix import (
     FixError,
+    add_missing_entities,
     mirror_scale,
     repoint_slots,
     section_slots,
@@ -165,6 +166,46 @@ def test_mirror_scale_refuses_a_mod_that_scales_by_two_factors() -> None:
         mirror_scale(game, mod)
 
 
+# Fix 1: add_missing_entities, for System Scale's planets file
+
+
+GAME_PLANETS = b"""entity = { name = "a_01_ring_entity" cull_radius = 500.0 attach = { l = "x" } }
+entity = { name = "b_01_ring_entity" cull_radius = 500.0 attach = { l = "x" } }
+entity = { name = "c_01_ring_entity" cull_radius = 500.0 attach = { l = "x" } }
+entity = { name = "a_01_full_entity" pdxmesh = "full" locator = { position = { 450 } } }
+entity = { name = "new_01_ring_entity" cull_radius = 500.0 attach = { l = "x" } texture = "new" }
+entity = { name = "new_01_full_entity" pdxmesh = "full" locator = { position = { 450 } } }
+entity = { name = "new_01_seam_entity" attach = { l = "x" } }
+"""
+MOD_PLANETS = b"""@ring = 6
+entity = { name = "a_01_ring_entity" scale = @ring cull_radius = @cull attach = { l = "x" } }
+entity = { name = "b_01_ring_entity" scale = @ring cull_radius = @cull attach = { l = "x" } }
+entity = { name = "c_01_ring_entity" scale = @ring cull_radius = 500.0 attach = { l = "x" } }
+entity = { name = "a_01_full_entity" pdxmesh = "full" locator = { position = { @far } } }"""
+
+
+def test_add_missing_entities_follows_what_the_mod_does_in_most_styles() -> None:
+    out, added, skipped = add_missing_entities(GAME_PLANETS, MOD_PLANETS)
+    assert out.startswith(MOD_PLANETS + b"\n\n")  # the mod's own file stays whole
+    assert added == ["new_01_ring_entity", "new_01_full_entity"]
+    assert skipped == ["new_01_seam_entity"]  # no other style to follow
+    assert (
+        b'entity = { name = "new_01_ring_entity"\n\tscale = @ring cull_radius = @cull '
+        b'attach = { l = "x" } texture = "new" }'
+    ) in out  # the game's entity, with the values two of three styles have
+    # the same entity as a_01_'s, so the mod's copy of it, renamed
+    assert (
+        b'entity = { name = "new_01_full_entity" pdxmesh = "full" '
+        b"locator = { position = { @far } } }\n" in out
+    )
+
+
+def test_add_missing_entities_skips_a_part_whose_blocks_the_mod_changes() -> None:
+    mod = MOD_PLANETS.replace(b'l = "x" } }', b'l = "y" } }')
+    _, added, skipped = add_missing_entities(GAME_PLANETS, mod)
+    assert "new_01_ring_entity" in skipped and added == ["new_01_full_entity"]
+
+
 # Fix 2: repoint_slots
 
 
@@ -269,6 +310,47 @@ def test_fix_4_refuses_a_step_past_the_end(game: Game, monkeypatch: pytest.Monke
     (outcome,) = cold_steel_mix.plan(layers)
     assert not outcome.files
     assert "ZOOM_STEPS_SHOW_FLEET_HEALTH_BARS names step { 1 3 }" in outcome.left_out
+
+
+# Fix 5: the game's Sol neighbours by Real Space's names
+
+SOL_FILE = "common/solar_system_initializers/sol_initializers.txt"
+GAME_SOL = 'sol_neighbor_t1_first_colony = {\n\tname = "NAME_Alpha_Centauri"\n}\n'
+REAL_SPACE_SOL = (
+    "@ring = 6\n"
+    'alpha_centauri_mediumsector = {\n\tname = "NAME_Alpha_Centauri"\n\tscale = @ring\n}\n'
+)
+PD_HABITAT = 'start = {\n\tneighbor_system = { initializer = "sol_neighbor_t1_first_colony" }\n}\n'
+
+
+def _sol(game: Game, real_space: str = REAL_SPACE_SOL) -> Layers:
+    return _layers(
+        game,
+        {
+            GAME: {SOL_FILE: GAME_SOL},
+            cold_steel_mix.PLANETARY_DIVERSITY: {
+                "common/solar_system_initializers/pd_habitat_start.txt": PD_HABITAT,
+            },
+            cold_steel_mix.REAL_SPACE: {SOL_FILE: real_space},
+        },
+    )
+
+
+def test_fix_5_copies_real_spaces_system_for_the_first_colony_neighbour(game: Game) -> None:
+    files, notes = cold_steel_mix.fix_sol_neighbours(_sol(game))
+    (text,) = files.values()
+    assert text == (
+        b"@ring = 6\n\n# The game's sol_neighbor_t1_first_colony: a copy of Real Space's "
+        b"alpha_centauri_mediumsector\nsol_neighbor_t1_first_colony = {\n\tname = "
+        b'"NAME_Alpha_Centauri"\n\tscale = @ring\n}\n'
+    )
+    assert "sol_neighbor_t1_first_colony = Real Space's alpha_centauri_mediumsector" in notes
+
+
+def test_fix_5_is_left_out_if_real_spaces_system_is_another_star(game: Game) -> None:
+    other = REAL_SPACE_SOL.replace("NAME_Alpha_Centauri", "NAME_Sirius")
+    with pytest.raises(FixError, match="isn't the same star"):
+        cold_steel_mix.fix_sol_neighbours(_sol(game, other))
 
 
 # Fix 6: More Events Mod's old name for Planetary Diversity's trigger
@@ -560,42 +642,6 @@ def test_fix_12_is_left_out_when_every_leader_can_have_its_traits(game: Game) ->
         cold_steel_mix.fix_glacier_leader(layers)
 
 
-# Fix 15: More Events Mod's old shield upkeep names
-
-SHIELDS = "common/component_templates/mem_lex_utilities.txt"
-SHIELD = "mem_SHIELD = { upkeep = { energy = @shield_l_t7_upkeep_energy } }\n# @shield_x_upkeep_y\n"
-UPKEEP = "@defense_l_t7_upkeep_energy = 1.52\n"
-
-
-def test_fix_15_defines_the_old_names_with_the_games_values(game: Game) -> None:
-    layers = _layers(
-        game,
-        {
-            GAME: {"common/scripted_variables/02_cost.txt": UPKEEP},
-            cold_steel_mix.MORE_EVENTS: {SHIELDS: SHIELD},
-        },
-    )
-    files, notes = cold_steel_mix.fix_shield_upkeep(layers)
-    (data,) = files.values()
-    assert data.endswith(b"@shield_l_t7_upkeep_energy = 1.52\n")
-    assert b"shield_x" not in data
-    assert notes == ["1 names: @shield_l_t7_upkeep_energy"]
-    assert check_files(files) == []
-
-
-def test_fix_15_is_left_out_once_the_old_names_are_defined(game: Game) -> None:
-    old = "@shield_l_t7_upkeep_energy = 1\n"
-    layers = _layers(
-        game,
-        {
-            GAME: {"common/scripted_variables/02_cost.txt": UPKEEP + old},
-            cold_steel_mix.MORE_EVENTS: {SHIELDS: SHIELD},
-        },
-    )
-    with pytest.raises(FixError, match="No component uses"):
-        cold_steel_mix.fix_shield_upkeep(layers)
-
-
 # Fix 16: Ships in Scaling's mutation weapon ranges
 
 CSV_HEAD = "# a comment;;\r\nkey;cost;range;end\r\n"
@@ -774,7 +820,9 @@ def test_fix_19_mends_planetary_diversitys_budding_while_ascension_worlds_is_off
         game, {GAME: GAME_BUDDING, cold_steel_mix.PLANETARY_DIVERSITY: {SPECIES_TRAITS: budding}}
     )
     files, notes = cold_steel_mix.fix_ascension_worlds(layers)
-    assert list(files) == [LITHOID_BUDDING]
+    # In a file that sorts first and one that sorts last: 4.6's rule for traits is unknown
+    assert list(files) == [LITHOID_BUDDING, LITHOID_BUDDING.replace("!!_", "zz_")]
+    assert files[LITHOID_BUDDING] == files[LITHOID_BUDDING.replace("!!_", "zz_")]
     assert files[LITHOID_BUDDING].count(b"divide_over_pop_groups = no") == 2
     assert notes == [
         "trait_lithoid_budding, from Planetary Diversity: 1 pop modifier gets the game's "
@@ -883,6 +931,26 @@ def test_fix_25_mends_ascension_worlds_from_its_own_english_file(game: Game) -> 
     }
     assert notes == [
         f"{french}: line 3: the text gets its key, ap_flooded_tooltip, from the English file"
+    ]
+
+
+def test_fix_25_takes_out_a_keyless_line_whose_key_the_file_has_elsewhere(game: Game) -> None:
+    german = 'l_german:\ndrone: "Drohne"\nDrohnen."\ndrone_add: "+1"\ndrone_desc: "Drones."\n'
+    layers = _layers(
+        game,
+        {
+            cold_steel_mix.MORE_ARCOLOGIES: {
+                ARCOLOGIES_GERMAN: german,
+                "localisation/english/arcs_l_english.yml": ARCOLOGIES_ENGLISH,
+            },
+        },
+    )
+    files, notes = cold_steel_mix.fix_broken_text(layers)
+    assert files == {
+        ARCOLOGIES_GERMAN: b'l_german:\ndrone: "Drohne"\ndrone_add: "+1"\ndrone_desc: "Drones."\n'
+    }
+    assert notes == [
+        f"{ARCOLOGIES_GERMAN}: line 3: text with no key taken out, as drone_desc is on line 5"
     ]
 
 
@@ -1077,8 +1145,12 @@ RELAY = """hyper_relay = {\r
 RELAY_COPY = "common/megastructures/zzzz_stellaris_patcher_cold_steel_mix_hyper_relay.txt"
 
 
-def _relay(game: Game, shrimpai: str) -> Layers:
+PUSH = "\tstation_modifier = { ideological_push_mult = 0.2 }\n"
+
+
+def _relay(game: Game, shrimpai: str, push: str = "") -> Layers:
     game_relay = RELAY.replace("\r", "").replace("@shrimpai_alloys_cost", "500")
+    game_relay = game_relay.replace("\tpossible = {", push + "\tpossible = {", 1)
     return _layers(
         game,
         {
@@ -1107,9 +1179,23 @@ def test_fix_28_adds_the_games_waystation_clause_and_keeps_shrimpais_own(game: G
     assert check_files(files) == []
 
 
+def test_fix_28_adds_the_games_ideological_push_after_the_block_before_it(game: Game) -> None:
+    shrimpai = RELAY.replace("WAYSTATION", WAYSTATION)
+    files, notes = cold_steel_mix.fix_hyper_relay(_relay(game, shrimpai, PUSH))
+    relay = files[RELAY_COPY]
+    assert (
+        b"@shrimpai_alloys_cost } }\n\n\tstation_modifier = { ideological_push_mult = 0.2 }\n"
+        b"\tpossible = {"
+    ) in relay
+    assert notes == ["hyper_relay, from shrimpAI: gets the game's station_modifier"]
+    assert check_files(files) == []
+
+
 def test_fix_28_is_left_out_once_shrimpai_has_the_games_clauses(game: Game) -> None:
-    with pytest.raises(FixError, match="every clause the game's do now"):
-        cold_steel_mix.fix_hyper_relay(_relay(game, RELAY.replace("WAYSTATION", WAYSTATION)))
+    shrimpai = RELAY.replace("WAYSTATION", WAYSTATION)
+    shrimpai = shrimpai.replace("\tpossible = {", PUSH.replace("\n", "\r\n") + "\tpossible = {", 1)
+    with pytest.raises(FixError, match="every clause and block of the game's"):
+        cold_steel_mix.fix_hyper_relay(_relay(game, shrimpai, PUSH))
 
 
 # Fix 29: Starbase Extended's module bonuses and the buildings nothing defines
@@ -1549,6 +1635,27 @@ def test_fix_32_mends_starbase_extendeds_files_whole(game: Game) -> None:
     assert check_files(files) == []
 
 
+def test_fix_32_gives_a_copied_building_the_games_ideological_push(game: Game) -> None:
+    game_otc = (
+        "offworld_trading_company = {\n\tresources = { cost = { alloys = 100 } }\n"
+        "\tstation_modifier = { ideological_push_mult = 0.05 }\n\tai_weight = { weight = 1 }\n}\n"
+    )
+    sbx_otc = "offworld_trading_company = {\n\tresources = { cost = { alloys = 80 } }\n}\n"
+    layers = _layers(
+        game,
+        {
+            GAME: {"common/starbase_buildings/00_starbase_buildings.txt": game_otc},
+            cold_steel_mix.STARBASE_EXTENDED: {SBX_BUILDINGS: sbx_otc},
+        },
+    )
+    files, notes = cold_steel_mix.fix_sbx_checks(layers)
+    assert files[SBX_BUILDINGS] == (
+        b"offworld_trading_company = {\n\tresources = { cost = { alloys = 80 } }\n\n"
+        b"\tstation_modifier = { ideological_push_mult = 0.05 }\n}\n"
+    )
+    assert notes == ["offworld_trading_company: gets the game's station_modifier"]
+
+
 def test_fix_32_is_left_out_once_the_checks_are_mended(game: Game) -> None:
     layers = _sbx_checks(
         game, modules="pd_battery = { potential = { exists = owner } }\n", buildings=""
@@ -1608,6 +1715,10 @@ starbase_citadel = {
 \tsize_multiplier = @citadel_size
 \tcombat_size_multiplier = 100
 \tmap_counter_icon = ship_counter_128
+\tmodifier = {
+\t\tstarbase_module_capacity_add = 6
+\t\tideological_push_mult = 0.2
+\t}
 }
 ion_cannon = {
 \tfleet_slot_size = 40
@@ -1622,6 +1733,9 @@ starbase_citadel = {
 \tmax_hitpoints = 240000
 \tsize_multiplier = 4
 \tcombat_size_multiplier = 50
+\tmodifier = {
+\t\tstarbase_module_capacity_add = 8
+\t}
 }
 ion_cannon = {
 \tfleet_slot_size = 8
@@ -1657,20 +1771,23 @@ def test_fix_34_gives_starbase_extendeds_sizes_the_games_values(game: Game) -> N
     assert b"size_multiplier = 100" in citadel and b"combat_size_multiplier = 100" in citadel
     assert b"map_counter_icon = ship_counter_128" in citadel
     assert b"max_hitpoints = 240000" in citadel  # Starbase Extended's own
+    # 4.6's Ideological Push joins Starbase Extended's own modifier
+    assert b"\t\tstarbase_module_capacity_add = 8\n\t\tideological_push_mult = 0.2\n\t}" in citadel
     stronghold = _entity_text(sizes, b"starbase_stronghold")
     assert b"size_multiplier = 100" in stronghold and b"ship_counter_128" in stronghold
+    assert b"modifier = { ideological_push_mult = 0.2 }" in stronghold
     ion = _entity_text(sizes, b"ion_cannon")
     assert b"fleet_slot_size = 40" in ion and b"is_arkship_starbase = no" in ion
     assert notes == [
-        "3 sizes get the game's 4.5 values and construction conditions, the new tiers the "
-        "Citadel's values"
+        "3 sizes get the game's 4.5 values, 4.6's Ideological Push and the game's construction "
+        "conditions, the new tiers the Citadel's values"
     ]
     assert check_files(files) == []
 
 
 def test_fix_34_is_left_out_once_the_sizes_have_the_games_values(game: Game) -> None:
     same = GAME_SIZES.replace("@citadel_size", "100").replace("@100 = 100\n", "")
-    with pytest.raises(FixError, match=r"have the game's 4\.5 values now"):
+    with pytest.raises(FixError, match="have the game's values now"):
         cold_steel_mix.fix_starbase_sizes(_sizes(game, sbx=same, nsc=""))
 
 
@@ -1909,6 +2026,7 @@ def test_fix_42_adds_the_trait_with_pds_volcanic_worlds_and_the_opposite(game: G
         _volcanic(game, WET_MODS.replace("OPPOSITE", ""))
     )
     text = files[VOLCANIC_COPY]
+    assert files == {VOLCANIC_COPY: text, VOLCANIC_COPY.replace("!!_", "zz_"): text}
     assert text.startswith(
         b"@cyborg_hab_preference = 0.70\n\ntrait_cyborg_climate_adjustment_volcanic"
     )
@@ -1935,10 +2053,39 @@ def test_fix_42_ships_the_games_trait_as_it_is_without_pds_check(game: Game) -> 
     assert notes[0] == "trait_cyborg_climate_adjustment_volcanic, from the game"
 
 
-def test_fix_42_is_left_out_once_planetary_diversity_has_the_trait(game: Game) -> None:
+def test_fix_42_adds_pds_volcanic_worlds_to_its_own_copy_of_the_trait(game: Game) -> None:
     pd_cyborg = WET_MODS.replace("OPPOSITE", WET_OPPOSITE)
-    layers = _volcanic(game, pd_cyborg + VOLCANIC_MODS)
-    with pytest.raises(FixError, match="is in use now"):
+    files, notes = cold_steel_mix.fix_volcanic_climate_mods(
+        _volcanic(game, pd_cyborg + VOLCANIC_MODS)
+    )
+    text = files[VOLCANIC_COPY]
+    assert text.startswith(b"trait_cyborg_climate_adjustment_volcanic")
+    assert b"\t\tpc_volcanic\n\t\tpc_pd_ash\n\t}" in text
+    assert b"trait_cyborg_climate_adjustment_wet = {" not in text
+    assert notes == [
+        "trait_cyborg_climate_adjustment_volcanic, from Planetary Diversity: also on pc_pd_ash, "
+        "Planetary Diversity's pd_is_volcanic",
+    ]
+    assert check_files(files) == []
+
+
+def test_fix_42_is_left_out_once_pds_trait_covers_its_volcanic_worlds(game: Game) -> None:
+    pd_cyborg = WET_MODS.replace("OPPOSITE", WET_OPPOSITE)
+    volcanic = VOLCANIC_MODS.replace("\t\tpc_volcanic\n", "\t\tpc_volcanic\n\t\tpc_pd_ash\n")
+    with pytest.raises(FixError, match="on every volcanic world it has"):
+        cold_steel_mix.fix_volcanic_climate_mods(_volcanic(game, pd_cyborg + volcanic))
+
+
+def test_fix_42_is_left_out_once_another_mod_ships_the_trait(game: Game) -> None:
+    layers = _layers(
+        game,
+        {
+            GAME: {CYBORG: VOLCANIC_MODS},
+            cold_steel_mix.PLANETARY_DIVERSITY: {CYBORG: WET_MODS.replace("OPPOSITE", "")},
+            cold_steel_mix.MORE_EVENTS: {"common/traits/mem_traits.txt": VOLCANIC_MODS},
+        },
+    )
+    with pytest.raises(FixError, match="is in use now, from More Events Mod"):
         cold_steel_mix.fix_volcanic_climate_mods(layers)
 
 
@@ -2262,3 +2409,44 @@ def test_every_fix_with_a_mod_in_the_real_cold_steel_mix_applies() -> None:
     names = [layers.name(k) for k in cold_steel_mix.patched_mods(outcomes, order)]
     assert "Real Space - System Scale" in names
     assert all(d.startswith(BOM) for p, d in files.items() if p.endswith(".yml"))
+
+
+# Fix 45: the game's Megacorp triggers by their names before 4.6
+
+MEGACORP_DLC = "has_megacorp_dlc = { host_has_dlc = Megacorp }\nhas_not_megacorp_dlc = { }\n"
+CARAVANEERS = "init = {\n\tusage_odds = { modifier = { has_megacorp = yes add = 100 } }\n}\n"
+
+
+def _megacorp(game: Game, triggers: str = MEGACORP_DLC) -> Layers:
+    return _layers(
+        game,
+        {
+            GAME: {"common/scripted_triggers/00_scripted_triggers.txt": triggers},
+            cold_steel_mix.REAL_SPACE: {
+                "common/solar_system_initializers/megacorp.txt": CARAVANEERS,
+            },
+            cold_steel_mix.DIVERSE_ROOMS: {
+                "prescripted_countries/99_countries.txt": (
+                    "corp = {\n\tplayable = has_megacorp # has_not_megacorp\n}\n"
+                ),
+            },
+        },
+    )
+
+
+def test_fix_45_calls_the_new_name_by_each_old_name_a_mod_uses(game: Game) -> None:
+    files, notes = cold_steel_mix.fix_megacorp_triggers(_megacorp(game))
+    assert files == {
+        "common/scripted_triggers/stellaris_patcher_cold_steel_mix_megacorp.txt": (
+            b"# Names 4.6 renamed, which some mods still use.\n"
+            b"has_megacorp = {\n\thas_megacorp_dlc = yes\n}\n"
+        )
+    }
+    assert notes == ["has_megacorp calls has_megacorp_dlc, for Diverse Rooms, Real Space"]
+    assert check_files(files) == []
+
+
+def test_fix_45_is_left_out_once_the_old_names_are_defined(game: Game) -> None:
+    layers = _megacorp(game, MEGACORP_DLC + "has_megacorp = { has_megacorp_dlc = yes }\n")
+    with pytest.raises(FixError, match="No mod uses"):
+        cold_steel_mix.fix_megacorp_triggers(layers)

@@ -21,7 +21,7 @@ PYTHONPATH=src python3 -m stellaris_patcher check-update --accept  # 8. once rev
    |---|---|
    | `check.md` | Every finding. Start here |
    | `diffs/` | For each mod copy of a changed game file: `…__game.diff` is what the update changed, `…__<mod>.diff` is the mod's copy against the new game file |
-   | `notes/` | Release announcements in full, from the baseline or from the oldest mod's update in "Older mod copies", whichever is earlier |
+   | `notes/` | Release announcements in full, from the baseline or from the oldest mod's update in "Older mod copies", whichever is earlier. An announcement counts if its title names a version, or a heading names one or "release notes", or it has a Modding section: 4.6's notes came in a dev diary ([decision 70](decisions.md)) |
    | `game-files-changed.txt` | Every changed game text file |
 
 2. **Read `check.md`, top to bottom.**

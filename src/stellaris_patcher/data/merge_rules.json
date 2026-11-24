@@ -28,7 +28,7 @@
     {"folder": "common/special_projects", "winner": "first", "unit": "field", "field": "key", "source": "Irony"},
     {"folder": "common/start_screen_messages", "winner": "first", "unit": "file", "source": "Irony"},
     {"folder": "common/strategic_resources", "winner": "first", "source": "Irony"},
-    {"folder": "common/traits", "winner": "first", "source": "Irony"},
+    {"folder": "common/traits", "winner": "first", "source": "Irony. Unknown since 4.6, which logs duplicate traits as it does buildings: the patch ships its trait copies first and last (decision 71)"},
     {"folder": "events", "winner": "first", "unit": "field", "field": "id", "source": "Irony", "checked": "2026-10-01"},
 
     {"folder": "common/defines", "unit": "define", "source": "Irony"},
