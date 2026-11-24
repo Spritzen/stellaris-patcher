@@ -16,6 +16,48 @@ them.
   again with Steam's Edit.
 - The history starts at the 4.5.2 update. Earlier uploads weren't copied.
 
+## 24 November 2026, 20:30
+
+Built from `64ed2f4`.
+
+```text
+2026.11.24
+
+Updated for Stellaris 4.6.0 "Corona Borealis" and Willpower, and checked with Stellar AI 0.21, UI Overhaul Dynamic's 4.6 update, Planetary Diversity's 4.6 updates and More Events Mod 2.20.0. Starbases and Hyper Relays give 4.6's Ideological Push again, and the Caravaneers' home system can spawn with Real Space.
+
+Starbase Extended 3.0
+Starbases and orbital rings give 4.6's Ideological Push, as in 4.6.0. The Stronghold and HQ give the Citadel's.
+The Offworld Trading Company gives 4.6's Ideological Push, as in 4.6.0.
+
+Smarter Hyper Relays (shrimpAI)
+Hyper Relays give 4.6's Ideological Push, and more with the Networked Movement edict, as in 4.6.0.
+
+Real Space 4.0 and Diverse Rooms
+The Caravaneers' home system, Chors Compass, can spawn again. 4.6 renamed the game's Megacorp check that Real Space uses for it.
+Diverse Rooms' prescripted empires are offered with or without Megacorp, as they were made to be, under the same renamed check.
+
+Real Space - System Scale
+Inquisitor ring worlds and the Inquisitor city planet have models, at System Scale's size. The Inquisitor ring world's last construction stage still has none.
+
+Planetary Diversity
+Volcanic Climate Mods also covers Planetary Diversity's ash and magma worlds, as its other Climate Mods cover its worlds of their climates. Planetary Diversity now ships the trait itself.
+Sol starts from Planetary Diversity's habitat origin and More Events Mod's Eden Protocol get Alpha Centauri as their first colony neighbour with Real Space.
+The patch's changes to Planetary Diversity's, Ascension Worlds' and More Events Mod's traits still apply in 4.6.
+
+Other mods
+More Events Mod: its three Progenitor shields cost upkeep again on their own, so the patch no longer needs to.
+Planetary Diversity - More Arcologies: its German translation reads again. A line its update left behind is taken out.
+
+Required mods
+The patch now also needs Diverse Rooms (All in One). Load this patch last, after every other mod.
+
+Known issues
+UI Overhaul Dynamic's bottom bar has no button for 4.6's ideology map mode.
+The Unbidden's ships and anchor stations lack the shader their models now use with Real Space 4.0.
+Real Space 4.0's two Scion Fallen Empires don't get their Absolute ethic with Willpower, and Fallen Empire homeworlds may get other buildings.
+These are left to their authors.
+```
+
 ## 21 November 2026, 22:23
 
 Built from `edf3554`.
