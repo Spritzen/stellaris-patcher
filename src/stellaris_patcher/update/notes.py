@@ -4,6 +4,7 @@
     archive(notes)                             # kept in ~/.local/share/stellaris-patcher/notes/
     kept = load_archive()                      # every one fetched so far, newest first
     names = modding_names(kept[0].text)        # names its Modding section removes or renames
+    is_release(kept[0])                        # whether it has a release's notes
 
 Steam's news API gives each announcement's whole text, where a web page
 summary can cut the bug fixes and modding notes off. It only gives the
@@ -78,6 +79,30 @@ def load_archive(folder: Path | None = None) -> list[Note]:
     return sorted(found, key=lambda n: n.date, reverse=True)
 
 
+# A version number, as in "Stellaris 4.5.2 released" or "Free 4.6 'Corona Borealis' Update".
+_VERSION = re.compile(r"\b\d+\.\d+")
+_RELEASE_HEADING = re.compile(r"release notes|patch notes", re.IGNORECASE)
+
+
+def is_release(note: Note) -> bool:
+    """Whether a note has a release's notes: a version in its title, or in the
+    text a heading with a version or "release notes", or a Modding section.
+    4.6's came in a dev diary and a launch post, with no version in their titles."""
+    if _VERSION.search(note.title):
+        return True
+    for line in note.text.splitlines():
+        if line.startswith("## ") and (_VERSION.search(line) or _RELEASE_HEADING.search(line)):
+            return True
+        if _bare(line).casefold() == "modding":
+            return True
+    return False
+
+
+def _bare(line: str) -> str:
+    """A line without its list mark, spacing, zero-width spaces and closing colon."""
+    return line.strip().strip("\u200b").removeprefix("- ").strip().strip("\u200b").rstrip(":")
+
+
 # A Modding line about a name that went away, and the names in it.
 _GONE = re.compile(
     r"remov|renam|deprecat|moved|no longer|is now|now called|supersed|replac", re.IGNORECASE
@@ -94,8 +119,7 @@ def modding_names(text: str) -> set[str]:
     found: set[str] = set()
     inside = False
     for line in text.splitlines():
-        bare = line.strip().strip("​").removeprefix("- ").strip().strip("​").rstrip(":")
-        if bare.casefold() == "modding":
+        if _bare(line).casefold() == "modding":
             inside = True
             continue
         if inside and line.strip() and not line.startswith("- "):

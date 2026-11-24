@@ -14,6 +14,11 @@ wins depends on the game folder.** These rules were tested in game on
 - **Localisation outside a `replace/` folder keeps the first file name. A key
   in `replace/` beats it.** This isn't what Irony says.
 - **File paths are matched ignoring case.** Not yet checked in game.
+- **Traits are unknown since 4.6.** Up to 4.5.4 the first copy was taken
+  to win, and a duplicate logged nothing. 4.6 logs a duplicate trait the way
+  it does a building, where the last wins. The patch ships each trait copy
+  first and last until a check in game settles it
+  ([decision 71](../decisions.md)).
 - **Graphics files (`.gfx`, `.gui`, `.asset`) define objects by their
   `name = …` field.** Pictures and sounds clash only as whole files.
 
