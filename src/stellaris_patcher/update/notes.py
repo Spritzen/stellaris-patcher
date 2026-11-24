@@ -86,8 +86,9 @@ _RELEASE_HEADING = re.compile(r"release notes|patch notes", re.IGNORECASE)
 
 def is_release(note: Note) -> bool:
     """Whether a note has a release's notes: a version in its title, or in the
-    text a heading with a version or "release notes", or a Modding section.
-    4.6's came in a dev diary and a launch post, with no version in their titles."""
+    text a heading with a version, "release notes" or "patch notes", or a Modding
+    section. 4.6's came in a dev diary and a launch post, with no version in
+    their titles."""
     if _VERSION.search(note.title):
         return True
     for line in note.text.splitlines():

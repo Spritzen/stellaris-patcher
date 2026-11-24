@@ -28,7 +28,8 @@ mods in this playset broke it exactly that way.
 
 **Who wins a clash depends on the game folder.** In most folders the last
 definition wins, sorted by file name. In some, such as `events/` and
-`common/traits/`, the first one wins. `on_actions` merge. The rules are in
+`common/solar_system_initializers/`, the first one wins. `on_actions`
+merge. The rules are in
 [merge_rules.json](../src/stellaris_patcher/data/merge_rules.json), one row
 per folder. A patch file wins by its name: `zz_…` to sort last, `!!_…` to
 sort first, or `localisation/<language>/replace/` for text. See

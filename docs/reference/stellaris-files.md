@@ -1,7 +1,7 @@
 # Where Stellaris keeps things
 
 Checked against the real install of the native Linux build, last on
-**v4.5.2** (2026-10-06). Paths are shown with the container's environment
+**v4.6.0** (2026-11-24). Paths are shown with the container's environment
 variables, which are the same paths as on the host.
 
 ## Game install (read-only)
@@ -12,7 +12,7 @@ variables, which are the same paths as on the host.
 |---|---|
 | `stellaris` | The game program |
 | `dowser` | The Paradox launcher. Its process name is how we tell it's open |
-| `launcher-settings.json` | Game version (`rawVersion`: `v4.5.2`) and the user data path (`gameDataPath`: `$LINUX_DATA_HOME/Paradox Interactive/Stellaris`) |
+| `launcher-settings.json` | Game version (`rawVersion`: `v4.6.0`) and the user data path (`gameDataPath`: `$LINUX_DATA_HOME/Paradox Interactive/Stellaris`) |
 | `common/`, `events/`, `localisation/`, `gfx/`, `interface/`… | Vanilla game files. Mods override these, and a patch mod may need to override them too |
 | `dlc/` | One folder per DLC |
 
