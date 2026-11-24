@@ -53,8 +53,9 @@ file.
      mod goes last. A required mod keeps its own place in the load order.
 
    Each line says what the player sees now, in game words: "Fleets with a
-   jump drive can enter…", not the file or the mechanism. Add "as in 4.5.2"
-   when the fix brings back the game's own behaviour. No fix numbers,
+   jump drive can enter…", not the file or the mechanism. Add "as in" and the
+   game version, such as "as in 4.6.0", when the fix brings back the game's
+   own behaviour. No fix numbers,
    decisions or file names: players don't see them. Short sentences, as in
    [how we write docs](README.md#how-we-write-docs).
 

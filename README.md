@@ -3,7 +3,7 @@
 Builds **patch mods for Stellaris playsets**: a small mod that loads last and
 fixes the clashes and breakages between the mods in a playset. It comes with
 one patch, the [Cold Steel Mix patch](docs/patches/cold-steel-mix.md), for a
-26-mod playset on Stellaris 4.5.2.
+26-mod playset on Stellaris 4.6.0.
 
 **You run it through [Claude Code](https://claude.com/claude-code).** You
 tell Claude what happened: you played, or the game updated. Claude reads the
@@ -64,7 +64,7 @@ Start Claude Code in this folder (`claude`), and ask:
 
 > Check my setup: run make check and find my Stellaris install.
 
-Claude should report the game's version, such as `v4.5.2`.
+Claude should report the game's version, such as `v4.6.0`.
 
 ## Work with Claude Code
 
@@ -73,7 +73,7 @@ skill knows its steps and its safety rules.
 
 | When | Type | Claude does | You do |
 |---|---|---|---|
-| You want the patch built, or a fix changed | `/build-patch` | Shows which fixes are written and which are left out, then builds the mod and links it into the game | Close the game and launcher when asked. Then rebuild the playset in Cold Steel |
+| You want the patch built, or a fix changed | `/build-patch` | Shows which fixes are written and which are left out, then builds the mod and links it into the game | Have the game and launcher closed: Claude doesn't ask. Then rebuild the playset in Cold Steel |
 | You've played | `/game-report` | Reads the error log, traces each entry to its mod, writes a report and proposes fixes | Say how long you played, new game or save, and anything that looked wrong |
 | Stellaris or a mod updated | `/update-check` | Compares the game and mods with the last check, reads the patch notes, writes a report and proposes fixes | Read the report's "What to do next" and say which fixes you want |
 | You agree to a fix | `/add-fix` | Writes the fix, its tests and its docs | Then run `/build-patch` |
@@ -91,11 +91,13 @@ Stellaris or a mod updates ─► /update-check
 
 ## Your first build
 
-1. **Type `/build-patch`.** Claude first shows what it would write. Each fix
-   is `ok`, or `left out` with a reason. Left out usually means an update
-   fixed the problem, or that the fix's mod is switched off.
-2. **Close the game and the Paradox launcher** when Claude asks. It then
-   writes the mod and links it into the game.
+1. **Close the game and the Paradox launcher, then type `/build-patch`.**
+   Claude first shows what it would write. Each fix is `ok`, or `left out`
+   with a reason. Left out usually means an update fixed the problem, or
+   that the fix's mod is switched off.
+2. **Claude then writes the mod and links it into the game.** It doesn't
+   ask whether the game is closed first
+   ([decision 65](docs/decisions.md)).
 3. **The first time, let Claude add the patch to the playset.** Close Cold
    Steel first. The patch goes last, before Cold Steel's own patch mod.
 4. **Rebuild the playset in Cold Steel, then play.**
@@ -111,8 +113,10 @@ something updates.
    until you agree ([decision 25](docs/decisions.md)).
 2. **Close the game, the launcher and Cold Steel before anything is
    written.** Each one saves over its files when it closes, which undoes the
-   change. In the container, Claude can't see them running, so it asks you.
-   Only say yes once they're closed.
+   change. In the container, Claude can't see them running. It asks before
+   writing Cold Steel's files: only say yes once Cold Steel is closed. It
+   doesn't ask about the game and the launcher before a build
+   ([decision 65](docs/decisions.md)), so close them before you ask for one.
 3. **Rebuild the playset in Cold Steel after every build.** You play Cold
    Steel's built copy of the playset. It only has the new patch once it's
    rebuilt.

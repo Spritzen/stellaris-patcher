@@ -1110,8 +1110,8 @@ TRAIT_MODS = {
 
 def fix_trait_categories(layers: Layers) -> Made:
     """Copies of each trait in use that files its resources under planet_pops,
-    with the game's planet_pops_traits instead, in a file that sorts first.
-    A trait another fix copies is left to it."""
+    with the game's planet_pops_traits instead, in a file that sorts first and
+    one that sorts last. A trait another fix copies is left to it."""
     if POPS_TRAITS.decode() not in layers.defined("common/economic_categories"):
         raise FixError(f"The game has no {POPS_TRAITS.decode()} category now.")
     copied_elsewhere = {BUDDING, AQUATIC}
@@ -1507,8 +1507,9 @@ _HAS_TRAIT = re.compile(rb"has_trait\s*=\s*(\w+)")
 
 def fix_aquatic(layers: Layers) -> Made:
     """A copy of Planetary Diversity's Aquatic trait with the game's AI weight,
-    in a file that sorts first. Only while the two weights differ by the traits
-    the game's checks and nothing else, so no choice of theirs is undone."""
+    in a file that sorts first and one that sorts last. Only while the two
+    weights differ by the traits the game's checks and nothing else, so no
+    choice of theirs is undone."""
     traits = layers.defined("common/traits")
     if traits.get(AQUATIC, ("",))[0] != PLANETARY_DIVERSITY:
         raise FixError(f"{AQUATIC} doesn't come from Planetary Diversity now.")
@@ -2916,24 +2917,25 @@ def fix_gaia_seeders(layers: Layers) -> Made:
     return {_last_file(layers, BUILDINGS, "gaia_seeders"): text + b"\n"}, notes
 
 
-# 42. Planetary Diversity's cyborg traits predate 4.5.3's Volcanic Climate Mods
+# 42. Planetary Diversity's Volcanic Climate Mods misses its ash and magma worlds
 
 
 CYBORG_TRAITS = "common/traits/10_species_traits_cyborg.txt"
 VOLCANIC_MODS = "trait_cyborg_climate_adjustment_volcanic"
 PD_VOLCANIC = "pd_is_volcanic"
 # 4.5.3: "Cybernetic empires can now take Volcanic Climate Mods, a fourth Climate
-# Mods trait that adapts a species to Volcanic Worlds." Planetary Diversity's whole
-# copy of the game's file has neither the trait nor the other three's new opposite.
+# Mods trait that adapts a species to Volcanic Worlds." Planetary Diversity ships a
+# whole copy of the game's file. Its copy of the trait is bound to pc_volcanic alone,
+# and its copies of the other three may lack it as an opposite.
 _PLANET_CLASS = re.compile(rb"is_planet_class\s*=\s*(\w+)")
 
 
 def fix_volcanic_climate_mods(layers: Layers) -> Made:
     """Volcanic Climate Mods, and each of its opposites in use without it as an
-    opposite, with it added, in a file that sorts first. The trait is the game's,
-    or Planetary Diversity's copy once it ships one. It also covers Planetary
-    Diversity's other volcanic worlds, as its copies of the other three cover its
-    other worlds of their climates."""
+    opposite, with it added, in a file that sorts first and one that sorts last.
+    The trait is Planetary Diversity's copy, or the game's while it has none. It
+    also covers Planetary Diversity's other volcanic worlds, as its copies of the
+    other three cover its other worlds of their climates."""
     traits = layers.defined("common/traits")
     if not layers.has(PLANETARY_DIVERSITY, CYBORG_TRAITS):
         raise FixError(f"Planetary Diversity has no {CYBORG_TRAITS} now.")
