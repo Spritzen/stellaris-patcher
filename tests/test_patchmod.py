@@ -2450,3 +2450,232 @@ def test_fix_45_is_left_out_once_the_old_names_are_defined(game: Game) -> None:
     layers = _megacorp(game, MEGACORP_DLC + "has_megacorp = { has_megacorp_dlc = yes }\n")
     with pytest.raises(FixError, match="No mod uses"):
         cold_steel_mix.fix_megacorp_triggers(layers)
+
+
+# Fix 46: Real Space's shader file and the game's 4.6 effects
+
+GAME_SHADER = """Includes = {
+\t"code.fxh"
+}
+
+Effect Old
+{
+\tVertexShader = "VertexCode"
+\tPixelShader = "PixelOld"
+}
+
+Effect New
+{
+\tVertexShader = "VertexCode"
+\tPixelShader = "PixelNew"
+\t#PixelShader = "PixelNobodyHas"
+}
+"""
+SHADER_CODE = "VertexShader =\n{\n\tMainCode VertexCode\n\t[[ ]]\n}\n"
+SHADER_CODE += "PixelShader =\n{\n\tMainCode PixelNew\n\t[[ ]]\n}\n"
+RS_SHADER = (
+    'Includes = {\r\n\t"code.fxh"\r\n}\r\n\r\nPixelShader =\r\n{\r\n\tMainCode PixelOld\r\n'
+    '\t[[ ]]\r\n}\r\n\r\nEffect Old\r\n{\r\n\tVertexShader = "VertexCode"\r\n'
+    '\tPixelShader = "PixelOld"\r\n}\r\n\r\nEffect OmniMesh\r\n{\r\n'
+    '\tVertexShader = "VertexCode"\r\n\tPixelShader = "PixelOld"\r\n}'
+)
+
+
+def _shaders(game: Game, real_space: str = RS_SHADER) -> Layers:
+    return _layers(
+        game,
+        {
+            GAME: {cold_steel_mix.SHADER: GAME_SHADER, "gfx/FX/code.fxh": SHADER_CODE},
+            cold_steel_mix.REAL_SPACE: {cold_steel_mix.SHADER: real_space},
+        },
+    )
+
+
+def test_fix_46_adds_the_games_missing_effects_to_real_spaces_shader(game: Game) -> None:
+    files, notes = cold_steel_mix.fix_shader_effects(_shaders(game))
+    text = files[cold_steel_mix.SHADER]
+    assert text.startswith(RS_SHADER.encode())
+    assert b'Effect New\r\n{\r\n\tVertexShader = "VertexCode"\r\n\tPixelShader = "PixelNew"' in text
+    assert text.count(b"Effect Old") == 1
+    assert b"\n" not in text.replace(b"\r\n", b"")
+    assert notes == ["1 of the game's effects added: New"]
+
+
+def test_fix_46_is_left_out_once_real_space_has_every_effect(game: Game) -> None:
+    with pytest.raises(FixError, match="has every effect the game's has now"):
+        cold_steel_mix.fix_shader_effects(_shaders(game, GAME_SHADER))
+
+
+def test_fix_46_is_left_out_if_an_effect_uses_code_real_space_lacks(game: Game) -> None:
+    layers = _shaders(game, RS_SHADER.replace('\t"code.fxh"\r\n', ""))
+    with pytest.raises(FixError, match="uses PixelNew, VertexCode, which Real Space's file lacks"):
+        cold_steel_mix.fix_shader_effects(layers)
+
+
+# Fix 47: Real Space's Scion Fallen Empires and 4.6's Absolute ethics
+
+FEDERATIONS = "common/solar_system_initializers/federations_initializers.txt"
+GAME_SCION = """scion_fallen_1 = {
+\tplanet = {
+\t\tinit_effect = {
+\t\t\tcreate_country = {
+\t\t\t\teffect = {
+\t\t\t\t\tif = {
+\t\t\t\t\t\tlimit = { has_force_of_will_dlc = yes }
+\t\t\t\t\t\tshift_ethic = ethic_absolute_materialist
+\t\t\t\t\t}
+\t\t\t\t\tset_country_flag = fallen_empire_1
+\t\t\t\t}
+\t\t\t}
+\t\t}
+\t}
+}
+"""
+RS_SCION = """scion_fallen_1 = {
+\tclass = rs_stars
+\tplanet = {
+\t\tinit_effect = {
+\t\t\tcreate_country = {
+\t\t\t\teffect = { set_country_flag = scion_master }
+\t\t\t}
+\t\t\tcreate_country = {
+\t\t\t\teffect = {
+\t\t\t\t\tset_country_flag = fallen_empire_1
+\t\t\t\t}
+\t\t\t}
+\t\t}
+\t}
+}
+"""
+
+
+def _scions(game: Game, real_space: str = RS_SCION) -> Layers:
+    return _layers(
+        game,
+        {GAME: {FEDERATIONS: GAME_SCION}, cold_steel_mix.REAL_SPACE: {FEDERATIONS: real_space}},
+    )
+
+
+def test_fix_47_ships_real_spaces_whole_file_with_the_games_ethic_shift(game: Game) -> None:
+    layers = _scions(game, RS_SCION + "shattered_ring_start = { }\n")
+    files, notes = cold_steel_mix.fix_scion_ethics(layers)
+    assert list(files) == [FEDERATIONS]  # at its own path, so no system is defined twice
+    text = files[FEDERATIONS]
+    assert (
+        b"\t\t\t\teffect = {\n"
+        b"\t\t\t\t\tif = {\n"
+        b"\t\t\t\t\t\tlimit = { has_force_of_will_dlc = yes }\n"
+        b"\t\t\t\t\t\tshift_ethic = ethic_absolute_materialist\n"
+        b"\t\t\t\t\t}\n"
+        b"\t\t\t\t\tset_country_flag = fallen_empire_1\n"
+    ) in text
+    assert text.count(b"shift_ethic") == 1  # not in the scion master's country
+    assert text.endswith(b"shattered_ring_start = { }\n")  # the rest of Real Space's file stays
+    assert notes == [
+        "scion_fallen_1: the game's ethic shift added",
+        f"Real Space's {FEDERATIONS}, whole",
+    ]
+    assert check_files(files) == []
+    assert cold_steel_mix.initializer_clashes(layers, files) == []
+
+
+def test_fix_47_keeps_real_spaces_line_ends(game: Game) -> None:
+    files, _ = cold_steel_mix.fix_scion_ethics(_scions(game, RS_SCION.replace("\n", "\r\n")))
+    text = files[FEDERATIONS]
+    assert b"shift_ethic = ethic_absolute_materialist\r\n" in text
+    assert b"\n" not in text.replace(b"\r\n", b"")
+
+
+def test_fix_47_is_left_out_once_real_space_shifts_the_ethic(game: Game) -> None:
+    real_space = RS_SCION.replace(
+        "set_country_flag = fallen_empire_1", "set_country_flag = fallen_empire_1 shift_ethic = x"
+    )
+    with pytest.raises(FixError, match="No system Real Space wins lacks"):
+        cold_steel_mix.fix_scion_ethics(_scions(game, real_space))
+
+
+# Fix 48: Stewart's Resolve, and Real Space's is_trinary
+
+SPECIAL = "common/solar_system_initializers/special_system_initializers.txt"
+GAME_STEWARTS = """stewarts_resolve_system = {
+\tclass = "sc_quaternary_1"
+\tusage_odds = @spawn_system_extreme
+\tplanet = { class = pc_f_star }
+\tplanet = { class = pc_g_star }
+\tinit_effect = { add_deposit = d_energy_3 }
+}
+"""
+RS_TRINARY = "is_trinary = {\n\tOR = {\n\t\tis_star_class = sc_trinary_1\n\t}\n}\n"
+
+
+def _stewarts(game: Game, special: str = "polaris = { }", trinary: str = RS_TRINARY) -> Layers:
+    return _layers(
+        game,
+        {
+            GAME: {
+                SPECIAL: GAME_STEWARTS,
+                "common/scripted_variables/00_vars.txt": "@spawn_system_extreme = 16",
+                "common/planet_classes/00_stars.txt": "pc_f_star = { }\npc_g_star = { }",
+                "common/deposits/00_energy.txt": "d_energy_3 = { }",
+                "common/scripted_triggers/00_scripted_triggers.txt": "is_quaternary_star = { }",
+            },
+            cold_steel_mix.REAL_SPACE: {
+                SPECIAL: special,
+                STARS: "sc_g = { }",
+                "common/scripted_triggers/realspace_scripted_triggers.txt": trinary,
+            },
+        },
+    )
+
+
+def test_fix_48_ships_the_games_system_and_counts_four_stars_as_trinary(game: Game) -> None:
+    files, notes = cold_steel_mix.fix_stewarts_resolve(_stewarts(game))
+    system = files[
+        "common/solar_system_initializers/stellaris_patcher_cold_steel_mix_stewarts_resolve.txt"
+    ]
+    assert GAME_STEWARTS.encode() in system
+    [trigger] = [p for p in files if p.startswith("common/scripted_triggers/")]
+    assert trigger.rpartition("/")[2].startswith("z")
+    assert (
+        b"is_trinary = {\n\tOR = {\n\t\tis_star_class = sc_trinary_1\n"
+        b"\t\tis_quaternary_star = yes\n\t}\n}"
+    ) in files[trigger]
+    assert notes == [
+        "stewarts_resolve_system, from the game",
+        "Real Space's is_trinary counts four stars",
+    ]
+    assert check_files(files) == []
+
+
+def test_fix_48_leaves_is_trinary_alone_once_it_counts_four_stars(game: Game) -> None:
+    trinary = RS_TRINARY.replace("sc_trinary_1", "sc_trinary_1 is_quaternary_star = yes")
+    files, notes = cold_steel_mix.fix_stewarts_resolve(_stewarts(game, trinary=trinary))
+    assert all(not p.startswith("common/scripted_triggers/") for p in files)
+    assert notes[1] == "Real Space's is_trinary counts four stars now. Skipped."
+
+
+def test_fix_48_is_left_out_once_the_system_is_defined(game: Game) -> None:
+    with pytest.raises(FixError, match="stewarts_resolve_system is in use now"):
+        cold_steel_mix.fix_stewarts_resolve(_stewarts(game, special=GAME_STEWARTS))
+
+
+# Systems defined twice
+
+
+def test_a_system_another_file_defines_is_a_clash(game: Game) -> None:
+    layers = _scions(game)
+    copy = {"common/solar_system_initializers/!!_copy.txt": b"scion_fallen_1 = { }\nnew = { }\n"}
+    assert cold_steel_mix.initializer_clashes(layers, copy) == ["scion_fallen_1"]
+
+
+def test_a_fix_that_would_define_a_system_twice_is_left_out(
+    game: Game, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def copies(layers: Layers) -> tuple[dict[str, bytes], list[str]]:
+        return {"common/solar_system_initializers/!!_copy.txt": b"scion_fallen_1 = { }\n"}, []
+
+    fixes = ((99, "A copy", copies, (cold_steel_mix.REAL_SPACE,)),)
+    monkeypatch.setattr(cold_steel_mix, "FIXES", fixes)
+    [outcome] = cold_steel_mix.plan(_scions(game))
+    assert outcome.left_out == "It would define systems another file defines: scion_fallen_1."
+    assert outcome.files == {}

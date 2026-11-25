@@ -24,7 +24,7 @@
     {"folder": "common/scripted_variables", "winner": "first", "source": "Irony", "checked": "2026-10-01"},
     {"folder": "common/section_templates", "winner": "first", "source": "Irony"},
     {"folder": "common/ship_behaviors", "winner": "first", "source": "Irony"},
-    {"folder": "common/solar_system_initializers", "winner": "first", "source": "Irony"},
+    {"folder": "common/solar_system_initializers", "winner": "first", "source": "Irony. The second copy of a system also makes the game reject every system after it in its file: ship a mod's whole file, not a copy (decision 74)", "checked": "2026-11-24"},
     {"folder": "common/special_projects", "winner": "first", "unit": "field", "field": "key", "source": "Irony"},
     {"folder": "common/start_screen_messages", "winner": "first", "unit": "file", "source": "Irony"},
     {"folder": "common/strategic_resources", "winner": "first", "source": "Irony"},
