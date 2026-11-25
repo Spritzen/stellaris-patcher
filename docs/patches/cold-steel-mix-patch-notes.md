@@ -16,6 +16,27 @@ them.
   again with Steam's Edit.
 - The history starts at the 4.5.2 update. Earlier uploads weren't copied.
 
+## 24 November 2026, 22:20
+
+Built from the uncommitted work on top of `151fcf6`: fixes 46, 47 and 48,
+with fix 47 shipping Real Space's whole file. Its merge commit replaces this
+line once it's on `main`.
+
+```text
+2026.11.24
+
+Three more fixes for Real Space 4.0 on Stellaris 4.6.0: the Unbidden have their models again, the Scion Fallen Empires get their Absolute ethic, and Stewart's Resolve can spawn.
+
+Real Space 4.0
+The Unbidden's ships and anchor stations have their models again. Real Space's graphics file lacked the shader 4.6 gave them.
+With Willpower, the Fallen Empire of a Scion empire is Absolute Materialist or Absolute Spiritualist, as in 4.6.0.
+Stewart's Resolve, 4.5.3's four-star system, can spawn, as in 4.5.3. Dyson spheres and ring worlds can't be built there, as in the game.
+
+Known issues
+UI Overhaul Dynamic's bottom bar has no toggle for 4.6's Ideological Border Mode. The ideology map mode itself is there.
+This is left to its author.
+```
+
 ## 24 November 2026, 20:30
 
 Built from `64ed2f4`.

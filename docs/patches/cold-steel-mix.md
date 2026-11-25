@@ -117,7 +117,7 @@ next upload
   they cover. **Update both when the game updates or the number of fixes
   changes**, then paste the whole file into the collection's description with
   Edit. A collection has no change notes. The number of fixes is the length
-  of `FIXES`: 32 for the 24 November upload.
+  of `FIXES`: 35 for the 24 November, 22:20 upload.
 - Write the upload's patch notes as in [patch-notes.md](../patch-notes.md),
   and record the upload in
   [cold-steel-mix-patch-notes.md](cold-steel-mix-patch-notes.md) once it's done.
@@ -130,10 +130,8 @@ next upload
 
 ### Left to the authors
 
-**The list has four lines: Real Space's missing Stewart's Resolve**
-([decision 62](../decisions.md)), **and three from 4.6: UI Overhaul Dynamic's
-missing ideology map mode button, and Real Space's missing Unbidden shader
-and its Fallen Empire systems** ([decision 69](../decisions.md)). The description lists the playset's known
+**The list has one line, from 4.6: UI Overhaul Dynamic's missing
+Ideological Border Mode toggle** ([decision 69](../decisions.md)). The description lists the playset's known
 problems that the patch doesn't fix, under "Known issues, waiting for the mod
 authors" ([decision 33](../decisions.md)). They're in `LEFT_TO_AUTHORS` in
 [cold_steel_mix.py](../../src/stellaris_patcher/patchmod/cold_steel_mix.py),
@@ -146,7 +144,10 @@ written by hand, one line per problem.
   ([decision 41](../decisions.md)): More Events Mod's Lost Emperor story
   sometimes can't place its system
   ([pre-upload report](../reports/cold-steel-mix/2026-10/2026-10-07-pre-upload.md#what-to-do-next),
-  item 20), and Dark UI has no dark versions of 4.5.2's new icons.
+  item 20), Dark UI has no dark versions of 4.5.2's new icons, and Real
+  Space's Fallen Empire systems place buildings in 4.5's order, so a few
+  miss their zone and are built in another
+  ([four years on 4.6.0](../reports/cold-steel-mix/2026-11/2026-11-24-four-years-4.6.0.md#the-fallen-empire-building-order)).
 
 **Ask the other authors first.** The patch ships work that isn't ours:
 
@@ -172,6 +173,9 @@ written by hand, one line per problem.
 | `interface/zzzz_stellaris_patcher_cold_steel_mix_starbase_view.gui` | UI Overhaul Dynamic's starbase window and slot, with Starbase Extended's slot sizes and nine header values changed |
 | 19 `gfx/models/ships/starbases/_starbase_entities_SBX_3_0_…` files | Starbase Extended 3.0's whole files, rebuilt: its copies of the game's models are the game's, with its attach points added |
 | `gfx/models/ships/starbases/zz_stellaris_patcher_cold_steel_mix_attach_points.asset` | 54 of the game's models, with attach points added |
+| `gfx/FX/pdxmesh.shader` | Real Space 4.0's whole file, which is the game's 4.5 file with its own effects, with 7 of the game's 4.6 effects added |
+| `common/solar_system_initializers/federations_initializers.txt` | Real Space 4.0's whole file, with 4 of the game's lines added to each of its two Scion systems |
+| `common/scripted_triggers/zzzz_stellaris_patcher_cold_steel_mix_trinary.txt` | Real Space 4.0's `is_trinary`, with one line added |
 | `common/starbase_modules/sbx_3_0_orbital_ring_modules.txt`, `common/starbase_modules/sbx_3_0_starbase_modules.txt` and `common/starbase_buildings/sbx_3_0_starbase_buildings.txt` | Starbase Extended 3.0's whole files, with 7 modules' and 10 buildings' checks mended, the game's 4.5 hangar lines in its hangar bay, and the game's Ideological Push on its Offworld Trading Company |
 | `common/section_templates/!!!!_stellaris_patcher_cold_steel_mix_ring_sections.txt` | Starbase Extended 3.0's ring anchorage section, twice, under two new keys |
 | `common/ship_sizes/zzzz_stellaris_patcher_cold_steel_mix_starbase_sizes.txt` | 21 of Starbase Extended 3.0's starbase sizes, with the game's 4.5 values for eight fields and its 4.6 Ideological Push |
@@ -219,9 +223,12 @@ authors' permission, or fixes 1, 3, 5, 11, 12, 16, 18, 19, 25–34, 36–38, 40�
 | 40 | More Events Mod's Astral Tales event `mem_astral_tales.8` gives the ruler a 33% chance of Substance Abuser with no check that the game lets them take a normal trait. An autocracy's ruler can't, so the option's tooltip offers a risk that can't happen, and the log has `rules_leader_cannot_get_normal_trait` | A copy of the event in a `!!_` file, with the game's `can_leader_get_normal_trait_trigger` in the `limit` on the ruler before the roll, as fix 26 does. An autocracy's ruler is then offered no roll ([decision 59](../decisions.md)) |
 | 41 | Stellar AI adds an AI-only guard to the four Gaia Seeders' `allow`: no new one, or upgrade, while the empire is short of exotic gases. Planetary Diversity's copies add its four extra gaia world types. Whichever mod's file sorts last drops the other's change: Stellar AI's `~stellarai_government_buildings.txt` since 0.14.1, which destroys a Gaia Seeder on Planetary Diversity's extra gaia worlds and stops one being built there | Planetary Diversity's four copies in a `~~_` file, each with every block Stellar AI changed from the game's or added: its `allow`. Fix 37's merge with the mods the other way round, and a block the game lacks is added after the one it follows in Stellar AI's copy. Built whichever of the two mods wins. Each Gaia Seeder is left out on its own if another mod wins it, or both mods change the same block ([decision 60](../decisions.md)) |
 | 42 | Planetary Diversity ships a whole copy of the game's `10_species_traits_cyborg.txt`. Its copy of 4.5.3's Volcanic Climate Mods (`trait_cyborg_climate_adjustment_volcanic`) is the game's, bound to `pc_volcanic` alone, so Planetary Diversity's ash and magma worlds aren't covered, as its other three Climate Mods cover its worlds of their climates | Planetary Diversity's trait, or the game's while it has none, in a `!!_` file and a `zz_` file, as for fix 27, also covering the planet classes Planetary Diversity's `pd_is_volcanic` counts: ash and magma worlds. Each of Wet, Dry and Cold Climate Mods in use without it as an opposite is copied with it added. Adapted Habitability stays on `pc_volcanic`, the one class the game's rule names. Left out once another mod ships the trait, or Planetary Diversity's covers its worlds and every opposite lists it ([decision 61](../decisions.md)) |
-| 43 | Real Space 4.0 ships a whole copy of the game's `00_star_classes.txt` from before 4.5.3, so 4.5.3's four-star classes, `sc_quaternary_1` and `sc_crisis_quaternary_1`, are missing. Each of the game's `is_quaternary_star` checks, and its Vacuum Flower relic, logs them as unknown at load (53 entries) | The game's two classes, unchanged, in a file of their own. Neither spawns on its own, and Stewart's Resolve, which uses them, stays missing, so play doesn't change. Left out once the playset defines both, or if a planet class they name is missing ([decision 63](../decisions.md)) |
+| 43 | Real Space 4.0 ships a whole copy of the game's `00_star_classes.txt` from before 4.5.3, so 4.5.3's four-star classes, `sc_quaternary_1` and `sc_crisis_quaternary_1`, are missing. Each of the game's `is_quaternary_star` checks, and its Vacuum Flower relic, logs them as unknown at load (53 entries) | The game's two classes, unchanged, in a file of their own. Neither spawns on its own. Fix 48 adds Stewart's Resolve, which uses them. Left out once the playset defines both, or if a planet class they name is missing ([decision 63](../decisions.md)) |
 | 44 | Starbase Extended 3.0's copy of the game's `ship_uses_starbase_components` wins over the game's. It names the game's three tier-3 arkships, beside ACoT's tier-4 ones. So a tier-3 arkship is offered the game's starbase combat computers, which lack all 22 arkship actions, its starbase reactors, at half a juggernaut reactor's power, and the Hyperlane aura. The game makes an arkship's design itself. It also names 28 of ACoT's sizes, which no mod in the playset defines, and the game logs each at every one of the trigger's 61 uses: 1,708 entries at load | A copy of Starbase Extended's trigger, in a `zz_` file: scripted triggers go to the last file by name. Each `is_ship_size` line in its `OR` naming a ship size the game's `is_arkship_ship` lists, or one no ship size file in the playset defines, is taken out. Its own sizes stay, and ACoT's do with ACoT. Left out once Starbase Extended's trigger isn't the one in use, or names neither ([decision 64](../decisions.md)) |
 | 45 | 4.6 renamed the game's scripted triggers `has_megacorp` and `has_not_megacorp` to `has_megacorp_dlc` and `has_not_megacorp_dlc`, without a line in its notes. Real Space's Chors Compass, the Caravaneers' home system, has odds only through `has_megacorp`, so it never spawns. Diverse Rooms' five prescripted empires use both old names for `playable` | A scripted trigger file that defines each old name a mod still uses as a call to the game's new one. Only the game's names, so no mod's work is shipped. Left out once no mod uses an old name, or a mod defines it ([decision 67](../decisions.md)) |
+| 46 | Real Space 4.0 ships a whole copy of the game's `gfx/FX/pdxmesh.shader` from before 4.6, with its own effects at the end. It lacks 7 of the game's effects. 4.6's Unbidden ships and anchor stations use four of them, `PdxMeshExtraDimensionalShipUpdated` and its skinned and shadow forms, so they load with no model: the error log has "Failed to create material" for each | Real Space's whole file, at its own path, with each effect the game's file has and it lacks added at its end, unchanged. Real Space's own effects stay. The code they call is in the game's `pdxmesh_ship.fxh` and `standard_vertex.fxh`, which Real Space's file includes. Left out once Real Space's file has every effect the game's has, or if an effect calls code Real Space's file can't reach ([decision 73](../decisions.md)) |
+| 47 | Real Space 4.0 ships a whole copy of the game's `federations_initializers.txt` from before 4.6. With Willpower, 4.6 makes the Scion origin's Fallen Empire Absolute Materialist or Absolute Spiritualist, in an `if` at the start of its `create_country` effect. Real Space's `scion_fallen_1` and `scion_fallen_2` lack it | Real Space's whole file, at its own path, with the game's `if` added at the start of the effect of the country with the same country flag in each of the two systems. Nothing else in it changes. Not a copy of the two systems: the game would then reject every system after Real Space's copy of `scion_fallen_1` in its file, five systems in all, among them the Shattered Ring origin's home system ([decision 74](../decisions.md)). A system Real Space no longer wins, or whose copy has the shift, is left out ([decision 73](../decisions.md)) |
+| 48 | Real Space 4.0 ships a whole copy of the game's `special_system_initializers.txt` from before 4.5.3, so 4.5.3's Stewart's Resolve, a four-star system with an energy deposit on each star, never spawns. Real Space's Dyson sphere and ring world block multiple-star systems with its own `is_trinary`, which counts three stars at most | The game's `stewarts_resolve_system`, unchanged, in a file of its own: its sizes and orbits are within those Real Space's own trinary systems use. Its star class is the playset's, or the game's that fix 43 adds. Real Space's `is_trinary`, with `is_quaternary_star = yes` added to its `OR`, in a `zzzz_` file: scripted triggers go to the last file by name. Real Space's Dyson swarm checks the game's `is_trinary_star`, which is left alone, so a swarm can still be built there. Left out once the playset defines the system, or a planet class or deposit it names is missing. The trigger part is skipped on its own once Real Space's counts four stars ([decision 62](../decisions.md)) |
 
 ### Notes
 
@@ -236,9 +243,13 @@ authors' permission, or fixes 1, 3, 5, 11, 12, 16, 18, 19, 25–34, 36–38, 40�
   copy must be the one the game uses.
 - **Fixes 11, 12 and 26 copy whole events**, and the game then has two
   events with one id. More Events Mod's copy is still loaded, but never
-  used. Fixes 18, 19, 27, 28, 29, 34, 37, 41, 42 and 44 do the same for
+  used. Fixes 18, 19, 27, 28, 29, 34, 37, 41, 42, 44 and 48 do the same for
   traits, a rule, a megastructure, starbase modules, starbase sizes,
-  buildings and a scripted trigger.
+  buildings and scripted triggers.
+- **No fix copies a system.** A second copy of a system makes the game reject
+  every system after it in its file, so fix 47 ships Real Space's whole file.
+  `plan()` leaves out any fix whose files would define a system another file
+  defines ([decision 74](../decisions.md)).
 - **Fix 18 copies only traits in use.** Three of More Events Mod's six
   are commented out, so it copies the other three.
 
@@ -371,3 +382,25 @@ These weren't seen in game yet:
   run, and the missing `acot_` sizes in the
   [two years on 4.6.0](../reports/cold-steel-mix/2026-11/2026-11-24-two-years-4.6.0.md#the-patchs-fixes)
   run.
+- Loading logs no `Failed to create material with shader
+  PdxMeshExtraDimensionalShipUpdated` or `Pdx mesh type with no meshes` for
+  `extra_dimensional_01`, and the Unbidden's ships and anchor stations show
+  when they arrive (fix 46). The log half was **seen** in the
+  [four years on 4.6.0](../reports/cold-steel-mix/2026-11/2026-11-24-four-years-4.6.0.md#the-patchs-fixes)
+  run. A shader that doesn't compile would show as
+  black or missing models anywhere Real Space's or the game's mesh effects
+  are used, so look at a planet's rings too, which use Real Space's own.
+- A Scion empire's Fallen Empire overlord is Absolute Materialist or Absolute
+  Spiritualist with Willpower (fix 47). The log has no `An initializer called
+  … already exists` and no `Unexpected token` for
+  `federations_initializers.txt`: the
+  [four years on 4.6.0](../reports/cold-steel-mix/2026-11/2026-11-24-four-years-4.6.0.md#fix-47-and-real-spaces-file)
+  run, with the fix's first version, had 7. The log half was **seen** in the
+  [two years with fix 47's whole file](../reports/cold-steel-mix/2026-11/2026-11-24-two-years-4.6.0-fix-47.md)
+  run, where two of the five systems the first version lost spawned.
+- Stewart's Resolve can appear in a large galaxy, as four stars with an
+  energy deposit each, and a Dyson sphere or ring world can't be built there
+  (fix 48). It spawned in the
+  [four years on 4.6.0](../reports/cold-steel-mix/2026-11/2026-11-24-four-years-4.6.0.md#the-patchs-fixes)
+  run, by the save's `system_initializer_counter`, and wasn't looked at on
+  screen.

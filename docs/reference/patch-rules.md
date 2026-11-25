@@ -13,6 +13,14 @@ wins depends on the game folder.** These rules were tested in game on
   date was confirmed in game. The others come from Irony Mod Manager's rules.
 - **Localisation outside a `replace/` folder keeps the first file name. A key
   in `replace/` beats it.** This isn't what Irony says.
+- **A second copy of a system breaks the rest of its file.** In
+  `solar_system_initializers` the first copy wins, but the game then rejects
+  every system after the second copy, in the file that has it, with
+  `Unexpected token`. Fix 47's first version lost five of Real Space's
+  systems this way, checked in game on 2026-11-24. So a fix ships the mod's
+  whole file at its path, never a copy of one of its systems, and `plan()`
+  leaves out a fix that would define a system twice
+  ([decision 74](../decisions.md)).
 - **File paths are matched ignoring case.** Not yet checked in game.
 - **Traits are unknown since 4.6.** Up to 4.5.4 the first copy was taken
   to win, and a duplicate logged nothing. 4.6 logs a duplicate trait the way

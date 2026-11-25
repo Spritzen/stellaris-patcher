@@ -90,12 +90,32 @@ def plan(layers: Layers) -> list[Outcome]:
             if not present.intersection(mods):
                 raise FixError(f"The playset has none of its mods now: {', '.join(mods)}.")
             files, notes = make(layers)
+            if clashes := initializer_clashes(layers, files):
+                raise FixError(
+                    f"It would define systems another file defines: {', '.join(clashes)}."
+                )
         except FixError as why:
             outcomes.append(Outcome(number, title, left_out=str(why), mods=mods))
             continue
         needs = mods + NEEDS.get(number, ())
         outcomes.append(Outcome(number, title, files, tuple(notes), mods=needs))
     return outcomes
+
+
+def initializer_clashes(layers: Layers, files: dict[str, bytes]) -> list[str]:
+    """The systems `files` define that a file they don't replace defines too.
+    The game keeps a system's first copy, and rejects every system after the
+    second copy in its file. A fix replaces a mod's whole file instead."""
+    folder = "common/solar_system_initializers/"
+    ours = {p.casefold(): d for p, d in files.items() if p.casefold().startswith(folder)}
+    if not ours:
+        return []
+    keys = {e.key.decode() for data in ours.values() for e in scan(data) if e.block}
+    others: set[str] = set()
+    for layer, path in layers.ordered(folder.rstrip("/")):
+        if path.casefold() not in ours:
+            others.update(e.key.decode() for e in scan(layers.read(layer, path)) if e.block)
+    return sorted(keys & others)
 
 
 def patched_mods(outcomes: list[Outcome], order: Sequence[str]) -> list[str]:
@@ -3063,7 +3083,7 @@ _PLANET_KEY = re.compile(rb"\bkey\s*=\s*(\w+)")
 def fix_quaternary_stars(layers: Layers) -> Made:
     """The game's four-star classes the playset lacks, unchanged, in a file of
     their own. Neither spawns on its own: one has spawn_odds 0, crisis classes
-    have none. Only the game's Stewart's Resolve uses them, and it's missing too."""
+    have none. Only the game's Stewart's Resolve uses them: fix 48 adds it."""
     defined = layers.defined(STAR_CLASSES)
     missing = [name for name in QUATERNARY if name not in defined]
     if not missing:
@@ -3180,19 +3200,246 @@ def fix_megacorp_triggers(layers: Layers) -> Made:
     return {f"{TRIGGERS}/{TAIL}_megacorp.txt": text.encode()}, notes
 
 
+# 46. Real Space's shader file predates 4.6's effects
+
+
+SHADER = "gfx/FX/pdxmesh.shader"
+# Real Space ships the game's 4.5 pdxmesh.shader whole, with its own effects at
+# the end. 4.6's Unbidden ships and anchor stations use an effect it lacks, so
+# they load with no model. A shader file replaces the game's as a whole file.
+_EFFECT = re.compile(rb"^Effect[ \t]+(\w+)\s*\{", re.M)
+_SHADER_NAME = re.compile(rb'\b(?:VertexShader|PixelShader)\s*=\s*"(\w+)"')
+_MAIN_CODE = re.compile(rb"\bMainCode\s+(\w+)")
+_INCLUDES = re.compile(rb"^Includes\s*=\s*\{([^}]*)\}", re.M)
+
+
+def _effects(data: bytes) -> dict[bytes, tuple[int, int]]:
+    """Each top-level Effect block in a shader file, by name, to where it starts and ends."""
+    found: dict[bytes, tuple[int, int]] = {}
+    for match in _EFFECT.finditer(data):
+        depth, at = 0, match.end() - 1
+        while at < len(data):
+            depth += {ord("{"): 1, ord("}"): -1}.get(data[at], 0)
+            at += 1
+            if depth == 0:
+                break
+        if depth:
+            raise FixError(f"Effect {match.group(1).decode()} has no end in {SHADER}.")
+        found[match.group(1)] = (match.start(), at)
+    return found
+
+
+def _shader_code(layers: Layers, data: bytes) -> set[bytes]:
+    """The MainCode names a shader file can use: its own, and its includes'."""
+    names = set(_MAIN_CODE.findall(data))
+    includes = _INCLUDES.search(data)
+    for name in re.findall(rb'"([^"]+)"', includes.group(1) if includes else b""):
+        path = f"gfx/FX/{name.decode()}"
+        try:
+            names.update(_MAIN_CODE.findall(layers.read(layers.winner(path), path)))
+        except LayerError:
+            raise FixError(f"{SHADER} includes {path}, which nothing has.") from None
+    return names
+
+
+def fix_shader_effects(layers: Layers) -> Made:
+    """Real Space's whole shader file, with each of the game's effects it lacks
+    added at its end, unchanged. Real Space's own effects stay."""
+    _expect_winner(layers, SHADER, REAL_SPACE, "Real Space")
+    data, game = layers.read(REAL_SPACE, SHADER), layers.read(GAME, SHADER)
+    own, games = _effects(data), _effects(game)
+    missing = [name for name in games if name not in own]
+    if not missing:
+        raise FixError("Real Space's shader file has every effect the game's has now.")
+    code = _shader_code(layers, data)
+    eol = b"\r\n" if b"\r\n" in data else b"\n"
+    added: list[bytes] = []
+    for name in missing:
+        start, end = games[name]
+        body = game[start:end]
+        named = set(_SHADER_NAME.findall(_COMMENT.sub(b"", body)))
+        unknown = sorted(n.decode() for n in named - code)
+        if unknown:
+            raise FixError(
+                f"The game's {name.decode()} uses {', '.join(unknown)}, "
+                "which Real Space's file lacks."
+            )
+        added.append(body.replace(b"\r\n", b"\n").replace(b"\n", eol))
+    comment = b"# The game's effects Real Space's copy lacks, added by the Cold Steel Mix patch"
+    text = data.rstrip() + eol + eol + comment + eol + (eol + eol).join(added) + eol
+    names = ", ".join(sorted(n.decode() for n in missing))
+    return {SHADER: text}, [f"{len(missing)} of the game's effects added: {names}"]
+
+
+# 47. Real Space's Scion Fallen Empires predate 4.6's Absolute ethics
+
+
+# With Willpower, 4.6 gives each Scion origin's Fallen Empire an Absolute ethic,
+# in an `if` at the start of its create_country effect. Real Space ships whole
+# copies of the game's federations_initializers.txt from before 4.6. When a
+# system is defined twice, the game keeps the first and rejects every system
+# after the second copy in its file, so the fix replaces Real Space's file.
+SHIFT_ETHIC = b"shift_ethic"
+
+
+def _descendants(data: bytes, entry: Entry, key: bytes) -> list[Entry]:
+    """Every block called `key` anywhere inside `entry`, outermost first."""
+    found: list[Entry] = []
+    for child in children(data, entry):
+        if not child.block:
+            continue
+        if child.key == key:
+            found.append(child)
+        found.extend(_descendants(data, child, key))
+    return found
+
+
+def _country_flags(data: bytes, effect: Entry) -> set[bytes]:
+    return {
+        data[c.value : c.end].strip()
+        for c in children(data, effect)
+        if c.key == b"set_country_flag" and not c.block
+    }
+
+
+def _line_indent(data: bytes, at: int) -> bytes:
+    return data[data.rfind(b"\n", 0, at) + 1 : at]
+
+
+def _ethic_shifts(data: bytes, entry: Entry) -> list[tuple[set[bytes], bytes]]:
+    """Each create_country effect in a game system that shifts an ethic: its
+    country flags, and its `if` blocks with shift_ethic, one line each, indent
+    taken off after the first line."""
+    found: list[tuple[set[bytes], bytes]] = []
+    for country in _descendants(data, entry, b"create_country"):
+        for effect in (c for c in children(data, country) if c.key == b"effect" and c.block):
+            shifts = [
+                c
+                for c in children(data, effect)
+                if c.key == b"if" and c.block and SHIFT_ETHIC in data[c.start : c.end]
+            ]
+            if not shifts:
+                continue
+            lines: list[bytes] = []
+            for shift in shifts:
+                indent = _line_indent(data, shift.start)
+                text = data[shift.start : shift.end].replace(b"\r\n", b"\n")
+                lines.extend(line.removeprefix(indent) for line in text.split(b"\n"))
+            found.append((_country_flags(data, effect), b"\n".join(lines)))
+    return found
+
+
+def fix_scion_ethics(layers: Layers) -> Made:
+    """Each Real Space file holding a game system whose Fallen Empire gets an
+    ethic shift, whole at its own path, with the game's `if` added at the start
+    of the matching country's effect. A copy of a system in another file would
+    make the game reject every system after Real Space's copy in its file."""
+    defined = layers.defined(INITIALIZERS)
+    edits: dict[str, list[tuple[int, int, bytes]]] = {}  # Real Space's file -> its edits
+    notes: list[str] = []
+    for path in layers.paths(GAME, INITIALIZERS):
+        game = layers.read(GAME, path)
+        for entry in scan(game):
+            if not entry.block or SHIFT_ETHIC not in game[entry.start : entry.end]:
+                continue
+            name = entry.key.decode()
+            layer, rs_path = defined.get(name, ("", ""))
+            if layer != REAL_SPACE or layers.winner(rs_path) != REAL_SPACE:
+                continue
+            data = layers.read(REAL_SPACE, rs_path)
+            rs = next(e for e in scan(data) if e.key == entry.key and e.block)
+            eol = b"\r\n" if b"\r\n" in data else b"\n"
+            found = 0
+            for flags, shift in _ethic_shifts(game, entry):
+                for country in _descendants(data, rs, b"create_country"):
+                    effect = next(
+                        (c for c in children(data, country) if c.key == b"effect" and c.block), None
+                    )
+                    if effect is None or not flags & _country_flags(data, effect):
+                        continue
+                    if SHIFT_ETHIC in data[effect.start : effect.end]:
+                        continue
+                    first = children(data, effect)[0]  # it has set_country_flag at least
+                    indent = _line_indent(data, first.start)
+                    text = shift.replace(b"\n", eol + indent)
+                    edits.setdefault(rs_path, []).append(
+                        (first.start, first.start, text + eol + indent)
+                    )
+                    found += 1
+            if found:
+                notes.append(f"{name}: the game's ethic shift added")
+    if not edits:
+        raise FixError("No system Real Space wins lacks one of the game's ethic shifts now.")
+    files = {path: _edit(layers.read(REAL_SPACE, path), found) for path, found in edits.items()}
+    return files, [*notes, *(f"Real Space's {path}, whole" for path in files)]
+
+
+# 48. Stewart's Resolve, 4.5.3's four-star system, which Real Space's files lack
+
+
+STEWARTS_RESOLVE = "stewarts_resolve_system"
+TRINARY = "is_trinary"
+# Real Space ships a whole copy of the game's special_system_initializers.txt from
+# before 4.5.3, so the system never spawns. Fix 43 gives it its star class. Its
+# star sizes and orbits are within those Real Space's own trinary systems use.
+# Real Space's Dyson sphere and ring world block multiple-star systems with its
+# own is_trinary, which counts three stars at most. Its Dyson swarm checks the
+# game's is_trinary_star, which is left alone: the game's other uses rely on it.
+_SYSTEM_PLANET = re.compile(rb"\bclass\s*=\s*\"?(pc_\w+)")
+_DEPOSIT = re.compile(rb"\badd_deposit\s*=\s*(\w+)")
+
+
+def _trinary_quaternary(layers: Layers) -> tuple[dict[str, bytes], str]:
+    """Real Space's is_trinary, with the game's four-star check added, in a file
+    that sorts last: scripted triggers go to the last file by name."""
+    found = _last_definition(layers, TRIGGERS, TRINARY)
+    if found is None or found[0] != REAL_SPACE:
+        return {}, f"Real Space's {TRINARY} isn't the one in use now. Skipped."
+    _, data, entry = found
+    if b"is_quaternary_star" in data[entry.start : entry.end]:
+        return {}, f"Real Space's {TRINARY} counts four stars now. Skipped."
+    if "is_quaternary_star" not in layers.defined(TRIGGERS):
+        raise FixError("Nothing defines is_quaternary_star now.")
+    edit = _append_lines(data, _child(data, entry, b"OR"), ["is_quaternary_star = yes"])
+    text = b"# Real Space's trigger, which also counts the game's four-star systems\n"
+    text += _copy(layers, data, entry, _mended(data, entry, [edit]))
+    return {
+        _last_file(layers, TRIGGERS, "trinary"): text
+    }, f"Real Space's {TRINARY} counts four stars"
+
+
+def fix_stewarts_resolve(layers: Layers) -> Made:
+    """The game's system, unchanged, in a file of its own. Its star class is
+    the playset's, or the game's that fix 43 adds."""
+    if STEWARTS_RESOLVE in layers.defined(INITIALIZERS):
+        raise FixError(f"{STEWARTS_RESOLVE} is in use now.")
+    data, entry = _game_entry(layers, INITIALIZERS, STEWARTS_RESOLVE)
+    body = data[entry.start : entry.end]
+    star = (value_of(data, entry, b"class") or b"").strip(b'"').decode()
+    if star not in layers.defined(STAR_CLASSES) and star not in QUATERNARY:
+        raise FixError(
+            f"{STEWARTS_RESOLVE}'s star class {star} isn't defined, nor added by fix 43."
+        )
+    for folder, names in (
+        ("common/planet_classes", _SYSTEM_PLANET.findall(body)),
+        ("common/deposits", _DEPOSIT.findall(body)),
+    ):
+        unknown = sorted({n.decode() for n in names} - set(layers.defined(folder)))
+        if unknown:
+            raise FixError(f"{STEWARTS_RESOLVE} names {', '.join(unknown)}, which nothing defines.")
+    text = b"# The game's 4.5.3 Stewart's Resolve, which Real Space's systems lack\n"
+    text += _copy(layers, data, entry, body)
+    files = {f"{INITIALIZERS}/{TAIL}_stewarts_resolve.txt": text}
+    trinary, note = _trinary_quaternary(layers)
+    return files | trinary, [f"{STEWARTS_RESOLVE}, from the game", note]
+
+
 # The playset's problems the patch leaves to the mods' authors, for the Workshop
 # page. Each is a mod's own bug, too big to copy or soon to be fixed upstream.
 # Drop a line once its mod has fixed it.
 LEFT_TO_AUTHORS: tuple[str, ...] = (
-    "Real Space 4.0 has no Stewart's Resolve, 4.5.3's new four-star system: its copies "
-    "of the game's star class and special system files predate 4.5.3, so the system "
-    "never spawns",
-    "UI Overhaul Dynamic's bottom bar has no button for 4.6's ideology map mode",
-    "Real Space 4.0's shader file predates 4.6, so the Unbidden's ships and anchor "
-    "stations lack the shader their models now use",
-    "Real Space 4.0's Fallen Empire systems predate 4.6: its two Scion Fallen Empires "
-    "don't get their Absolute ethic with Willpower, and buildings are placed in the old "
-    "order",
+    "UI Overhaul Dynamic's bottom bar has no toggle for 4.6's Ideological Border Mode. "
+    "The ideology map mode itself is there",
 )
 
 
@@ -3202,9 +3449,9 @@ FIX_GROUPS: tuple[tuple[str, tuple[int, ...]], ...] = (
     ("Species and traits", (18, 19, 27, 42)),
     ("Planets and buildings", (37, 41)),
     ("Events and stories", (6, 11, 12, 26, 38, 40)),
-    ("Galaxy and systems", (5, 28, 43, 45)),
+    ("Galaxy and systems", (5, 28, 43, 45, 47, 48)),
     ("Ships and starbases", (2, 3, 16, 29, 30, 31, 32, 33, 34, 44)),
-    ("Graphics and camera", (1, 4)),
+    ("Graphics and camera", (1, 4, 46)),
     ("Text and translations", (7, 10, 25, 36)),
 )
 
@@ -3476,5 +3723,29 @@ FIXES: tuple[tuple[int, str, Callable[[Layers], Made], tuple[str, ...]], ...] = 
         ),
         fix_megacorp_triggers,
         (REAL_SPACE, DIVERSE_ROOMS),
+    ),
+    (
+        46,
+        (
+            "The Unbidden's ships and anchor stations have models again with Real Space: its "
+            "shader file gets 4.6's effects"
+        ),
+        fix_shader_effects,
+        (REAL_SPACE,),
+    ),
+    (
+        47,
+        "Real Space's two Scion Fallen Empires get their Absolute ethic with Willpower, as in 4.6",
+        fix_scion_ethics,
+        (REAL_SPACE,),
+    ),
+    (
+        48,
+        (
+            "4.5.3's Stewart's Resolve, a four-star system, can spawn with Real Space, and Real "
+            "Space's Dyson spheres and ring worlds can't be built there, as in the game"
+        ),
+        fix_stewarts_resolve,
+        (REAL_SPACE,),
     ),
 )
