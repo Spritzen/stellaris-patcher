@@ -130,8 +130,9 @@ next upload
 
 ### Left to the authors
 
-**The list has one line, from 4.6: UI Overhaul Dynamic's missing
-Ideological Border Mode toggle** ([decision 69](../decisions.md)). The description lists the playset's known
+**The list is empty.** Its last line, UI Overhaul Dynamic's missing
+Ideological Border Mode toggle, was dropped on 25 November, when UI Overhaul
+Dynamic added the toggle ([decision 69](../decisions.md)). The description lists the playset's known
 problems that the patch doesn't fix, under "Known issues, waiting for the mod
 authors" ([decision 33](../decisions.md)). They're in `LEFT_TO_AUTHORS` in
 [cold_steel_mix.py](../../src/stellaris_patcher/patchmod/cold_steel_mix.py),

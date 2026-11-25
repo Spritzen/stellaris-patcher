@@ -3437,10 +3437,7 @@ def fix_stewarts_resolve(layers: Layers) -> Made:
 # The playset's problems the patch leaves to the mods' authors, for the Workshop
 # page. Each is a mod's own bug, too big to copy or soon to be fixed upstream.
 # Drop a line once its mod has fixed it.
-LEFT_TO_AUTHORS: tuple[str, ...] = (
-    "UI Overhaul Dynamic's bottom bar has no toggle for 4.6's Ideological Border Mode. "
-    "The ideology map mode itself is there",
-)
+LEFT_TO_AUTHORS: tuple[str, ...] = ()
 
 
 # The headings the Workshop page lists the fixes under, in order, by fix number.

@@ -16,6 +16,18 @@ them.
   again with Steam's Edit.
 - The history starts at the 4.5.2 update. Earlier uploads weren't copied.
 
+## 25 November 2026, 18:56
+
+Built from `89e6ef7`, with the Left to the authors line dropped. That
+change wasn't merged yet. The patch's 69 files are the same as the 24
+November, 22:20 upload's. Only the version and the description changed.
+
+```text
+2026.11.25
+
+No change in game. UI Overhaul Dynamic's update of 25 November added the Ideological Border Mode toggle to its bottom bar, so the patch's one known issue is gone.
+```
+
 ## 24 November 2026, 22:20
 
 Built from the work merged as `204db90`: fixes 46, 47 and 48, with fix 47
