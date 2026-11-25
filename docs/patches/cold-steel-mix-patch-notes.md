@@ -18,9 +18,9 @@ them.
 
 ## 24 November 2026, 22:20
 
-Built from the uncommitted work on top of `151fcf6`: fixes 46, 47 and 48,
-with fix 47 shipping Real Space's whole file. Its merge commit replaces this
-line once it's on `main`.
+Built from the work merged as `204db90`: fixes 46, 47 and 48, with fix 47
+shipping Real Space's whole file. The build came before the merge, from the
+same files.
 
 ```text
 2026.11.24
